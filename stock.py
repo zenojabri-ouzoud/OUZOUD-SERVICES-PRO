@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import datetime, os
-from gtts import gTTS # للتسجيل الصوتي
+from gtts import gtts # للتسجيل الصوتي
 import base64
 
 # 1. إعدادات الصفحة والخلفية (أزيلال ستايل)
