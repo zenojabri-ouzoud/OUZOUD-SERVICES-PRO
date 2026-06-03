@@ -1,5 +1,59 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
+
+# 1. هادي هي كلمة السر اللي غاتدخل بيها (تقدر تبدلها إيلا بغيتي)
+PASSWORD_CORRECT = "ouzoud2026"
+
+# دالة للتحقق من كلمة السر
+def check_password():
+    if "password_correct" not in st.session_state:
+        st.session_state.password_correct = False
+
+    if st.session_state.password_correct:
+        return True
+
+    # شاشة تسجيل الدخول واجهة زوينة بالدارجة والعربية
+    st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>🔐 نظام إدارة مكتبة أوزود</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #6B7280;'>مرحبا بك أ سفيان، يرجى إدخال كلمة السر للدخول</p>", unsafe_allow_html=True)
+    
+    # خانة إدخال الكود
+    password = st.text_input("كلمة السر / Mot de passe:", type="password", help="أدخل كلمة السر الخاصة بالمكتبة للولوج للنظام")
+    
+    if st.button("تسجيل الدخول", use_container_width=True):
+        if password == PASSWORD_CORRECT:
+            st.session_state.password_correct = True
+            st.rerun()
+        else:
+            st.error("❌ كلمة السر غلط! عاود جرب شي كود آخر.")
+            
+    return False
+
+# إيلا كان الكود مازال مادخلش، السيستم كيحبس هنا
+if not check_password():
+    st.stop()
+
+# =================================================================
+# 🚀 هنا كيبدا السيستم ديالك د المخزون (البرنامج القديم شغال 100%)
+# =================================================================
+
+st.title("📦 لوحة تحكم مخزون مكتبة أوزود")
+st.write("مرحباً بك في النظام الرئيسي للمكتبة. يمكنك الآن إدارة السلع والمبيعات بنجاح.")
+
+# مثال بسيط لعرض جدول البيانات والغرافيك بـ Plotly لي مابقاش يعطي خطأ
+data = {
+    'المنتج': ['دفاتر', 'أقلام', 'كتب فانتزيا', 'أدوات هندسية'],
+    'الكمية المتوفرة': [120, 340, 45, 85]
+}
+df = pd.DataFrame(data)
+
+st.subheader("📊 حالة المخزون الحالي")
+st.dataframe(df, use_container_width=True)
+
+# رسم بياني احترافي بـ plotly اللي صلحناه قبيلة
+fig = px.bar(df, x='المنتج', y='الكمية المتوفرة', title="توزيع الكميات حسب المنتج", color='المنتج')
+st.plotly_chart(fig, use_container_width=True)import streamlit as st
+import pandas as pd
 import os
 from datetime import datetime
 import plotly.express as px
