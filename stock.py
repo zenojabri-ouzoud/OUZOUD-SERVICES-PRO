@@ -1,379 +1,211 @@
 import streamlit as st
 import pandas as pd
+import datetime
+import os
 import plotly.express as px
 
-# 1. هادي هي كلمة السر اللي غاتدخل بيها (تقدر تبدلها إيلا بغيتي)
-PASSWORD_CORRECT = "ouzoud2026"
+# إعدادات الصفحة الأساسية
+st.set_page_config(page_title="سيستم ورّاقة أوزود الذكي", page_icon="🛍️", layout="wide")
 
-# دالة للتحقق من كلمة السر
+# كلمة السر والنظام الأمني
+PASSWORD = "ouzoud2026"
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+
 def check_password():
-    if "password_correct" not in st.session_state:
-        st.session_state.password_correct = False
-
-    if st.session_state.password_correct:
+    if st.session_state["authenticated"]:
         return True
-
-    # شاشة تسجيل الدخول واجهة زوينة بالدارجة والعربية
-    st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>🔐 نظام إدارة مكتبة أوزود</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #6B7280;'>مرحبا بك أ سفيان، يرجى إدخال كلمة السر للدخول</p>", unsafe_allow_html=True)
     
-    # خانة إدخال الكود
-    password = st.text_input("كلمة السر / Mot de passe:", type="password", help="أدخل كلمة السر الخاصة بالمكتبة للولوج للنظام")
-    
-    if st.button("تسجيل الدخول", use_container_width=True):
-        if password == PASSWORD_CORRECT:
-            st.session_state.password_correct = True
-            st.rerun()
-        else:
-            st.error("❌ كلمة السر غلط! عاود جرب شي كود آخر.")
-            
+    st.markdown("<h2 style='text-align: center; color: #4A148C;'>🔐 نظام إدارة ورّاقة أوزود</h2>", unsafe_allow_html=True)
+    with st.form("login_form"):
+        pwd = st.text_input("أدخل كلمة المرور الفخمة للولوج للسيستم:", type="password")
+        submit = st.form_submit_button("دخول مأمن 🚀")
+        if submit:
+            if pwd == PASSWORD:
+                st.session_state["authenticated"] = True
+                st.rerun()
+            else:
+                st.error("❌ كلمة المرور غير صحيحة، حاول مجدداً أ بطل!")
     return False
 
-# إيلا كان الكود مازال مادخلش، السيستم كيحبس هنا
-if not check_password():
-    st.stop()
+if check_password():
+    # الألوان الملكية الموفية والخلفية الطبيعية لشلالات أوزود
+    st.markdown("""
+        <style>
+        .stApp {
+            background-image: linear-gradient(rgba(243, 229, 245, 0.85), rgba(243, 229, 245, 0.85)), 
+                              url("https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=1600&auto=format&fit=crop");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        .main-title { color: #4A148C; text-align: center; font-weight: bold; margin-bottom: 20px; }
+        .stButton>button { background-color: #7B1FA2; color: white; border-radius: 8px; font-weight: bold; }
+        .stButton>button:hover { background-color: #4A148C; color: #EA80FC; }
+        </style>
+    """, unsafe_allow_html=True)
 
-# =================================================================
-# 🚀 هنا كيبدا السيستم ديالك د المخزون (البرنامج القديم شغال 100%)
-# =================================================================
+    # إنشاء ملفات البيانات تلقائياً إن لم تكن موجودة
+    if not os.path.exists("stock.csv"):
+        df_init = pd.DataFrame(columns=["كود_المنتج", "اسم_المنتج", "الكمية", "ثمن_الشراء", "ثمن_البيع", "الفئة"])
+        df_init.to_csv("stock.csv", index=False, encoding='utf-8-sig')
 
-st.title("📦 لوحة تحكم مخزون مكتبة أوزود")
-st.write("مرحباً بك في النظام الرئيسي للمكتبة. يمكنك الآن إدارة السلع والمبيعات بنجاح.")
+    if not os.path.exists("sales.csv"):
+        df_sales_init = pd.DataFrame(columns=["المعرف", "كود_المنتج", "اسم_المنتج", "الكمية_المباعة", "الإجمالي", "التاريخ_والوقت"])
+        df_sales_init.to_csv("sales.csv", index=False, encoding='utf-8-sig')
 
-# مثال بسيط لعرض جدول البيانات والغرافيك بـ Plotly لي مابقاش يعطي خطأ
-data = {
-    'المنتج': ['دفاتر', 'أقلام', 'كتب فانتزيا', 'أدوات هندسية'],
-    'الكمية المتوفرة': [120, 340, 45, 85]
-}
-df = pd.DataFrame(data)
+    # النطق الصوتي الترحيبي التلقائي
+    if "welcomed" not in st.session_state:
+        st.components.v1.html("""
+            <script>
+            var msg = new SpeechSynthesisUtterance('مرحبا بكم في وراقة أوزود السعيدة');
+            msg.lang = 'ar-SA';
+            window.speechSynthesis.speak(msg);
+            </script>
+        """, height=0)
+        st.session_state["welcomed"] = True
 
-st.subheader("📊 حالة المخزون الحالي")
-st.dataframe(df, use_container_width=True)
-
-# رسم بياني احترافي بـ plotly اللي صلحناه قبيلة
-fig = px.bar(df, x='المنتج', y='الكمية المتوفرة', title="توزيع الكميات حسب المنتج", color='المنتج')
-st.plotly_chart(fig, use_container_width=True)    
-import streamlit as st
-import pandas as pd
-import os
-from datetime import datetime
-import plotly.express as px
-
-# ==========================================
-# 1. الإعدادات المتقدمة للهندسة البرمجية للموقع
-# ==========================================
-st.set_page_config(
-    page_title="نظام Enterprise لإدارة المكتبات",
-    page_icon="🏢",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# أسماء ملفات البيانات (CSV Engine)
-STOCK_FILE = "library_stock_v2.csv"
-SALES_FILE = "library_sales_v2.csv"
-CONFIG_FILE = "library_config.csv"
-
-# ==========================================
-# 2. نظام إدارة وقراءة الملفات الحرج (Data Core)
-# ==========================================
-def initialize_system():
-    stock_cols = ["الرقم الترتيبي", "نوع المنتج", "الاسم / الوصف", "الكمية المتوفرة", "ثمن الشراء (DH)", "ثمن البيع (DH)", "الحد الأدنى للتنبيه"]
-    sales_cols = ["معرف العملية", "التاريخ والوقت", "نوع الخدمة/المنتج", "التفاصيل", "الكمية", "ثمن البيع الكلي (DH)", "الربح الصافي (DH)"]
+    st.markdown("<h1 class='main-title'>🌪️ سيستم ورّاقة أوزود السريع (v5.5)</h1>", unsafe_allow_html=True)
     
-    if not os.path.exists(STOCK_FILE):
-        pd.DataFrame(columns=stock_cols).to_csv(STOCK_FILE, index=False)
-    if not os.path.exists(SALES_FILE):
-        pd.DataFrame(columns=sales_cols).to_csv(SALES_FILE, index=False)
+    tab1, tab2, tab3 = st.tabs(["🛒 كاسة البيع السريع (POS)", "📦 إدارة الستوك والسلع", "📊 تقارير الأرباح والمبيعات"])
+
+    # ------------------ صفحة الكاسة (POS) التلقائية بالليزر ------------------
+    with tab1:
+        st.header("🛒 كاسة البيع بالليزر الأوتوماتيكية")
         
-    # تهيئة ملف الإعدادات الافتراضي (Les Paramètres)
-    if not os.path.exists(CONFIG_FILE):
-        config_df = pd.DataFrame([{
-            "اسم_المكتبة": "مكتبة السلام الذكية",
-            "الأصناف": "روايات وكتب,أدوات مدرسية,أدوات مكتبية,أخرى",
-            "نسبة_ربح_الطباعة": 70.0
-        }])
-        config_df.to_csv(CONFIG_FILE, index=False)
-
-initialize_system()
-
-@st.cache_data(ttl=1)
-def load_secure_data(file_path):
-    return pd.read_csv(file_path)
-
-def save_secure_data(df, file_path):
-    df.to_csv(file_path, index=False)
-    st.cache_data.clear()
-
-# تحميل البيانات الحية والإعدادات
-stock_df = load_secure_data(STOCK_FILE)
-sales_df = load_secure_data(SALES_FILE)
-config_df = load_secure_data(CONFIG_FILE)
-
-# جلب قيم الإعدادات الحالية
-app_name = config_df.at[0, "اسم_المكتبة"]
-categories_list = config_df.at[0, "الأصناف"].split(",")
-print_profit_margin = float(config_df.at[0, "نسبة_ربح_الطباعة"]) / 100.0
-
-# ==========================================
-# 3. الواجهة الجانبية ونظام الصلاحيات (Sidebar Layout)
-# ==========================================
-st.sidebar.markdown(f"<h2 style='text-align: center; color: #1E3A8A;'>{app_name}</h2>", unsafe_allow_html=True)
-st.sidebar.markdown("<p style='text-align: center; font-size: 12px; color: gray;'>ERP Enterprise v3.0</p>", unsafe_allow_html=True)
-st.sidebar.markdown("---")
-
-menu_option = st.sidebar.selectbox(
-    "🌐 وحدة التحكم المركزية:",
-    [
-        "📊 اللوحة الديناميكية والإحصائيات",
-        "🛒 نقطة البيع السريعة (POS)",
-        "🖨️ مركز الطباعة والنسخ الرقمي",
-        "📦 الهندسة الخلفية للمخزون (التحكم الكامل)",
-        "🧾 التدقيق المالي وسجل العمليات",
-        "⚙️ الإعدادات (Les Paramètres)"
-    ]
-)
-
-# إشعار المخزون المنخفض
-if not stock_df.empty:
-    low_stock_items = stock_df[stock_df["الكمية المتوفرة"] <= stock_df["الحد الأدنى للتنبيه"]]
-    if not low_stock_items.empty:
-        st.sidebar.warning(f"⚠️ تنبيه حرج: لديك {len(low_stock_items)} منتجات تقترب من النفاد!")
-
-st.title(f"📚 {app_name}")
-st.markdown("---")
-
-# ==========================================
-# 4. التطبيق البرمجي لكل قسم (Business Logic)
-# ==========================================
-
-# --- القسم الأول: اللوحة الديناميكية والإحصائيات ---
-if menu_option == "📊 اللوحة الديناميكية والإحصائيات":
-    st.subheader("📊 لوحة الأداء العام والتحليلات المتقدمة للمكتبة")
-    
-    total_sales_value = sales_df["ثمن البيع الكلي (DH)"].sum() if not sales_df.empty else 0.0
-    total_net_profit = sales_df["الربح الصافي (DH)"].sum() if not sales_df.empty else 0.0
-    total_items_in_stock = stock_df["الكمية المتوفرة"].sum() if not stock_df.empty else 0
-    
-    kpi1, kpi2, kpi3 = st.columns(3)
-    kpi1.metric(label="💰 إجمالي المبيعات (الرواج)", value=f"{total_sales_value:,.2f} DH", delta="نشط")
-    kpi2.metric(label="📈 صافي الأرباح الحقيقية", value=f"{total_net_profit:,.2f} DH", delta=f"{((total_net_profit/total_sales_value)*100 if total_sales_value > 0 else 0):.1f}% هامش ربح")
-    kpi3.metric(label="📦 قطع السلع المتوفرة حالياً", value=f"{total_items_in_stock:,} قطعة")
-    st.markdown("---")
-    
-    col_chart1, col_chart2 = st.columns(2)
-    with col_chart1:
-        st.subheader("📈 مبيعات الأصناف")
-        if not sales_df.empty:
-            fig_pie = px.pie(sales_df, values="ثمن البيع الكلي (DH)", names="نوع الخدمة/المنتج", hole=0.4, title="توزيع المداخيل حسب الصنف")
-            st.plotly_chart(fig_pie, use_container_width=True)
-        else:
-            st.info("لا توجد بيانات كافية لرسم المخطط المالي.")
-    with col_chart2:
-        st.subheader("⚠️ وضعية المخزون الحرجة")
-        if not stock_df.empty:
-            fig_bar = px.bar(stock_df, x="الاسم / الوصف", y="الكمية المتوفرة", color="الكمية المتوفرة", title="مستويات السلع في الرفوف")
-            st.plotly_chart(fig_bar, use_container_width=True)
-        else:
-            st.info("المخزن فارغ.")
-
-# --- القسم الثاني: نقطة البيع السريعة (POS) ---
-elif menu_option == "🛒 نقطة البيع السريعة (POS)":
-    st.subheader("🛒 نظام مبيعات الكتب والأدوات المدرسية المباشر")
-    if stock_df.empty:
-        st.error("❌ المخزون فارغ تماماً!")
-    else:
-        category_filter = st.selectbox("🎯 تصفية حسب الصنف لتسهيل البحث:", ["الكل"] + list(set(stock_df["نوع المنتج"].tolist())))
-        available_products = stock_df if category_filter == "الكل" else stock_df[stock_df["نوع المنتج"] == category_filter]
-        product_list = available_products["الاسم / الوصف"].tolist()
+        # حقل الكود بار المجهز لليزر بالخيط وبدون خيط
+        qr_input = st.text_input("🎯 ضع مؤشر الماوس هنا وامسح بالليزر بدون لمس الكيبورد:", key="scanner_field")
         
-        if not product_list:
-            st.warning("لا توجد منتجات متوفرة.")
-        else:
-            selected_product = st.selectbox("📖 اختر المنتج أو الرواية المراد بيعها:", product_list)
-            prod_row = stock_df[stock_df["الاسم / الوصف"] == selected_product].iloc[0]
-            current_stock = int(prod_row["الكمية المتوفرة"])
-            selling_price = float(prod_row["ثمن البيع (DH)"])
-            buying_price = float(prod_row["ثمن الشراء (DH)"])
+        if qr_input:
+            df_st = pd.read_csv("stock.csv", encoding='utf-8-sig')
+            # البحث عن المنتج الممسوح
+            product = df_st[df_st["كود_المنتج"].astype(str) == str(qr_input)]
             
-            st.markdown(f"""
-            <div style='background-color:#F0FDF4; padding:15px; border-radius:10px; border-left:5px solid #16A34A;'>
-                <h4>📊 تفاصيل السلعة:</h4>
-                <p>💸 ثمن البيع: <b>{selling_price} DH</b> | 📦 متوفر: <b>{current_stock} قطعة</b></p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            sales_qty = st.number_input("📥 حدد الكمية المطلوبة للزبون:", min_value=1, max_value=current_stock if current_stock > 0 else 1, value=1)
-            if current_stock == 0:
-                st.error("⛔ عذراً! هذا المنتج خارج المخزن.")
-            else:
-                total_checkout = sales_qty * selling_price
-                net_profit_calc = (selling_price - buying_price) * sales_qty
-                st.markdown(f"### 🧾 المجموع الإجمالي للحساب: <span style='color:#16A34A;'>{total_checkout:.2f} DH</span>", unsafe_allow_html=True)
-                
-                if st.button("🛒 تأكيد عملية البيع", use_container_width=True):
-                    stock_df.loc[stock_df["الاسم / الوصف"] == selected_product, "الكمية المتوفرة"] -= sales_qty
-                    save_secure_data(stock_df, STOCK_FILE)
-                    tx_id = f"TX-{datetime.now().strftime('%d%H%M%S')}"
-                    new_tx = pd.DataFrame([{
-                        "معرف العملية": tx_id, "التاريخ والوقت": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "نوع الخدمة/المنتج": prod_row["نوع المنتج"], "التفاصيل": f"{selected_product}",
-                        "الكمية": sales_qty, "ثمن البيع الكلي (DH)": total_checkout, "الربح الصافي (DH)": net_profit_calc
+            if not product.empty:
+                idx = product.index[0]
+                if df_st.at[idx, "الكمية"] > 0:
+                    # تنقيص حبة واحدة من الستوك
+                    df_st.at[idx, "الكمية"] -= 1
+                    df_st.to_csv("stock.csv", index=False, encoding='utf-8-sig')
+                    
+                    # تسجيل المبيعة فوراً
+                    df_sl = pd.read_csv("sales.csv", encoding='utf-8-sig')
+                    p_name = df_st.at[idx, "اسم_المنتج"]
+                    p_price = df_st.at[idx, "ثمن_البيع"]
+                    
+                    new_sale = pd.DataFrame([{
+                        "المعرف": str(datetime.datetime.now().timestamp()),
+                        "كود_المنتج": qr_input,
+                        "اسم_المنتج": p_name,
+                        "الكمية_المباعة": 1,
+                        "الإجمالي": p_price,
+                        "التاريخ_والوقت": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     }])
-                    sales_df = pd.concat([sales_df, new_tx], ignore_index=True)
-                    save_secure_data(sales_df, SALES_FILE)
-                    st.success(f"🎉 تم تسجيل البيع بنجاح! رقم العملية: {tx_id}")
-                    st.rerun()
-
-# --- القسم الثالث: مركز الطباعة والنسخ الرقمي ---
-elif menu_option == "🖨️ مركز الطباعة والنسخ الرقمي":
-    st.subheader("🖨️ مبيعات خدمات النسخ السريع، الطباعة والإنترنت")
-    service_selected = st.selectbox("⚙️ اختر الخدمة المنجزة:", [
-        "فوتوكوبي عادي (Photocopie A4)", "طباعة وثائق وبحوث (Impression)",
-        "طباعة ملونة بجودة احترافية", "تجليد المستندات (Reliure / Plastification)",
-        "عمليات التسجيل الإلكتروني والإنترنت"
-    ])
-    c1, c2 = st.columns(2)
-    with c1: unit_cost = st.number_input("💵 سعر الخدمة / الورقة الواحدة (DH):", min_value=0.1, value=1.0, step=0.5)
-    with c2: total_units = st.number_input("📄 إجمالي عدد الأوراق أو العمليات:", min_value=1, value=1, step=1)
-    
-    service_total_price = unit_cost * total_units
-    service_net_profit = service_total_price * print_profit_margin 
-    
-    st.markdown(f"### 💵 المجموع الكلي للخدمة: <span style='color:#2563EB;'>{service_total_price:.2f} DH</span>", unsafe_allow_html=True)
-    if st.button("💾 ترحيل المعاملة إلى السجل المالي", use_container_width=True):
-        tx_id_serv = f"SRV-{datetime.now().strftime('%d%H%M%S')}"
-        new_service_row = pd.DataFrame([{
-            "معرف العملية": tx_id_serv, "التاريخ والوقت": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "نوع الخدمة/المنتج": "خدمات وطباعة", "التفاصيل": f"{service_selected} ({total_units} وحدة)",
-            "الكمية": total_units, "ثمن البيع الكلي (DH)": service_total_price, "الربح الصافي (DH)": service_net_profit
-        }])
-        sales_df = pd.concat([sales_df, new_service_row], ignore_index=True)
-        save_secure_data(sales_df, SALES_FILE)
-        st.success("✅ تم حفظ الخدمة وتحديث الحسابات!")
-        st.rerun()
-
-# --- القسم الرابع: الهندسة الخلفية للمخزون (التحكم الكامل) ---
-elif menu_option == "📦 الهندسة الخلفية للمخزون (التحكم الكامل)":
-    st.subheader("📦 اللوحة البرمجية المتقدمة للتحكم الشامل في السلع")
-    t1, t2, t3 = st.tabs(["➕ إدخال وهيكلة منتج جديد", "✏️ التعديل الجذري والتحيين الفوري", "🗑️ التطهير والحذف من النظام"])
-    
-    with t1:
-        col_in1, col_in2 = st.columns(2)
-        with col_in1:
-            new_prod_type = st.selectbox("📁 صنف المنتج الجديد بالمكتبة:", categories_list)
-            new_name = st.text_input("📝 الاسم الدقيق للسلعة:")
-            new_alert_limit = st.number_input("🔔 حد التنبيه للمخزون المنخفض:", min_value=0, value=3)
-        with col_in2:
-            new_qty_init = st.number_input("📦 إجمالي الكمية الموردة:", min_value=0, value=10)
-            new_buy_price = st.number_input("💰 ثمن الشراء من الجملة (DH):", min_value=0.0, value=10.0, step=0.5)
-            new_sell_price = st.number_input("💸 ثمن البيع المقترح (DH):", min_value=0.0, value=15.0, step=0.5)
+                    df_sl = pd.concat([df_sl, new_sale], ignore_index=True)
+                    df_sl.to_csv("sales.csv", index=False, encoding='utf-8-sig')
+                    
+                    st.success(f"✅ تـم بيـع: {p_name} بنجاح! الثمن: {p_price} درهم. (تم تحديث الستوك أوتوماتيكياً)")
+                    
+                    # نطق اسم المنتج المبيوع لضمان الشغل الاحترافي
+                    st.components.v1.html(f"""
+                        <script>
+                        var msg = new SpeechSynthesisUtterance('{p_name}');
+                        msg.lang = 'ar-SA';
+                        window.speechSynthesis.speak(msg);
+                        </script>
+                    """, height=0)
+                else:
+                    st.error("⚠️ هاد السلعة سالات من الستوك! خاصك تشارجها.")
+            else:
+                st.warning("❌ هاد الكود بار ما مسجلش ف السيستم! تمشي لخانة الستوكودخلو أول مرة.")
             
-        if st.button("🚀 دمج السلعة الجديدة", use_container_width=True):
-            if new_name.strip() == "": st.error("⚠️ لا يمكن ترك الحقل فارغاً.")
-            elif new_name.strip() in stock_df["الاسم / الوصف"].tolist(): st.error("⚠️ هذا المنتج مسجل مسبقاً!")
-            else:
-                next_index_num = len(stock_df) + 1
-                new_row_data = pd.DataFrame([{
-                    "الرقم الترتيبي": next_index_num, "نوع المنتج": new_prod_type, "الاسم / الوصف": new_name.strip(),
-                    "الكمية المتوفرة": new_qty_init, "ثمن الشراء (DH)": new_buy_price, "ثمن البيع (DH)": new_sell_price, "الحد الأدنى للتنبيه": new_alert_limit
-                }])
-                stock_df = pd.concat([stock_df, new_row_data], ignore_index=True)
-                save_secure_data(stock_df, STOCK_FILE)
-                st.success(f"✅ تم إضافة '{new_name}' بنجاح!")
-                st.rerun()
-                
-    with t2:
-        if stock_df.empty: st.info("قائمة السلع فارغة.")
-        else:
-            select_modify = st.selectbox("✏️ اختر السلعة المراد تعديلها:", stock_df["الاسم / الوصف"].tolist())
-            idx_mod = stock_df[stock_df["الاسم / الوصف"] == select_modify].index[0]
-            cm1, cm2, cm3 = st.columns(3)
-            with cm1:
-                mod_name = st.text_input("تعديل الاسم:", value=stock_df.at[idx_mod, "الاسم / الوصف"])
-                # التأكد من بقاء الصنف القديم في القائمة حتى لو تغيرت الإعدادات
-                current_item_type = stock_df.at[idx_mod, "نوع المنتج"]
-                temp_cat_list = categories_list.copy()
-                if current_item_type not in temp_cat_list: temp_cat_list.append(current_item_type)
-                mod_type = st.selectbox("تعديل الصنف:", temp_cat_list, index=temp_cat_list.index(current_item_type))
-            with cm2:
-                mod_qty = st.number_input("تعديل قطع المخزون الحالي:", min_value=0, value=int(stock_df.at[idx_mod, "الكمية المتوفرة"]))
-                mod_alert = st.number_input("تعديل رقم حد التنبيه:", min_value=0, value=int(stock_df.at[idx_mod, "الحد الأدنى للتنبيه"]))
-            with cm3:
-                mod_buy = st.number_input("تحديث ثمن الشراء:", min_value=0.0, value=float(stock_df.at[idx_mod, "ثمن الشراء (DH)"]))
-                mod_sell = st.number_input("تحديث ثمن البيع للعموم:", min_value=0.0, value=float(stock_df.at[idx_mod, "ثمن البيع (DH)"]))
-                
-            if st.button("💾 حفظ التعديلات الجذريّة", use_container_width=True):
-                stock_df.at[idx_mod, "الاسم / الوصف"] = mod_name.strip()
-                stock_df.at[idx_mod, "نوع المنتج"] = mod_type
-                stock_df.at[idx_mod, "الكمية المتوفرة"] = mod_qty
-                stock_df.at[idx_mod, "الحد الأدنى للتنبيه"] = mod_alert
-                stock_df.at[idx_mod, "ثمن الشراء (DH)"] = mod_buy
-                stock_df.at[idx_mod, "ثمن البيع (DH)"] = mod_sell
-                save_secure_data(stock_df, STOCK_FILE)
-                st.success("🔄 تم تحديث قاعدة بيانات المنتج!")
-                st.rerun()
-                
-    with t3:
-        if stock_df.empty: st.info("لا توجد مواد لحذفها.")
-        else:
-            select_del = st.selectbox("🗑️ اختر المنتج المراد حذفه نهائياً:", stock_df["الاسم / الوصف"].tolist())
-            if st.button("🗑️ تأكيد التدمير النهائي للمنتج", type="primary", use_container_width=True):
-                stock_df = stock_df[stock_df["الاسم / الوصف"] != select_del]
-                stock_df["الرقم الترتيبي"] = range(1, len(stock_df) + 1)
-                save_secure_data(stock_df, STOCK_FILE)
-                st.success("💥 تم حذف المادة بنجاح.")
-                st.rerun()
-    st.markdown("---")
-    st.dataframe(stock_df, use_container_width=True)
+            # إعادة تصفير الخانة تلقائياً لاستقبال المسحة الموالية بالليزر طايرة
+            st.components.v1.html("""
+                <script>
+                var inputs = window.parent.document.getElementsByTagName('input');
+                for (var i = 0; i < inputs.length; i++) {
+                    if (inputs[i].getAttribute('aria-label') && inputs[i].getAttribute('aria-label').includes('🎯')) {
+                        inputs[i].value = '';
+                        inputs[i].focus();
+                    }
+                }
+                </script>
+            """, height=0)
 
-# --- القسم الخامس: التدقيق المالي وسجل العمليات ---
-elif menu_option == "🧾 التدقيق المالي وسجل العمليات":
-    st.subheader("🧾 مصفوفة تدقيق العمليات الماليّة والأرباح الصافية")
-    if sales_df.empty: st.info("السجل المالي فارغ.")
-    else:
-        rev_sum = sales_df["ثمن البيع الكلي (DH)"].sum()
-        profit_sum = sales_df["الربح الصافي (DH)"].sum()
-        c_fin1, c_fin2 = st.columns(2)
-        c_fin1.info(f"📊 إجمالي التدفق المالي الوارد: **{rev_sum:.2f} DH**")
-        c_fin2.success(f"💸 إجمالي الأرباح الصافية: **{profit_sum:.2f} DH**")
-        st.markdown("---")
-        st.dataframe(sales_df.sort_values(by="التاريخ والوقت", ascending=False), use_container_width=True)
-        if st.button("🚨 تصفية البيانات وإغلاق الصندوق اليومي", type="primary", use_container_width=True):
-            if os.path.exists(SALES_FILE): os.remove(SALES_FILE)
-            st.success("✅ تم قفل اليوم المالي!")
-            st.rerun()
+        # عرض آخر 5 مبيعات دوزتوهم بالليزر دابا
+        st.subheader("📋 آخر العمليات المبيوعة حالياً:")
+        df_sl_view = pd.read_csv("sales.csv", encoding='utf-8-sig')
+        if not df_sl_view.empty:
+            st.dataframe(df_sl_view.tail(5), use_container_width=True)
+        else:
+            st.info("سلة المبيعات خاوية دابا، ابدأ السيكانينغ بالليزر!")
 
-# ==================== 5. قسم الإعدادات الجديد (Les Paramètres) ====================
-elif menu_option == "⚙️ الإعدادات (Les Paramètres)":
-    st.header("⚙️ لوحة التحكم في إعدادات النظام وعملياته")
-    st.write("تحكم في واجهة برمجتك والأصناف التي تشتغل بها دون لمس الكود.")
-    
-    with st.form("settings_form"):
-        st.subheader("🏢 الهوية البصرية للبرنامج")
-        new_app_name = st.text_input("اسم المكتبة (يظهر في الأعلى وفي القائمة الجانبية):", value=app_name)
+    # ------------------ صفحة إدارة الستوك ------------------
+    with tab2:
+        st.header("📦 إضافة وتعديل السلع ف الستوك")
+        with st.form("stock_form"):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                p_code = st.text_input("كود بار المنتج (امسحه بالليزر هنا لتسجيله):")
+            with col2:
+                p_title = st.text_input("اسم المنتج (مثال: دفتر 24 ورقة):")
+            with col3:
+                p_cat = st.selectbox("الفئة:", ["أدوات مدرسية", "كتب وقصص", "ألعاب أطفال", "خدمات وطباعة", "أخرى"])
+            
+            col4, col5, col6 = st.columns(3)
+            with col4:
+                p_qty = st.number_input("الكمية المتوفرة:", min_value=0, step=1)
+            with col5:
+                p_cost = st.number_input("ثمن الشراء (درهم):", min_value=0.0, step=0.5)
+            with col6:
+                p_price_sell = st.number_input("ثمن البيع للعموم (درهم):", min_value=0.0, step=0.5)
+            
+            submit_p = st.form_submit_button("حفظ المنتج ف قاعدة البيانات 💾")
+            
+            if submit_p:
+                if p_code and p_title:
+                    df_st = pd.read_csv("stock.csv", encoding='utf-8-sig')
+                    # التحقق من عدم تكرار الكود
+                    if str(p_code) in df_st["كود_المنتج"].astype(str).values:
+                        st.error("⚠️ هاد الكود بار ديجا كاين! تقدر تعدلو من الجدول التحت.")
+                    else:
+                        new_p = pd.DataFrame([{
+                            "كود_المنتج": p_code, "اسم_المنتج": p_title, "الكمية": p_qty,
+                            "ثمن_الشراء": p_cost, "ثمن_البيع": p_price_sell, "الفئة": p_cat
+                        }])
+                        df_st = pd.concat([df_st, new_p], ignore_index=True)
+                        df_st.to_csv("stock.csv", index=False, encoding='utf-8-sig')
+                        st.success(f"🎉 تم تسجيل {p_title} بنجاح ف الستوك!")
+                        st.rerun()
+                else:
+                    st.error("❌ عفاك عمر الكود بار والسمية د المنتج!")
+
+        st.subheader("📊 جدول الستوك الحالي بالكامل:")
+        df_st_display = pd.read_csv("stock.csv", encoding='utf-8-sig')
+        st.dataframe(df_st_display, use_container_width=True)
+
+    # ------------------ صفحة الأرباح والتقارير ------------------
+    with tab3:
+        st.header("📊 إحصائيات الأرباح والمبيعات الفخمة")
+        df_st = pd.read_csv("stock.csv", encoding='utf-8-sig')
+        df_sl = pd.read_csv("sales.csv", encoding='utf-8-sig')
         
-        st.markdown("---")
-        st.subheader("📁 هندسة أصناف المنتجات")
-        st.write("اكتب الأصناف المفصولة بفاصلة `,` (مثال: روايات وكتب,أدوات مدرسية,أدوات مكتبية)")
-        current_cats_str = ",".join(categories_list)
-        new_cats_str = st.text_area("أصناف السلع النشطة بالمكتبة:", value=current_cats_str)
-        
-        st.markdown("---")
-        st.subheader("🖨️ حسابات قسم الخدمات والطباعة")
-        new_profit_margin = st.slider("هامش الربح الصافي المقدر لخدمات الفوتوكوبي والطباعة (%):", min_value=10, max_value=100, value=int(print_profit_margin * 100))
-        
-        # زر الحفظ داخل الـ form
-        save_settings = st.form_submit_data = st.form_submit_button("💾 حفظ الإعدادات الجديدة وتحديث النظام")
-        
-        if save_settings:
-            if new_app_name.strip() != "" and new_cats_str.strip() != "":
-                config_df.at[0, "اسم_المكتبة"] = new_app_name.strip()
-                config_df.at[0, "الأصناف"] = new_cats_str.strip()
-                config_df.at[0, "نسبة_ربح_الطباعة"] = float(new_profit_margin)
-                
-                save_secure_data(config_df, CONFIG_FILE)
-                st.success("⚙️ تم حفظ وتثبيت الإعدادات الجديدة بنجاح تام! جاري إعادة تشغيل الواجهة...")
-                st.rerun()
-            else:
-                st.error("⚠️ خطأ: يرجى عدم ترك الحقول فارغة.")
+        if not df_sl.empty:
+            # دمج الجداول لحساب الأرباح بدقة (البيع ناقص الشراء)
+            df_total = df_sl.merge(df_st, on="كود_المنتج", suffixes=('_sale', '_stock'))
+            df_total["الربح_الصافي"] = df_total["الإجمالي"] - (df_total["ثمن_الشراء"] * df_total["الكمية_المباعة"])
+            
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.metric("💰 إجمالي المبيعات (الرواج)", f"{df_total['الإجمالي'].sum():.2f} درهم")
+            with c2:
+                st.metric("📈 الأرباح الصافية الحقيقية", f"{df_total['الربح_الصافي'].sum():.2f} درهم")
+            with c3:
+                st.metric("📦 عدد القطع المبيوعة بالليزر", f"{df_total['الكمية_المباعة'].sum()} قطعة")
+            
+            # رسم مبياني فخم وتفاعلي للمبيعات حسب الفئة
+            st.subheader("📈 مبيعات ورّاقة أوزود حسب الفئات:")
+            fig = px.bar(df_total, x="الفئة", y="الإجمالي", color="الفئة", title="الرواج التجاري حسب نوع السلعة", template="plotly_white")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("ما كاينينش مبيعات مسجلين اليوم. بدا البيع بالليزر باش تطلع الأرباح هنا! 🚀")
