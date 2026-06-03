@@ -52,7 +52,8 @@ st.dataframe(df, use_container_width=True)
 
 # رسم بياني احترافي بـ plotly اللي صلحناه قبيلة
 fig = px.bar(df, x='المنتج', y='الكمية المتوفرة', title="توزيع الكميات حسب المنتج", color='المنتج')
-st.plotly_chart(fig, use_container_width=True)import streamlit as st
+st.plotly_chart(fig, use_container_width=True)    
+import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
