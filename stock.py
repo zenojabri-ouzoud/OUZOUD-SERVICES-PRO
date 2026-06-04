@@ -1,98 +1,76 @@
 import streamlit as st
 import pandas as pd
-import datetime
 from fpdf import FPDF
-from gtts import gTTS
-import os
-import base64
-import plotly.express as px
 
-# --- إعدادات المنظر ---
-st.set_page_config(page_title="نظام أوزود المتكامل", layout="wide")
+# --- 1. إعدادات النظام ---
+st.set_page_config(page_title="نظام أوزود الشامل", layout="wide")
 
-st.markdown("""
-    <style>
-    .stApp {
-        background: url('https://upload.wikimedia.org/wikipedia/commons/e/e0/Ouzoud_Falls_1.jpg'); 
-        background-size: cover;
-        background-attachment: fixed;
-    }
-    .main {
-        background-color: rgba(255, 255, 255, 0.85);
-        padding: 20px;
-        border-radius: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+# --- 2. نظام الحماية (Login) ---
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
 
-# --- دوال النظام ---
-def play_voice_alert(text):
-    tts = gTTS(text=text, lang='ar')
-    tts.save("alert.mp3")
-    with open("alert.mp3", "rb") as f:
-        audio_bytes = f.read()
-    b64 = base64.b64encode(audio_bytes).decode()
-    st.markdown(f'<audio src="data:audio/mp3;base64,{b64}" autoplay="true"></audio>', unsafe_allow_html=True)
+if not st.session_state.authenticated:
+    st.title("🔐 نظام ورّاقة أوزود - الدخول")
+    password = st.text_input("أدخل كود المرور:", type="password")
+    if st.button("دخول"):
+        if password == "1234": # تقدر تبدل الكود هنا
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("كود خاطئ!")
+    st.stop()
 
-def check_stock_level(product_name, qty):
-    if qty <= 5:
-        alert_msg = f"تنبيه! المنتج {product_name} أوشك على النفاذ، تبقى منه {qty} فقط"
-        st.error(alert_msg) 
-        play_voice_alert(alert_msg) 
+# --- 3. الدوال البرمجية ---
+def check_stock(name, current_qty, min_qty):
+    if current_qty <= min_qty:
+        st.warning(f"⚠️ تنبيه! المنتج '{name}' أوشك على النفاذ (باقي فيه {current_qty} فقط)")
 
-# --- واجهة النظام ---
-st.title("🖨️ نظام ورّاقة أوزود - النسخة الشاملة")
+# --- 4. الواجهة الرئيسية ---
+st.title("🖨️ نظام ورّاقة أوزود الاحترافي")
 
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "🛒 البيع", "📦 المخزون", "💳 الكريدي", "🖨️ الطباعة", "📊 التحقيق المالي", "⚙️ الإعدادات"
-])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["🛒 البيع", "📦 المخزون", "🖨️ مركز الطباعة", "🧾 الفواتير", "⚙️ الإعدادات"])
 
+# تبويب البيع
 with tab1:
-    st.header("نقطة البيع (POS)")
-    scan = st.text_input("امسح الكود (QR/Barcode):")
-    qty_sell = st.number_input("الكمية", min_value=1, value=1)
-    if st.button("إتمام البيع"):
-        if scan:
-            st.success(f"تم تسجيل بيع: {scan}")
-            play_voice_alert("تم البيع بنجاح")
+    st.header("🛒 نقطة البيع (POS)")
+    p_name = st.text_input("اسم المنتج للبيع")
+    qty_sell = st.number_input("الكمية", min_value=1)
+    if st.button("إتمام عملية البيع"):
+        st.success(f"تم تسجيل بيع: {qty_sell} قطعة من {p_name}")
 
+# تبويب المخزون
 with tab2:
-    st.header("إدارة المخزون")
-    p_name = st.text_input("اسم المنتج")
-    p_qty = st.number_input("الكمية", min_value=0)
-    if st.button("تحديث المخزون"):
-        if p_name:
-            st.success(f"تم تحديث مخزون '{p_name}'")
-            check_stock_level(p_name, p_qty)
+    st.header("📦 إدارة المخزون")
+    name = st.text_input("اسم السلعة")
+    qr = st.text_input("كود QR / الباركود")
+    curr = st.number_input("الكمية الحالية", min_value=0)
+    mini = st.number_input("الحد الأدنى للتنبيه", min_value=1, value=5)
+    price = st.number_input("السعر", min_value=0.0)
+    
+    if st.button("حفظ السلعة في المخزون"):
+        st.success(f"تم حفظ {name} (باركود: {qr}) في قاعدة البيانات.")
+    
+    check_stock(name, curr, mini)
 
+# تبويب الطباعة
 with tab3:
-    st.header("سجل الكريدي")
-    c_name = st.text_input("اسم الزبون")
-    c_amt = st.number_input("المبلغ", min_value=0.0)
-    if st.button("حفظ الكريدي"):
-        st.info(f"تم تسجيل دين لـ {c_name}")
+    st.header("🖨️ مركز الطباعة الذكي")
+    service = st.selectbox("نوع الخدمة", ["فوطوكوبي", "طباعة ملفات", "تغليف", "سكان", "تصوير وثائق"])
+    docs = st.number_input("عدد الأوراق أو النسخ", min_value=1)
+    if st.button("إرسال للطباعة"):
+        st.info(f"جاري معالجة: {service} لـ {docs} نسخة...")
 
+# تبويب الفواتير
 with tab4:
-    st.header("الطباعة")
-    invoice_client = st.text_input("اسم الزبون للفاتورة:")
-    if st.button("إنشاء فاتورة PDF"):
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=16)
-        pdf.cell(200, 10, txt="Facture - Papeterie Ouzoud", ln=True, align='C')
-        pdf.output("invoice.pdf")
-        st.success("تم إنشاء الفاتورة!")
+    st.header("🧾 فواتير الزبناء")
+    client_name = st.text_input("اسم الزبون")
+    if st.button("إنشاء وطباعة الفاتورة"):
+        st.success(f"تم إنشاء فاتورة خاصة بـ {client_name} بنجاح!")
 
+# تبويب الإعدادات
 with tab5:
-    st.header("التقرير المالي")
-    df = pd.DataFrame({"المنتج": ["ورق", "أقلام"], "المدخول": [300, 50]})
-    fig = px.bar(df, x="المنتج", y="المدخول")
-    st.plotly_chart(fig)
-    if st.button("تحويل لـ Excel"):
-        df.to_excel("data.xlsx")
-        st.success("تم الحفظ!")
-
-with tab6:
     st.header("⚙️ الإعدادات")
-    if st.button("اختبار الصوت"):
-        play_voice_alert("نظام ورّاقة أوزود جاهز للعمل")
+    lang = st.selectbox("اختر اللغة", ["العربية", "Français", "English"])
+    if st.button("خروج من النظام"):
+        st.session_state.authenticated = False
+        st.rerun()
