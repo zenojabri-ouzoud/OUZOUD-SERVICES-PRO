@@ -25,6 +25,19 @@ def generate_qr(data):
 # ==========================================
 # 1. إعدادات الصفحة والهوية البصرية الملكية
 # ==========================================
+def print_service():
+    st.subheader("🖨️ خدمة الطباعة / فوتوكوبي")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        service_type = st.selectbox("النوع:", ["فوتوكوبي (أسود)", "طباعة ألوان", "سكانر"])
+    with col2:
+        qty = st.number_input("الكمية (عدد الصفحات):", min_value=1, value=1)
+    with col3:
+        price = st.number_input("الثمن للواحدة (DH):", min_value=0.0, value=0.5, step=0.1)
+    
+    st.write(f"### المجموع: {qty * price} DH")
+    if st.button("تأكيد الطباعة"):
+        st.success(f"✅ تم تسجيل طلب: {service_type}")
 st.set_page_config(
     page_title="نظام ورّاقة أوزود الاحترافي الشامل",
     page_icon="🛍️",
@@ -35,8 +48,43 @@ st.set_page_config(
 # كلمة المرور والنظام الأمني الأصلي
 PASSWORD = "ouzoud2026"
 if "authenticated" not in st.session_state:
-    st.session_state["authenticated"] = False
-
+    st.session_state["authenticated"] = true
+def pos_block():
+    st.header("🛒 نقطة البيع (POS)")
+    
+    # اختيار طريقة البيع
+    sale_method = st.radio("طريقة البيع:", ["البيع العادي (بالاسم)", "السكانر (باركود)"])
+    
+    selected_item = None
+    
+    # 1. البيع العادي (بالاسم)
+    if sale_method == "البيع العادي (بالاسم)":
+        if not st.session_state.inventory.empty:
+            name = st.selectbox("اختر المنتج:", st.session_state.inventory['المنتج'].tolist())
+            selected_item = st.session_state.inventory[st.session_state.inventory['المنتج'] == name].iloc[0]
+    
+    # 2. البيع بالسكانر (باركود)
+    else:
+        barcode = st.text_input("أدخل الباركود:")
+        if barcode: # كيتأكد بلي الخانة ماشي خاوية
+            match = st.session_state.inventory[st.session_state.inventory['QR'] == barcode]
+            if not match.empty:
+                selected_item = match.iloc[0]
+            else:
+                st.error("⚠️ المنتج غير موجود في المخزون!")
+    
+    # تأكيد عملية البيع
+    if selected_item is not None:
+        st.write(f"المنتج: **{selected_item['المنتج']}** | الثمن: **{selected_item['الثمن']} DH**")
+        qty = st.number_input("الكمية:", min_value=1, max_value=int(selected_item['الكمية']), value=1)
+        
+        if st.button("تأكيد البيع"):
+            # تحديث المخزون
+            idx = st.session_state.inventory[st.session_state.inventory['المنتج'] == selected_item['المنتج']].index[0]
+            st.session_state.inventory.at[idx, 'الكمية'] -= qty
+            st.success(f"✅ تم بيع {qty} من {selected_item['المنتج']} بنجاح!")
+            # ضروري نعاودو الران باش يبان التحديث
+            st.rerun()
 # ==========================================
 # 2. قاموس اللغات الثلاث (التركيز على الفصحى)
 # ==========================================
