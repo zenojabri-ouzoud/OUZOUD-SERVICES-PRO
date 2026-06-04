@@ -71,9 +71,7 @@ else:
 
     # 5. CAISSE
     elif menu == "Caisse":
-        st.header("💰 Caisse & Analyse")
-        st.metric("Revenus Totaux:", f"{st.session_state.sales_total} DH")
-        # 8. لوحة الهدف (Dashboard) - ضيفها فآخر ملفك
+               # 8. لوحة الهدف (Dashboard) - ضيفها فآخر ملفك
     st.markdown("---")
     st.subheader("🎯 لوحة تحكم الأهداف (Dashboard)")
     col_a, col_b, col_c = st.columns(3)
@@ -96,3 +94,7 @@ else:
         if st.button("Réinitialiser"):
             st.session_state.sales_total = 0.0
             st.rerun()
+
+        st.header("💰 Caisse & Analyse")
+        st.metric("Revenus Totaux:", f"{st.session_state.sales_total} DH")
+ 
