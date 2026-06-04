@@ -38,7 +38,7 @@ def copier_mon_fichier(source, destination):
 copier_mon_fichier('stock.xlsx', 'stock_backup.xlsx')
     
     # 3. نقطة البيع (3 طرق للبيع)
-    if menu == "Point de Vente":
+    if menu == "Point de Vente"
         st.header("🛒 Point de Vente")
         mode = st.radio("Mode de vente:", ["Vente Normale", "Scan QR/Code-barres", "Vente Libre (Divers)"])
         
