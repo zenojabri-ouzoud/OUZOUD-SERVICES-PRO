@@ -59,7 +59,35 @@ if not st.session_state.authenticated:
         st.rerun()
 else:
     menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Gestion Stock", "Impression", "Crédits", "Caisse"])
-    
+    # --- Fonction centrale de sauvegarde (à mettre une seule fois en haut de ton script) ---
+def enregistrer_dans_excel(code, nom):
+    FILE_NAME = 'stock.xlsx'
+    if os.path.exists(FILE_NAME):
+        df = pd.read_excel(FILE_NAME)
+    else:
+        df = pd.DataFrame(columns=['Code', 'Nom', 'Quantite'])
+
+    code = str(code)
+    if code in df['Code'].astype(str).values:
+        idx = df.index[df['Code'].astype(str) == code][0]
+        df.at[idx, 'Quantite'] += 1
+    else:
+        new_row = pd.DataFrame({'Code': [code], 'Nom': [nom], 'Quantite': [1]})
+        df = pd.concat([df, new_row], ignore_index=True)
+    df.to_excel(FILE_NAME, index=False)
+
+# --- Bloc à copier dans chaque section (Ventes, Stock, Caisse) ---
+# Assure-toi de changer le 'key' pour chaque section pour éviter les conflits
+st.markdown("---")
+code_val = st.text_input("Code du produit", key="code_input_field") 
+nom_val = st.text_input("Nom du produit", key="nom_input_field")
+
+if st.button("Enregistrer dans Excel", key="btn_save_excel"):
+    if code_val and nom_val:
+        enregistrer_dans_excel(code_val, nom_val)
+        st.success("Données enregistrées avec succès dans Excel !")
+    else:
+        st.error("Veuillez remplir les champs.")
     # 3. نقطة البيع (3 طرق للبيع)
     if menu == "Point de Vente":
         st.header("🛒 Point de Vente")
