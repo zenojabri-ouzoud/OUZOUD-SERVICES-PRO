@@ -1,6 +1,46 @@
 import streamlit as st
 import pandas as pd
+import pandas as pd
+import os
 
+# 1. Fonction pour sauvegarder les données dans Excel
+def save_to_excel(code, nom):
+    FILE_NAME = 'stock.xlsx'
+    
+    # Lecture ou création du fichier Excel
+    if os.path.exists(FILE_NAME):
+        df = pd.read_excel(FILE_NAME)
+    else:
+        df = pd.DataFrame(columns=['Code', 'Nom', 'Quantite'])
+
+    # Conversion en chaîne pour éviter les erreurs
+    code = str(code)
+    
+    # Logique : Mettre à jour si existe, ajouter si nouveau
+    if code in df['Code'].astype(str).values:
+        idx = df.index[df['Code'].astype(str) == code][0]
+        df.at[idx, 'Quantite'] += 1
+    else:
+        new_row = pd.DataFrame({'Code': [code], 'Nom': [nom], 'Quantite': [1]})
+        df = pd.concat([df, new_row], ignore_index=True)
+    
+    # Enregistrement final
+    df.to_excel(FILE_NAME, index=False)
+
+# 2. Interface utilisateur pour déclencher la sauvegarde
+st.markdown("---")
+st.subheader("Sauvegarde dans Excel")
+code_input_excel = st.text_input("Code du produit :")
+name_input_excel = st.text_input("Nom du produit :")
+
+if st.button("Enregistrer dans Excel"):
+    if code_input_excel and name_input_excel:
+        save_to_excel(code_input_excel, name_input_excel)
+        st.success("Données enregistrées avec succès dans Excel !")
+    else:
+        st.error("Veuillez remplir tous les champs.")
+    # حفظ التغييرات فملف الإكسيل
+    df.to_excel(FILE_NAME, index=False)
 # 1. تهيئة النظام
 PASSWORD = "ouzoud2026"
 if "authenticated" not in st.session_state: st.session_state.authenticated = False 
