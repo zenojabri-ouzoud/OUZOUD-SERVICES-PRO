@@ -3,7 +3,7 @@ import pandas as pd
 
 # 1. تهيئة النظام
 PASSWORD = "ouzoud2026"
-if "authenticated" not in st.session_state: st.session_state.authenticated = False
+if "authenticated" not in st.session_state: st.session_state.authenticated = False 
 if "inventory" not in st.session_state: 
     st.session_state.inventory = pd.DataFrame(columns=["Nom", "Prix", "Quantité", "Code-barres"])
 if "sales_total" not in st.session_state: st.session_state.sales_total = 0.0
