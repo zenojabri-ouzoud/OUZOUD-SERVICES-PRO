@@ -1,75 +1,69 @@
 import streamlit as st
 import pandas as pd
 
-# 1. الإعدادات والتهيئة
+# 1. القاموس (Dictionary) للغات
+LANGUAGES = {
+    "العربية": {
+        "Title": "نظام أوزود للتسيير", "POS": "نقطة البيع", "Stock": "إدارة المخزون", 
+        "Print": "خدمات الطباعة", "Credit": "الكريديات", "Cash": "لاكيس",
+        "Select": "اختر المنتج:", "Qty": "الكمية:", "BtnSell": "إتمام البيع", 
+        "PricePage": "الثمن للورقة (درهم):", "Pages": "عدد الأوراق:", "Total": "التمن النهائي:", "Add": "إضافة"
+    },
+    "Français": {
+        "Title": "Système de Gestion Ouzoud", "POS": "Point de Vente", "Stock": "Gestion de Stock", 
+        "Print": "Impression", "Credit": "Crédits", "Cash": "Caisse",
+        "Select": "Sélectionner le produit:", "Qty": "Quantité:", "BtnSell": "Confirmer la vente", 
+        "PricePage": "Prix par page (DH):", "Pages": "Nombre de pages:", "Total": "Total final:", "Add": "Ajouter"
+    },
+    "English": {
+        "Title": "Ouzoud Management System", "POS": "POS System", "Stock": "Inventory", 
+        "Print": "Printing Services", "Credit": "Credits", "Cash": "Cash Register",
+        "Select": "Select product:", "Qty": "Quantity:", "BtnSell": "Confirm Sale", 
+        "PricePage": "Price per page (DH):", "Pages": "Number of pages:", "Total": "Total:", "Add": "Add"
+    }
+}
+
+# 2. التهيئة
+if "lang" not in st.session_state: st.session_state.lang = "العربية"
 PASSWORD = "ouzoud2026"
 if "authenticated" not in st.session_state: st.session_state.authenticated = False
-if "inventory" not in st.session_state: 
-    st.session_state.inventory = pd.DataFrame(columns=["الاسم", "الثمن", "الكمية", "الباركود"])
+if "inventory" not in st.session_state: st.session_state.inventory = pd.DataFrame(columns=["الاسم", "الثمن", "الكمية"])
 if "sales_total" not in st.session_state: st.session_state.sales_total = 0.0
-if "credits" not in st.session_state: st.session_state.credits = pd.DataFrame(columns=["الزبون", "المبلغ"])
 
-st.title("نظام أوزود للتسيير الشامل")
+# 3. الواجهة
+st.sidebar.selectbox("Language / Langue / اللغة", list(LANGUAGES.keys()), key="lang")
+curr = LANGUAGES[st.session_state.lang]
+st.title(curr["Title"])
 
-# 2. الحماية
 if not st.session_state.authenticated:
-    if st.text_input("أدخل كلمة المرور:", type="password") == PASSWORD:
+    if st.text_input("Password:", type="password") == PASSWORD:
         st.session_state.authenticated = True
         st.rerun()
 else:
-    menu = st.sidebar.selectbox("القائمة الرئيسية", ["نقطة البيع", "إدارة المخزون", "خدمات الطباعة", "الكريديات", "لاكيس"])
+    menu = st.sidebar.selectbox("Menu", [curr["POS"], curr["Stock"], curr["Print"], curr["Credit"], curr["Cash"]])
     
-    # 3. نقطة البيع (POS)
-    if menu == "نقطة البيع":
-        st.header("🛒 نقطة البيع")
+    if menu == curr["POS"]:
+        st.header(menu)
         if not st.session_state.inventory.empty:
-            name = st.selectbox("اختر المنتج:", st.session_state.inventory['الاسم'].tolist())
-            qty = st.number_input("الكمية:", min_value=1)
-            if st.button("إتمام البيع"):
-                price = st.session_state.inventory.loc[st.session_state.inventory['الاسم'] == name, 'الثمن'].iloc[0]
-                total = price * qty
-                st.session_state.sales_total += total
-                idx = st.session_state.inventory[st.session_state.inventory['الاسم'] == name].index[0]
-                st.session_state.inventory.at[idx, 'الكمية'] -= qty
-                st.success(f"✅ تم البيع: {total} درهم")
-                st.write(f"🧾 فاتورة: {name} | الكمية: {qty}")
-        else:
-            st.warning("⚠️ المخزون فارغ، أضف سلعاً أولاً.")
-
-    # 4. إدارة المخزون
-    elif menu == "إدارة المخزون":
-        st.header("📦 إدارة المخزون")
-        with st.form("add_item"):
-            n, p, q, b = st.text_input("الاسم"), st.number_input("الثمن"), st.number_input("الكمية"), st.text_input("الباركود")
-            if st.form_submit_button("إضافة"):
-                new_item = pd.DataFrame([[n, p, q, b]], columns=["الاسم", "الثمن", "الكمية", "الباركود"])
-                st.session_state.inventory = pd.concat([st.session_state.inventory, new_item], ignore_index=True)
+            name = st.selectbox(curr["Select"], st.session_state.inventory['الاسم'].tolist())
+            qty = st.number_input(curr["Qty"], min_value=1)
+            if st.button(curr["BtnSell"]): st.success("✅ Done!")
+            
+    elif menu == curr["Stock"]:
+        st.header(menu)
+        with st.form("add"):
+            n, p, q = st.text_input("Name"), st.number_input("Price"), st.number_input("Qty")
+            if st.form_submit_button(curr["Add"]):
+                st.session_state.inventory = pd.concat([st.session_state.inventory, pd.DataFrame([[n, p, q]], columns=["الاسم", "الثمن", "الكمية"])])
                 st.rerun()
         st.table(st.session_state.inventory)
 
-    # 5. خدمات الطباعة (مع خانة الثمن)
-    elif menu == "خدمات الطباعة":
-        st.header("🖨️ خدمات الطباعة")
-        price_per_page = st.number_input("الثمن للورقة (درهم):", value=0.50, step=0.10)
-        pages = st.number_input("عدد الأوراق:", min_value=1)
-        total = pages * price_per_page
-        st.subheader(f"💰 التمن النهائي: {total} درهم")
-        if st.button("تأكيد الخدمة وتسجيلها"):
-            st.session_state.sales_total += total
-            st.success(f"✅ تم تسجيل العملية: {total} درهم")
-
-    # 6. الكريديات
-    elif menu == "الكريديات":
-        st.header("💳 سجل الكريديات")
-        c_name, c_amt = st.text_input("اسم الزبون"), st.number_input("المبلغ")
-        if st.button("حفظ الكريدي"):
-            st.session_state.credits = pd.concat([st.session_state.credits, pd.DataFrame([[c_name, c_amt]], columns=["الزبون", "المبلغ"])])
-        st.table(st.session_state.credits)
-
-    # 7. لاكيس
-    elif menu == "لاكيس":
-        st.header("💰 لاكيس (المداخيل)")
-        st.metric("مجموع المداخيل:", f"{st.session_state.sales_total} درهم")
-        if st.button("تصفير لاكيس"):
-            st.session_state.sales_total = 0.0
-            st.rerun()
+    elif menu == curr["Print"]:
+        st.header(menu)
+        pp = st.number_input(curr["PricePage"], value=0.50)
+        pages = st.number_input(curr["Pages"], min_value=1)
+        st.subheader(f"{curr['Total']} {pages * pp} DH")
+        
+    elif menu == curr["Cash"]:
+        st.header(menu)
+        st.metric("Total", f"{st.session_state.sales_total} DH")
