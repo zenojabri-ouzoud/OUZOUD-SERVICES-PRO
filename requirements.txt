@@ -1,6 +1,1 @@
 streamlit
-pandas
-plotly
-fpdf
-gtts
-openyxl
