@@ -48,13 +48,25 @@ st.set_page_config(
 # كلمة المرور والنظام الأمني الأصلي
 PASSWORD = "ouzoud2026"
 if "authenticated" not in st.session_state:
-    st.session_state["authenticated"] = true
+    st.session_state["authenticated"] = True
 def pos_block():
+    st.header("🛒 نقطة البيع (POS)")
+    
+    sale_method = st.radio("طريقة البيع:", ["البيع العادي (بالاسم)", "السكانر (باركود)"])
+    selected_item = None
+    
+    # 1. البيع العادي
+    if sale_method == "البيع العادي (بالاسم)":
+        if not st.session_state.inventory.empty:
+            name = st.selectbox("اختر المنتج:", st.session_state.inventory['المنتج'].tolist())
+            selected_item = st.session_state.inventory[st.session_state.inventory['المنتج'] == name].iloc[0]
+            
+    # 2. البيع بالسكانر
+  def pos_block():
     st.header("🛒 نقطة البيع (POS)")
     
     # اختيار طريقة البيع
     sale_method = st.radio("طريقة البيع:", ["البيع العادي (بالاسم)", "السكانر (باركود)"])
-    
     selected_item = None
     
     # 1. البيع العادي (بالاسم)
@@ -62,11 +74,11 @@ def pos_block():
         if not st.session_state.inventory.empty:
             name = st.selectbox("اختر المنتج:", st.session_state.inventory['المنتج'].tolist())
             selected_item = st.session_state.inventory[st.session_state.inventory['المنتج'] == name].iloc[0]
-    
+            
     # 2. البيع بالسكانر (باركود)
     else:
         barcode = st.text_input("أدخل الباركود:")
-        if barcode: # كيتأكد بلي الخانة ماشي خاوية
+        if barcode:
             match = st.session_state.inventory[st.session_state.inventory['QR'] == barcode]
             if not match.empty:
                 selected_item = match.iloc[0]
@@ -76,16 +88,16 @@ def pos_block():
     # تأكيد عملية البيع
     if selected_item is not None:
         st.write(f"المنتج: **{selected_item['المنتج']}** | الثمن: **{selected_item['الثمن']} DH**")
-        qty = st.number_input("الكمية:", min_value=1, max_value=int(selected_item['الكمية']), value=1)
+        qty = st.number_input("الكمية:", min_value=1, value=1)
         
         if st.button("تأكيد البيع"):
             # تحديث المخزون
             idx = st.session_state.inventory[st.session_state.inventory['المنتج'] == selected_item['المنتج']].index[0]
             st.session_state.inventory.at[idx, 'الكمية'] -= qty
             st.success(f"✅ تم بيع {qty} من {selected_item['المنتج']} بنجاح!")
-            # ضروري نعاودو الران باش يبان التحديث
-            st.rerun()
-# ==========================================
+            st.rerun() # لإعادة تحديث الصفحة بعد البيع
+                               
+        
 # 2. قاموس اللغات الثلاث (التركيز على الفصحى)
 # ==========================================
 LANGUAGES = {
