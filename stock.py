@@ -4,7 +4,7 @@ import pandas as pd
 # Configuration et Sécurité
 PASSWORD = "ouzoud2026"
 if "authenticated" not in st.session_state: st.session_state.authenticated = False
-if "inventory" not in st.session_state: 
+if "inventory" not in st.session_state:
     st.session_state.inventory = pd.DataFrame(columns=["Nom", "Prix", "Quantité", "Code-barres"])
 if "sales_total" not in st.session_state: st.session_state.sales_total = 0.0
 if "credits" not in st.session_state: st.session_state.credits = pd.DataFrame(columns=["Client", "Montant"])
