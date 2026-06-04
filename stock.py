@@ -3,17 +3,17 @@ import pandas as pd
 from fpdf import FPDF
 import datetime
 
-# --- إعدادات النظام ---
+# --- 1. إعدادات النظام ---
 st.set_page_config(page_title="OUZOUD-PRO-2026", layout="wide")
 
-# --- نظام اللغات ---
+# --- 2. نظام اللغات ---
 TRANSLATIONS = {
-    "العربية": {"title": "نظام أوزود للخدمات", "print": "🖨️ مركز الطباعة الذكي", "pos": "🛒 نقطة البيع", "stock": "📦 المخزون", "settings": "⚙️ الإعدادات", "login": "كلمة المرور:", "add": "إضافة", "scan": "سكان QR / الباركود هنا:"},
-    "Français": {"title": "Système Ouzoud Services", "print": "🖨️ Centre d'impression", "pos": "🛒 Point de Vente", "stock": "📦 Inventaire", "settings": "⚙️ Paramètres", "login": "Mot de passe:", "add": "Ajouter", "scan": "Scanner QR / Code-barres:"}
+    "العربية": {"title": "نظام أوزود للخدمات", "print": "🖨️ مركز الطباعة الذكي", "pos": "🛒 نقطة البيع", "stock": "📦 المخزون", "settings": "⚙️ الإعدادات", "login": "كلمة المرور:", "add": "إضافة", "scan": "سكان QR / الباركود هنا:", "manual": "يدوي (Manual)", "scanner": "الماسح الضوئي (Scanner)"},
+    "Français": {"title": "Système Ouzoud Services", "print": "🖨️ Centre d'impression", "pos": "🛒 Point de Vente", "stock": "📦 Inventaire", "settings": "⚙️ Paramètres", "login": "Mot de passe:", "add": "Ajouter", "scan": "Scanner QR / Code-barres:", "manual": "Manuel", "scanner": "Scanner"}
 }
 if 'lang' not in st.session_state: st.session_state.lang = "العربية"
 
-# --- نظام الحماية ---
+# --- 3. نظام الحماية ---
 if "auth" not in st.session_state: st.session_state.auth = False
 if not st.session_state.auth:
     st.title("🔐 OUZOUD-SERVICES SYSTEM")
@@ -22,11 +22,11 @@ if not st.session_state.auth:
         st.rerun()
     st.stop()
 
-# --- إدارة البيانات ---
+# --- 4. قاعدة بيانات المخزون ---
 if 'inventory' not in st.session_state:
     st.session_state.inventory = pd.DataFrame(columns=["المنتج", "QR", "الكمية", "الثمن", "التخصص"])
 
-# --- محرك الفواتير ---
+# --- 5. محرك الفواتير ---
 def generate_invoice(prod, qty, price):
     pdf = FPDF()
     pdf.add_page()
@@ -37,73 +37,72 @@ def generate_invoice(prod, qty, price):
     pdf.output("Facture_Ouzoud.pdf")
     return "Facture_Ouzoud.pdf"
 
-# --- القائمة الجانبية ---
+# --- 6. القائمة الجانبية ---
 lang_data = TRANSLATIONS[st.session_state.lang]
 menu = st.sidebar.radio("الخدمات:", [lang_data["pos"], lang_data["print"], lang_data["stock"], "💰 الحسابات", "🔗 الربط والاتصال", lang_data["settings"]])
 
-# --- 1. نقطة البيع (محدثة: عادي + أوتوماتيك) ---
+# --- 7. نقطة البيع (مدمجة: مانيول + سكانر + كمية) ---
 if menu == lang_data["pos"]:
     st.header(lang_data["pos"])
-    sale_mode = st.radio("اختر طريقة البيع:", ["الماسح الضوئي (Scanner)", "يدوي (Manual)"])
-    selected_product = None
+    sale_mode = st.radio("اختر طريقة البيع:", [lang_data["scanner"], lang_data["manual"]])
     
-    if sale_mode == "الماسح الضوئي (Scanner)":
+    product_to_sell = None
+    qty = 1
+    
+    if sale_mode == lang_data["scanner"]:
         qr_input = st.text_input(lang_data["scan"])
         if qr_input:
             item = st.session_state.inventory[st.session_state.inventory['QR'] == qr_input]
-            if not item.empty: selected_product = item
+            if not item.empty: product_to_sell = item
             else: st.error("❌ المنتج غير موجود!")
     else:
         if not st.session_state.inventory.empty:
             prod_name = st.selectbox("اختر المنتج:", st.session_state.inventory['المنتج'].tolist())
-            selected_product = st.session_state.inventory[st.session_state.inventory['المنتج'] == prod_name]
-
-    if selected_product is not None and not selected_product.empty:
-        st.write(f"المنتج: {selected_product.iloc[0]['المنتج']} | الثمن: {selected_product.iloc[0]['الثمن']} DH")
+            product_to_sell = st.session_state.inventory[st.session_state.inventory['المنتج'] == prod_name]
+            qty = st.number_input("الكمية:", min_value=1, value=1)
+            
+    if product_to_sell is not None and not product_to_sell.empty:
+        price = product_to_sell.iloc[0]['الثمن']
+        st.write(f"المنتج: {product_to_sell.iloc[0]['المنتج']} | الثمن: {price} DH")
+        st.write(f"### المجموع: {qty * price} DH")
+        
         if st.button("تأكيد البيع وطباعة الفاتورة"):
-            idx = selected_product.index[0]
-            st.session_state.inventory.at[idx, 'الكمية'] -= 1
-            pdf_path = generate_invoice(selected_product.iloc[0]['المنتج'], 1, selected_product.iloc[0]['الثمن'])
+            idx = product_to_sell.index[0]
+            st.session_state.inventory.at[idx, 'الكمية'] -= qty
+            pdf_path = generate_invoice(product_to_sell.iloc[0]['المنتج'], qty, price)
             with open(pdf_path, "rb") as f:
                 st.download_button("📥 تحميل الفاتورة", f, file_name="Facture.pdf")
             st.success("✅ تم البيع بنجاح!")
 
-# --- 2. مركز الطباعة ---
+# --- 8. باقي الوحدات (طباعة، مخزون، حسابات، ربط، إعدادات) ---
 elif menu == lang_data["print"]:
     st.header(lang_data["print"])
     c1, c2 = st.columns(2)
     doc = c1.text_input("الوثيقة / الزبون")
-    typ = c1.selectbox("نوع الخدمة", ["أسود", "ألوان", "سكانر"])
     pages = c2.number_input("عدد الصفحات", 1)
-    price = c2.number_input("الثمن للواحدة", 1.0)
     if st.button("إرسال للطابعة"):
-        st.info(f"🔄 جاري الربط بـ Printer_Ouzoud... مجموع: {pages*price} DH")
+        st.info("🔄 جاري الربط بـ Printer_Ouzoud...")
 
-# --- 3. المخزون ---
 elif menu == lang_data["stock"]:
     st.header(lang_data["stock"])
     st.dataframe(st.session_state.inventory)
     with st.form("add_stock"):
         n, q, s, p, qr = st.text_input("المنتج"), st.number_input("الكمية"), st.text_input("التخصص"), st.number_input("الثمن"), st.text_input("QR Code")
         if st.form_submit_button(lang_data["add"]):
-            new_row = pd.DataFrame([[n, qr, q, p, s]], columns=["المنتج", "QR", "الكمية", "الثمن", "التخصص"])
-            st.session_state.inventory = pd.concat([st.session_state.inventory, new_row], ignore_index=True)
+            new = pd.DataFrame([[n, qr, q, p, s]], columns=["المنتج", "QR", "الكمية", "الثمن", "التخصص"])
+            st.session_state.inventory = pd.concat([st.session_state.inventory, new], ignore_index=True)
             st.rerun()
 
-# --- 4. الحسابات ---
 elif menu == "💰 الحسابات":
     st.header("💰 La Caisse")
     in_v = st.number_input("المداخيل", 0.0)
     out_v = st.number_input("المصاريف", 0.0)
     st.write(f"### الأرباح الصافية: {in_v - out_v} DH")
 
-# --- 5. الربط والاتصال ---
 elif menu == "🔗 الربط والاتصال":
     st.header("🔗 نظام الربط والاتصال")
-    if st.button("بدء المسح"):
-        st.success("تم العثور على: Printer_Ouzoud_Pro (Online)")
+    if st.button("بدء المسح"): st.success("تم العثور على: Printer_Ouzoud_Pro")
 
-# --- 6. الإعدادات ---
 elif menu == lang_data["settings"]:
     st.header(lang_data["settings"])
     st.session_state.lang = st.selectbox("اختر اللغة:", ["العربية", "Français"])
