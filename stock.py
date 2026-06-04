@@ -41,39 +41,45 @@ def generate_invoice(prod, qty, price):
 lang_data = TRANSLATIONS[st.session_state.lang]
 menu = st.sidebar.radio("الخدمات:", [lang_data["pos"], lang_data["print"], lang_data["stock"], "💰 الحسابات", "🔗 الربط والاتصال", lang_data["settings"]])
 
-# --- 7. نقطة البيع (مدمجة: مانيول + سكانر + كمية) ---
-if menu == lang_data["pos"]:
-    st.header(lang_data["pos"])
-    sale_mode = st.radio("اختر طريقة البيع:", [lang_data["scanner"], lang_data["manual"]])
-    
-    product_to_sell = None
-    qty = 1
-    
-    if sale_mode == lang_data["scanner"]:
-        qr_input = st.text_input(lang_data["scan"])
-        if qr_input:
-            item = st.session_state.inventory[st.session_state.inventory['QR'] == qr_input]
-            if not item.empty: product_to_sell = item
-            else: st.error("❌ المنتج غير موجود!")
-    else:
-        if not st.session_state.inventory.empty:
-            prod_name = st.selectbox("اختر المنتج:", st.session_state.inventory['المنتج'].tolist())
-            product_to_sell = st.session_state.inventory[st.session_state.inventory['المنتج'] == prod_name]
-            qty = st.number_input("الكمية:", min_value=1, value=1)
-            
-    if product_to_sell is not None and not product_to_sell.empty:
-        price = product_to_sell.iloc[0]['الثمن']
-        st.write(f"المنتج: {product_to_sell.iloc[0]['المنتج']} | الثمن: {price} DH")
-        st.write(f"### المجموع: {qty * price} DH")
-        
-        if st.button("تأكيد البيع وطباعة الفاتورة"):
-            idx = product_to_sell.index[0]
-            st.session_state.inventory.at[idx, 'الكمية'] -= qty
-            pdf_path = generate_invoice(product_to_sell.iloc[0]['المنتج'], qty, price)
-            with open(pdf_path, "rb") as f:
-                st.download_button("📥 تحميل الفاتورة", f, file_name="Facture.pdf")
-            st.success("✅ تم البيع بنجاح!")
+# --- خانة نقطة البيع (POS) ---
+st.header("🛒 نقطة البيع")
 
+# اختيار طريقة البيع
+sale_mode = st.radio("اختر طريقة البيع:", ["الماسح الضوئي (Scanner)", "يدوي (Manual)"])
+
+product_to_sell = None
+final_price = 0.0
+qty = 1
+
+if sale_mode == "الماسح الضوئي (Scanner)":
+    qr = st.text_input("سكان QR هنا:")
+    if qr:
+        item = st.session_state.inventory[st.session_state.inventory['QR'] == qr]
+        if not item.empty:
+            product_to_sell = item
+            final_price = float(item.iloc[0]['الثمن'])
+        else:
+            st.error("❌ المنتج غير موجود!")
+else:
+    # الطريقة اليدوية مع الخانات المطلوبة
+    if not st.session_state.inventory.empty:
+        prod_name = st.selectbox("اختر المنتج:", st.session_state.inventory['المنتج'].tolist())
+        product_to_sell = st.session_state.inventory[st.session_state.inventory['المنتج'] == prod_name]
+        
+        # خانة الثمن (قابلة للتعديل)
+        final_price = st.number_input("الثمن (DH):", value=float(product_to_sell.iloc[0]['الثمن']), step=0.5)
+        
+        # خانة الكمية
+        qty = st.number_input("الكمية:", min_value=1, value=1)
+
+# إتمام عملية البيع
+if product_to_sell is not None and not product_to_sell.empty:
+    st.write(f"### المجموع المطلوب: {qty * final_price} DH")
+    if st.button("تأكيد البيع"):
+        idx = product_to_sell.index[0]
+        # تحديث المخزون
+        st.session_state.inventory.at[idx, 'الكمية'] -= qty
+        st.success("✅ تم البيع بنجاح!")
 # --- 8. باقي الوحدات (طباعة، مخزون، حسابات، ربط، إعدادات) ---
 elif menu == lang_data["print"]:
     st.header(lang_data["print"])
