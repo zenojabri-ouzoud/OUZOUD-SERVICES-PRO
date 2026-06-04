@@ -23,22 +23,9 @@ if not st.session_state.authenticated:
 else:
     menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Gestion Stock", "Impression", "Crédits", "Caisse"])
     # --- Fonction centrale de sauvegarde (à mettre une seule fois en haut de ton script) ---
-def copier_mon_fichier(source, destination):
-    try:
-        # هاد السطر هو اللي كيدير النسخ الحقيقي
-        shutil.copy(source, destination)
-        print(f"تم نسخ الملف بنجاح إلى: {destination}")
-    except FileNotFoundError:
-        print("خطأ: الملف المصدر غير موجود!")
-    except Exception as e:
-        print(f"وقع خطأ غير متوقع: {e}")
 
-# مثال كيفاش تستعملو:
-# نسخ ملف الإكسيل ديالك كـ "نسخة احتياطية"
-copier_mon_fichier('stock.xlsx', 'stock_backup.xlsx')
-    
-    # 3. نقطة البيع (3 طرق للبيع)
-    if menu == "Point de Vente"
+    # 3. نقطة البيع (3 طرق للبيع)  
+if menu == "Point de Vente"
         st.header("🛒 Point de Vente")
         mode = st.radio("Mode de vente:", ["Vente Normale", "Scan QR/Code-barres", "Vente Libre (Divers)"])
         
