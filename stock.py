@@ -77,8 +77,9 @@ if menu == "Point de Vente":
         if st.button("Valider Scan QR"): st.success("Validé")
         
     elif mode == "Vente Libre":
-        qty = st.number_input("Quantité:", min_value=1) # تم تغييرها لـ Quantité
+        qty = st.number_input("Quantité:", min_value=1)
         prix = st.number_input("Prix:")
+        code_opt = st.text_input("Code-barres (Optionnel):") # خانة اختيارية
         if st.button("Valider Vente Libre"): st.success("Validé")
         
     elif mode == "Panier":
