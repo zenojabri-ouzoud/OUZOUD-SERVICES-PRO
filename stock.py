@@ -81,11 +81,15 @@ if menu == "Point de Vente":
                 st.session_state.cart.append({"Nom": desc, "Prix": prix_l, "Qté": 1, "Total": prix_l})
 
     with col2:
-        st.subheader("🛒 السلة")
+        st.subheader("🛒 السلة (الشكل القديم)")
+        # هاد الجزء هو العرض اللي كنتي مولف عليه
         if st.session_state.cart:
+            for i, item in enumerate(st.session_state.cart):
+                st.write(f"{i+1}. {item['Nom']} - {item['Prix']} DH x {item['Qté']} = {item['Total']} DH")
+            
             cart_df = pd.DataFrame(st.session_state.cart)
-            st.table(cart_df)
-            st.write(f"**المجموع:** {cart_df['Total'].sum()} DH")
+            st.write(f"**المجموع الكلي:** {cart_df['Total'].sum()} DH")
+            
             if st.button("🖨️ Valider et Imprimer (Facture)"):
                 st.session_state.sales_total += cart_df['Total'].sum()
                 st.session_state.cart = []
@@ -112,7 +116,7 @@ elif menu == "Credits":
     st.table(st.session_state.credits)
     if st.button("💾 Sauvegarder"): save_to_excel(st.session_state.credits, "Credits")
 
-# --- باقي المنيوهات الأصلية ---
+# --- باقي الكود ---
 elif menu == "Factures":
     st.header("📄 Factures")
     st.write("Section dédiée à l'historique des factures.")
