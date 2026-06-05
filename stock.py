@@ -31,7 +31,7 @@ def generate_pdf(cart_data):
     pdf.cell(200, 10, txt=f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
     pdf.ln(10)
     for item in cart_data:
-        pdf.cell(200, 10, txt=f"{item['Code']} | Qté: {item['Quantité']} | Total: {item['Total']} DH", ln=True)
+        pdf.cell(200, 10, txt=f"{item.get('Code', 'N/A')} | Qté: {item.get('Quantité', 0)} | Total: {item.get('Total', 0)} DH", ln=True)
     file_path = "facture.pdf"
     pdf.output(file_path)
     return file_path
@@ -71,17 +71,29 @@ if menu == "Point de Vente":
     if mode == "Vente Normale":
         prod = st.text_input("Produit:")
         qty = st.number_input("Quantité:", min_value=1)
-        if st.button("Valider Vente Normale"): st.success("Validé")
+        if st.button("Valider Vente Normale"):
+            st.session_state.last_cart = [{"Code": prod, "Quantité": qty, "Total": qty * 10}]
+            st.session_state.system_notes = f"Vente Normale: {prod} | Qté: {qty} | Total: {qty * 10} DH | Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            st.success("Validé")
+            st.rerun()
         
     elif mode == "Scan QR":
         scan = st.text_input("Scanner le Code-barres:")
-        if st.button("Valider Scan QR"): st.success("Validé")
+        if st.button("Valider Scan QR"):
+            st.session_state.last_cart = [{"Code": scan, "Quantité": 1, "Total": 10}]
+            st.session_state.system_notes = f"Scan QR: {scan} | Total: 10 DH | Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            st.success("Validé")
+            st.rerun()
         
     elif mode == "Vente Libre":
         qty = st.number_input("Quantité:", min_value=1)
         prix = st.number_input("Prix:")
         code_opt = st.text_input("Code-barres (Optionnel):")
-        if st.button("Valider Vente Libre"): st.success("Validé")
+        if st.button("Valider Vente Libre"):
+            st.session_state.last_cart = [{"Code": code_opt or "Libre", "Quantité": qty, "Total": qty * prix}]
+            st.session_state.system_notes = f"Vente Libre: {qty}x{prix} = {qty * prix} DH | Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            st.success("Validé")
+            st.rerun()
         
     elif mode == "Panier":
         col1, col2 = st.columns([1, 1])
@@ -103,7 +115,7 @@ if menu == "Point de Vente":
                     st.session_state.cart = []
                     st.rerun()
     
-    # --- العناصر التي تظهر دائماً في جميع حالات البيع ---
+    # --- العناصر التي تظهر دائماً ---
     st.divider()
     st.text_area("Espace système (Détails):", value=st.session_state.system_notes, height=150)
     if st.button("🖨️ Imprimer en PDF"):
