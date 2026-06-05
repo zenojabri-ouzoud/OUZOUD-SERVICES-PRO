@@ -3,6 +3,7 @@ import pandas as pd
 import os
 from fpdf import FPDF
 from datetime import datetime
+import pytz
 
 # --- الإعدادات العامة ---
 st.set_page_config(layout="wide")
@@ -21,17 +22,59 @@ def save_to_excel(df, sheet_name):
     except Exception as e:
         st.error(f"Erreur lors de l'enregistrement: {e}")
 
-# --- دالة إنشاء فاتورة PDF ---
+# --- دالة إنشاء فاتورة PDF عمودية ومريحة ---
 def generate_pdf(cart_data):
-    pdf = FPDF()
+    # وسعنا العرض لـ 95 ملم باش يبان كلشي واضح ومقاد
+    pdf = FPDF(orientation='P', unit='mm', format=(95, 250)) 
     pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, txt="Facture Ouzoud 2026", ln=True, align='C')
-    pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt=f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
-    pdf.ln(10)
+    
+    # اسم المحل
+    pdf.set_font("Courier", 'B', 16)
+    pdf.cell(75, 10, txt="OUZOUD 2026", ln=True, align='C')
+    pdf.set_font("Courier", size=10)
+    pdf.cell(75, 5, txt="Rabat, Maroc", ln=True, align='C')
+    pdf.cell(75, 5, txt="---------------------------------------", ln=True, align='C')
+    
+    # التاريخ والساعة بتوقيت الرباط
+    rabat_tz = pytz.timezone("Africa/Casablanca")
+    now = datetime.now(rabat_tz)
+    pdf.ln(5)
+    pdf.cell(75, 6, txt=f"Date: {now.strftime('%d/%m/%Y')}", ln=True, align='L')
+    pdf.cell(75, 6, txt=f"Heure: {now.strftime('%H:%M:%S')}", ln=True, align='L')
+    pdf.ln(5)
+    
+    # رأس الجدول
+    pdf.set_font("Courier", 'B', 10)
+    pdf.cell(40, 8, txt="Article", border=1, align='L')
+    pdf.cell(10, 8, txt="Qté", border=1, align='C')
+    pdf.cell(15, 8, txt="Prix", border=1, align='C')
+    pdf.cell(15, 8, txt="Total", border=1, align='R')
+    pdf.ln(8)
+    
+    total_general = 0
+    pdf.set_font("Courier", size=10)
     for item in cart_data:
-        pdf.cell(200, 10, txt=f"{item.get('Code', 'N/A')} | Qté: {item.get('Quantité', 0)} | Total: {item.get('Total', 0)} DH", ln=True)
+        code = str(item.get('Code', 'N/A'))[:18]
+        qty = str(item.get('Quantité', 0))
+        prix_unit = float(item.get('Prix', 10.0))
+        total = float(item.get('Total', 0))
+        total_general += total
+        
+        pdf.cell(40, 8, txt=code, border=0, align='L')
+        pdf.cell(10, 8, txt=qty, border=0, align='C')
+        pdf.cell(15, 8, txt=f"{prix_unit:.2f}", border=0, align='C')
+        pdf.cell(15, 8, txt=f"{total:.2f}", border=0, align='R')
+        pdf.ln(8)
+    
+    # الإجمالي
+    pdf.cell(80, 0, txt="---------------------------------------", ln=True)
+    pdf.ln(5)
+    pdf.set_font("Courier", 'B', 12)
+    pdf.cell(65, 8, txt=f"TOTAL: {total_general:.2f} DH", ln=True, align='R')
+    pdf.ln(10)
+    pdf.set_font("Courier", 'B', 10)
+    pdf.cell(75, 5, txt="Merci pour votre visite!", ln=True, align='C')
+    
     file_path = "facture.pdf"
     pdf.output(file_path)
     return file_path
@@ -68,20 +111,22 @@ if menu == "Point de Vente":
     st.header("🛒 Point de Vente")
     mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
     
+    rabat_time = datetime.now(pytz.timezone("Africa/Casablanca")).strftime('%d/%m/%Y %H:%M:%S')
+    
     if mode == "Vente Normale":
         prod = st.text_input("Produit:")
         qty = st.number_input("Quantité:", min_value=1)
         if st.button("Valider Vente Normale"):
-            st.session_state.last_cart = [{"Code": prod, "Quantité": qty, "Total": qty * 10}]
-            st.session_state.system_notes = f"Vente Normale: {prod} | Qté: {qty} | Total: {qty * 10} DH | Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            st.session_state.last_cart = [{"Code": prod, "Quantité": qty, "Prix": 10.0, "Total": qty * 10}]
+            st.session_state.system_notes = f"Vente: {prod} | Date: {rabat_time}"
             st.success("Validé")
             st.rerun()
         
     elif mode == "Scan QR":
         scan = st.text_input("Scanner le Code-barres:")
         if st.button("Valider Scan QR"):
-            st.session_state.last_cart = [{"Code": scan, "Quantité": 1, "Total": 10}]
-            st.session_state.system_notes = f"Scan QR: {scan} | Total: 10 DH | Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            st.session_state.last_cart = [{"Code": scan, "Quantité": 1, "Prix": 10.0, "Total": 10.0}]
+            st.session_state.system_notes = f"Scan: {scan} | Date: {rabat_time}"
             st.success("Validé")
             st.rerun()
         
@@ -90,8 +135,8 @@ if menu == "Point de Vente":
         prix = st.number_input("Prix:")
         code_opt = st.text_input("Code-barres (Optionnel):")
         if st.button("Valider Vente Libre"):
-            st.session_state.last_cart = [{"Code": code_opt or "Libre", "Quantité": qty, "Total": qty * prix}]
-            st.session_state.system_notes = f"Vente Libre: {qty}x{prix} = {qty * prix} DH | Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            st.session_state.last_cart = [{"Code": code_opt or "Libre", "Quantité": qty, "Prix": prix, "Total": qty * prix}]
+            st.session_state.system_notes = f"Libre: {qty}x{prix} | Date: {rabat_time}"
             st.success("Validé")
             st.rerun()
         
@@ -108,23 +153,21 @@ if menu == "Point de Vente":
                 st.table(pd.DataFrame(st.session_state.cart))
                 if st.button("🖨️ Valider et Enregistrer (Facture)"):
                     st.session_state.last_cart = st.session_state.cart
-                    items_str = "\n".join([f"{i['Code']} | Qté: {i['Quantité']} | {i['Total']} DH" for i in st.session_state.cart])
-                    st.session_state.system_notes = f"Facture du {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}:\n{items_str}\nTotal: {pd.DataFrame(st.session_state.cart)['Total'].sum()} DH"
+                    st.session_state.system_notes = f"Panier Validé à {rabat_time}"
                     st.session_state.sales_total += pd.DataFrame(st.session_state.cart)['Total'].sum()
                     save_to_excel(pd.DataFrame(st.session_state.cart), "Factures_History")
                     st.session_state.cart = []
                     st.rerun()
     
-    # --- العناصر التي تظهر دائماً ---
     st.divider()
-    st.text_area("Espace système (Détails):", value=st.session_state.system_notes, height=150)
+    st.text_area("Espace système (Détails):", value=st.session_state.system_notes, height=200)
     if st.button("🖨️ Imprimer en PDF"):
         if st.session_state.last_cart:
             pdf_path = generate_pdf(st.session_state.last_cart)
             with open(pdf_path, "rb") as pdf_file:
                 st.download_button("📥 Télécharger le PDF", pdf_file, "facture.pdf", "application/pdf")
         else:
-            st.warning("Aucune vente validée récemment pour imprimer !")
+            st.warning("Aucune vente validée récemment !")
 
 # --- 2. Gestion Stock ---
 elif menu == "Gestion Stock":
