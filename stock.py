@@ -50,7 +50,7 @@ if "cart" not in st.session_state: st.session_state.cart = []
 if "credits" not in st.session_state: st.session_state.credits = load_data("Credits")
 if "sales_total" not in st.session_state: st.session_state.sales_total = 0.0
 if "last_cart" not in st.session_state: st.session_state.last_cart = None
-if "system_notes" not in st.session_state: st.session_state.system_notes = "" # الخانة الجديدة
+if "system_notes" not in st.session_state: st.session_state.system_notes = ""
 
 # --- الحماية ---
 if not st.session_state.authenticated:
@@ -96,10 +96,8 @@ if menu == "Point de Vente":
                 st.table(pd.DataFrame(st.session_state.cart))
                 if st.button("🖨️ Valider et Enregistrer (Facture)"):
                     st.session_state.last_cart = st.session_state.cart
-                    # --- التعديل هنا: السيستم كيكتب فـ system_notes ---
-                    items_str = "\n".join([f"{i['Code']} | {i['Quantité']} | {i['Total']} DH" for i in st.session_state.cart])
+                    items_str = "\n".join([f"{i['Code']} | Qté: {i['Quantité']} | {i['Total']} DH" for i in st.session_state.cart])
                     st.session_state.system_notes = f"Facture du {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}:\n{items_str}\nTotal: {pd.DataFrame(st.session_state.cart)['Total'].sum()} DH"
-                    
                     st.session_state.sales_total += pd.DataFrame(st.session_state.cart)['Total'].sum()
                     save_to_excel(pd.DataFrame(st.session_state.cart), "Factures_History")
                     st.session_state.cart = []
@@ -107,7 +105,6 @@ if menu == "Point de Vente":
     
     # --- العناصر التي تظهر دائماً في جميع حالات البيع ---
     st.divider()
-    # الخانة كتقرا دابا من system_notes
     st.text_area("Espace système (Détails):", value=st.session_state.system_notes, height=150)
     if st.button("🖨️ Imprimer en PDF"):
         if st.session_state.last_cart:
