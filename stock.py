@@ -103,6 +103,7 @@ if menu == "Point de Vente":
 # --- 2. Factures ---
 elif menu == "Factures":
     st.header("📄 Factures PDF")
+    st.text_area("Espace système:", height=150)
     if st.button("🖨️ Imprimer la dernière Facture"):
         if st.session_state.last_cart:
             pdf_path = generate_pdf(st.session_state.last_cart)
