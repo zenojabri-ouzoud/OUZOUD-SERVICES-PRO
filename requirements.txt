@@ -5,3 +5,4 @@ qrcode
 openpyxl
 pillow
 python-docx
+pytz
