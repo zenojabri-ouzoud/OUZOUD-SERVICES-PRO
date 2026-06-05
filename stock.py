@@ -4,6 +4,7 @@ import os
 from fpdf import FPDF
 from datetime import datetime
 
+# دالة الحفظ
 def save_to_excel(df, sheet_name):
     file_name = 'ouzoud_data.xlsx'
     try:
@@ -17,6 +18,15 @@ def save_to_excel(df, sheet_name):
     except Exception as e:
         st.error(f"خطأ أثناء الحفظ: {e}")
 
+# دالة تحميل الستوك (جديدة)
+def load_stock():
+    if os.path.exists('ouzoud_data.xlsx'):
+        try:
+            return pd.read_excel('ouzoud_data.xlsx', sheet_name='Stock')
+        except:
+            return pd.DataFrame(columns=["Nom", "Prix", "Quantité", "Code-barres"])
+    return pd.DataFrame(columns=["Nom", "Prix", "Quantité", "Code-barres"])
+
 def generate_pdf(text):
     pdf = FPDF()
     pdf.add_page()
@@ -28,7 +38,8 @@ def generate_pdf(text):
     return pdf.output(dest='S').encode('latin-1')
 
 if "authenticated" not in st.session_state: st.session_state.authenticated = False
-if "inventory" not in st.session_state: st.session_state.inventory = pd.DataFrame(columns=["Nom", "Prix", "Quantité", "Code-barres"])
+# هنا كنشارجيو الستوك أوتوماتيكياً يلا كان ديجا مسجل فالإكسيل
+if "inventory" not in st.session_state: st.session_state.inventory = load_stock()
 if "invoices_db" not in st.session_state: st.session_state.invoices_db = pd.DataFrame(columns=["Date", "Détails", "Total"])
 if "sales_total" not in st.session_state: st.session_state.sales_total = 0.0
 if "credits" not in st.session_state: st.session_state.credits = pd.DataFrame(columns=["Client", "Montant"])
@@ -61,8 +72,8 @@ if menu == "Point de Vente":
                 date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 details = f"Ouzoud Services\nDate: {date}\nProduit: {prod}\nQté: {qty}\nTotal: {total} DH"
                 st.session_state.invoices_db = pd.concat([st.session_state.invoices_db, pd.DataFrame([[date, details, total]], columns=["Date", "Détails", "Total"])], ignore_index=True)
-                st.success("Vente enregistrée et facture générée !")
-    
+                st.success("Vente enregistrée !")
+
     elif mode == "Scan QR":
         scan = st.text_input("Scanner le code:")
         if scan:
@@ -74,7 +85,7 @@ if menu == "Point de Vente":
                     date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     details = f"Ouzoud Services\nDate: {date}\nProduit: {row.iloc[0]['Nom']}\nTotal: {total} DH"
                     st.session_state.invoices_db = pd.concat([st.session_state.invoices_db, pd.DataFrame([[date, details, total]], columns=["Date", "Détails", "Total"])], ignore_index=True)
-                    st.success("Scanné et facturé !")
+                    st.success("Scanné !")
     
     else:
         desc = st.text_input("Description:")
