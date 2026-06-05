@@ -102,15 +102,14 @@ if menu == "Point de Vente":
 
 # --- 2. Factures ---
 elif menu == "Factures":
-    st.header("📄 Historique des Factures")
-    if st.button("🖨️ Imprimer la dernière Facture en PDF"):
+    st.header("📄 Factures PDF")
+    if st.button("🖨️ Imprimer la dernière Facture"):
         if st.session_state.last_cart:
             pdf_path = generate_pdf(st.session_state.last_cart)
             with open(pdf_path, "rb") as pdf_file:
                 st.download_button("📥 Télécharger le PDF", pdf_file, "facture.pdf", "application/pdf")
         else:
-            st.warning("Aucune facture récente à imprimer !")
-    if st.button("💾 Sauvegarder Factures dans Excel"): save_to_excel(pd.DataFrame(), "Factures")
+            st.warning("Aucune vente n'a été validée récemment !")
 
 # --- 3. Gestion Stock ---
 elif menu == "Gestion Stock":
