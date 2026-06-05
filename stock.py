@@ -18,13 +18,12 @@ def save_to_excel(df, sheet_name):
         else:
             with pd.ExcelWriter(file_name, mode='w', engine='openpyxl') as writer:
                 df.to_excel(writer, sheet_name=sheet_name, index=False)
-        st.success(f"Données enregistrées dans {sheet_name} avec succès !")
+        st.success(f"تم حفظ البيانات في الورقة: {sheet_name}")
     except Exception as e:
-        st.error(f"Erreur lors de l'enregistrement: {e}")
+        st.error(f"خطأ في الحفظ: {e}")
 
 # --- دالة إنشاء فاتورة PDF عمودية ومريحة ---
 def generate_pdf(cart_data):
-    # وسعنا العرض لـ 95 ملم باش يبان كلشي واضح ومقاد
     pdf = FPDF(orientation='P', unit='mm', format=(95, 250)) 
     pdf.add_page()
     
@@ -86,6 +85,12 @@ def load_data(sheet_name):
         except: return pd.DataFrame()
     return pd.DataFrame()
 
+# --- دالة لتحميل ملف الإكسيل ---
+def download_excel_button():
+    if os.path.exists('ouzoud_data.xlsx'):
+        with open("ouzoud_data.xlsx", "rb") as file:
+            st.download_button(label="📥 Télécharger le fichier Excel global", data=file, file_name="ouzoud_data.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
 # --- تهيئة الذاكرة ---
 if "authenticated" not in st.session_state: st.session_state.authenticated = False
 if "inventory" not in st.session_state: st.session_state.inventory = load_data("Stock")
@@ -110,7 +115,6 @@ menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Gestion Stock"
 if menu == "Point de Vente":
     st.header("🛒 Point de Vente")
     mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
-    
     rabat_time = datetime.now(pytz.timezone("Africa/Casablanca")).strftime('%d/%m/%Y %H:%M:%S')
     
     if mode == "Vente Normale":
@@ -179,6 +183,7 @@ elif menu == "Gestion Stock":
             st.rerun()
     st.table(st.session_state.inventory)
     if st.button("💾 Sauvegarder Stock dans Excel"): save_to_excel(st.session_state.inventory, "Stock")
+    download_excel_button()
 
 # --- 3. Impression ---
 elif menu == "Impression":
@@ -188,12 +193,14 @@ elif menu == "Impression":
         st.session_state.sales_total += (p * n)
         st.success("Impression enregistrée")
     if st.button("💾 Sauvegarder Impression dans Excel"): save_to_excel(pd.DataFrame([{"Prix": p, "N": n}]), "Impression")
+    download_excel_button()
 
 # --- 4. Caisse ---
 elif menu == "Caisse":
     st.header("💰 Caisse")
     st.metric("Total", f"{st.session_state.sales_total} DH")
     if st.button("💾 Sauvegarder Caisse dans Excel"): save_to_excel(pd.DataFrame([{"Total": st.session_state.sales_total}]), "Caisse")
+    download_excel_button()
 
 # --- 5. Credits ---
 elif menu == "Credits":
@@ -204,3 +211,4 @@ elif menu == "Credits":
         st.rerun()
     st.table(st.session_state.credits)
     if st.button("💾 Sauvegarder Crédits dans Excel"): save_to_excel(st.session_state.credits, "Credits")
+    download_excel_button()
