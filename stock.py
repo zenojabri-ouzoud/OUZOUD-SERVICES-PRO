@@ -3,7 +3,7 @@ import pandas as pd
 import shutil
 import os
 
-# الدالة المضافة للحفظ (موجودة فالفوق)
+# الدالة ديال الحفظ
 def save_to_excel(df, sheet_name):
     file_name = 'ouzoud_data.xlsx'
     with pd.ExcelWriter(file_name, mode='a' if os.path.exists(file_name) else 'w', if_sheet_exists='replace') as writer:
@@ -27,7 +27,7 @@ if not st.session_state.authenticated:
         st.rerun()
 else:
     menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Gestion Stock", "Impression", "Crédits", "Caisse"])
-    
+
     # 3. نقطة البيع
     if menu == "Point de Vente":
         st.header("🛒 Point de Vente")
@@ -67,11 +67,10 @@ else:
 
         if st.session_state.last_receipt:
             st.download_button("📥 Télécharger la Facture", st.session_state.last_receipt, file_name="facture.txt")
-        
-        # الزر المضاف:
-        if st.button("💾 Enregistrer Ventes"):
-            save_to_excel(pd.DataFrame({'Total': [st.session_state.sales_total]}), "Ventes")
-            st.success("تم الحفظ!")
+            # الزر المضاف تحت الفاتورة:
+            if st.button("💾 Enregistrer Ventes"):
+                save_to_excel(pd.DataFrame({'Total': [st.session_state.sales_total]}), "Ventes")
+                st.success("تم الحفظ!")
 
     # 4. إدارة المخزون
     elif menu == "Gestion Stock":
@@ -97,8 +96,6 @@ else:
                 st.session_state.inventory = st.session_state.inventory.drop(idx)
                 st.rerun()
         st.table(st.session_state.inventory)
-        
-        # الزر المضاف:
         if st.button("💾 Enregistrer Stock"):
             save_to_excel(st.session_state.inventory, "Stock")
             st.success("تم الحفظ!")
@@ -111,6 +108,9 @@ else:
         if st.button("Enregistrer"):
             st.session_state.sales_total += (pages * pp)
             st.success("Opération enregistrée")
+        if st.button("💾 Enregistrer Impression"):
+             save_to_excel(pd.DataFrame({'Impression_Sales': [st.session_state.sales_total]}), "Impression")
+             st.success("تم الحفظ!")
 
     elif menu == "Crédits":
         st.header("💳 Gestion des Crédits")
@@ -118,8 +118,6 @@ else:
         if st.button("Ajouter Crédit"):
             st.session_state.credits = pd.concat([st.session_state.credits, pd.DataFrame([[c_n, c_a]], columns=["Client", "Montant"])])
         st.table(st.session_state.credits)
-        
-        # الزر المضاف:
         if st.button("💾 Enregistrer Crédits"):
             save_to_excel(st.session_state.credits, "Crédits")
             st.success("تم الحفظ!")
@@ -139,3 +137,6 @@ else:
             st.session_state.sales_total = 0.0
             st.session_state.last_receipt = ""
             st.rerun()
+        if st.button("💾 Enregistrer Caisse"):
+            save_to_excel(pd.DataFrame({'Total_Caisse': [st.session_state.sales_total]}), "Caisse")
+            st.success("تم الحفظ!")
