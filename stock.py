@@ -79,7 +79,7 @@ if menu == "Point de Vente":
     elif mode == "Vente Libre":
         qty = st.number_input("Quantité:", min_value=1)
         prix = st.number_input("Prix:")
-        code_opt = st.text_input("Code-barres (Optionnel):") # خانة اختيارية
+        code_opt = st.text_input("Code-barres (Optionnel):")
         if st.button("Valider Vente Libre"): st.success("Validé")
         
     elif mode == "Panier":
@@ -103,11 +103,13 @@ if menu == "Point de Vente":
 # --- 2. Factures ---
 elif menu == "Factures":
     st.header("📄 Historique des Factures")
-    if st.session_state.last_cart:
-        if st.button("🖨️ Imprimer la dernière Facture en PDF"):
+    if st.button("🖨️ Imprimer la dernière Facture en PDF"):
+        if st.session_state.last_cart:
             pdf_path = generate_pdf(st.session_state.last_cart)
             with open(pdf_path, "rb") as pdf_file:
                 st.download_button("📥 Télécharger le PDF", pdf_file, "facture.pdf", "application/pdf")
+        else:
+            st.warning("Aucune facture récente à imprimer !")
     if st.button("💾 Sauvegarder Factures dans Excel"): save_to_excel(pd.DataFrame(), "Factures")
 
 # --- 3. Gestion Stock ---
