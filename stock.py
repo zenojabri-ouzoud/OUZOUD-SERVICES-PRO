@@ -4,7 +4,7 @@ import os
 from fpdf import FPDF
 from datetime import datetime, timedelta
 
-# دالة الحفظ
+# --- دالة الحفظ في Excel ---
 def save_to_excel(df, sheet_name):
     file_name = 'ouzoud_data.xlsx'
     try:
@@ -18,7 +18,7 @@ def save_to_excel(df, sheet_name):
     except Exception as e:
         st.error(f"خطأ أثناء الحفظ: {e}")
 
-# دالة تحميل الستوك
+# --- دالة تحميل الستوك ---
 def load_stock():
     if os.path.exists('ouzoud_data.xlsx'):
         try:
@@ -27,6 +27,7 @@ def load_stock():
             return pd.DataFrame(columns=["Nom", "Prix", "Quantité", "Code-barres"])
     return pd.DataFrame(columns=["Nom", "Prix", "Quantité", "Code-barres"])
 
+# --- دالة توليد PDF ---
 def generate_pdf(text):
     pdf = FPDF()
     pdf.add_page()
@@ -37,14 +38,17 @@ def generate_pdf(text):
     pdf.multi_cell(0, 10, txt=text)
     return pdf.output(dest='S').encode('latin-1')
 
+# --- تهيئة الذاكرة ---
 if "authenticated" not in st.session_state: st.session_state.authenticated = False
 if "inventory" not in st.session_state: st.session_state.inventory = load_stock()
 if "invoices_db" not in st.session_state: st.session_state.invoices_db = pd.DataFrame(columns=["Date", "Détails", "Total"])
+if "cart" not in st.session_state: st.session_state.cart = []
 if "sales_total" not in st.session_state: st.session_state.sales_total = 0.0
 if "credits" not in st.session_state: st.session_state.credits = pd.DataFrame(columns=["Client", "Montant"])
 
 st.title("Système de Gestion Ouzoud Pro")
 
+# --- الحماية ---
 if not st.session_state.authenticated:
     password = st.text_input("Mot de passe:", type="password")
     if st.button("Connexion"):
@@ -53,61 +57,50 @@ if not st.session_state.authenticated:
             st.rerun()
     st.stop()
 
+# --- القائمة الجانبية ---
 menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Factures", "Gestion Stock", "Impression", "Crédits", "Caisse"])
 
+# --- التوقيت المضبوط ---
+date_str = (datetime.now() + timedelta(hours=1, minutes=3)).strftime("%Y-%m-%d %H:%M:%S")
+
 if menu == "Point de Vente":
-    st.header("🛒 Point de Vente")
-    mode = st.radio("Mode:", ["Vente Normale", "Scan QR", "Vente Libre"])
+    st.header("🛒 Point de Vente (Multi-Produits)")
     
-    # دالة الوقت مضبوطة: ساعة و3 دقائق
-    now = datetime.now() + timedelta(hours=1, minutes=3)
-    date_str = now.strftime("%Y-%m-%d %H:%M:%S")
-    
-    if mode == "Vente Normale":
-        if not st.session_state.inventory.empty:
-            prod = st.selectbox("Produit:", st.session_state.inventory['Nom'].tolist())
-            qty = st.number_input("Quantité:", min_value=1)
-            if st.button("Valider"):
-                idx = st.session_state.inventory[st.session_state.inventory['Nom'] == prod].index[0]
-                price = st.session_state.inventory.at[idx, 'Prix']
-                total = price * qty
-                st.session_state.sales_total += total
-                details = f"Ouzoud Services\nDate: {date_str}\nProduit: {prod}\nQté: {qty}\nTotal: {total} DH"
-                st.session_state.invoices_db = pd.concat([st.session_state.invoices_db, pd.DataFrame([[date_str, details, total]], columns=["Date", "Détails", "Total"])], ignore_index=True)
-                st.success("Vente enregistrée !")
-    
-    elif mode == "Scan QR":
-        scan = st.text_input("Scanner le code:")
-        if scan:
-            row = st.session_state.inventory[st.session_state.inventory['Code-barres'] == scan]
-            if not row.empty:
-                if st.button("Valider le Scan"):
-                    total = row.iloc[0]['Prix']
-                    st.session_state.sales_total += total
-                    details = f"Ouzoud Services\nDate: {date_str}\nProduit: {row.iloc[0]['Nom']}\nTotal: {total} DH"
-                    st.session_state.invoices_db = pd.concat([st.session_state.invoices_db, pd.DataFrame([[date_str, details, total]], columns=["Date", "Détails", "Total"])], ignore_index=True)
-                    st.success("Scanné !")
-    
-    else:
-        desc = st.text_input("Description:")
-        prix_l = st.number_input("Prix:")
-        if st.button("Valider"):
-            st.session_state.sales_total += prix_l
-            details = f"Ouzoud Services\nDate: {date_str}\nProduit: {desc}\nTotal: {prix_l} DH"
-            st.session_state.invoices_db = pd.concat([st.session_state.invoices_db, pd.DataFrame([[date_str, details, prix_l]], columns=["Date", "Détails", "Total"])], ignore_index=True)
-            st.success("Vente Libre enregistrée !")
+    # اختيار وإضافة للمنتج للسلة
+    if not st.session_state.inventory.empty:
+        prod = st.selectbox("Produit:", st.session_state.inventory['Nom'].tolist())
+        qty = st.number_input("Quantité:", min_value=1)
+        if st.button("إضافة للسلة ➕"):
+            price = st.session_state.inventory[st.session_state.inventory['Nom'] == prod].iloc[0]['Prix']
+            st.session_state.cart.append({"Nom": prod, "Prix": price, "Qté": qty, "Total": price * qty})
+            st.success(f"تمت إضافة {prod} للسلة")
+
+    # عرض السلة
+    if st.session_state.cart:
+        st.subheader("سلة التسوق:")
+        cart_df = pd.DataFrame(st.session_state.cart)
+        st.table(cart_df)
+        
+        if st.button("✅ إصدار الفاتورة النهائية"):
+            total_facture = cart_df['Total'].sum()
+            st.session_state.sales_total += total_facture
+            details = f"Ouzoud Services\nDate: {date_str}\n\n" + cart_df.to_string(index=False) + f"\n\nTotal: {total_facture} DH"
+            st.session_state.invoices_db = pd.concat([st.session_state.invoices_db, pd.DataFrame([[date_str, details, total_facture]], columns=["Date", "Détails", "Total"])], ignore_index=True)
+            st.session_state.cart = []
+            st.success("فاتورة شاملة تم إصدارها !")
+            st.rerun()
 
 elif menu == "Factures":
     st.header("🧾 Historique des Factures")
     if not st.session_state.invoices_db.empty:
         selected_date = st.selectbox("Choisir une facture:", st.session_state.invoices_db['Date'].tolist())
         facture = st.session_state.invoices_db[st.session_state.invoices_db['Date'] == selected_date].iloc[0]
-        st.text_area("Détails:", value=facture['Détails'], height=200)
+        st.text_area("Détails:", value=facture['Détails'], height=250)
         st.download_button("🖨️ Imprimer en PDF", generate_pdf(facture['Détails']), f"Facture_{selected_date.replace(':', '-')}.pdf", "application/pdf")
-        if st.button("💾 Sauvegarder"):
+        if st.button("💾 Sauvegarder Factures Excel"):
             save_to_excel(st.session_state.invoices_db, "Factures")
     else:
-        st.info("Aucune facture.")
+        st.info("Aucune facture disponible.")
 
 elif menu == "Gestion Stock":
     st.header("📦 Gestion Stock")
@@ -117,7 +110,7 @@ elif menu == "Gestion Stock":
             st.session_state.inventory = pd.concat([st.session_state.inventory, pd.DataFrame([[name, price, qty, barcode]], columns=["Nom", "Prix", "Quantité", "Code-barres"])], ignore_index=True)
             st.rerun()
     st.table(st.session_state.inventory)
-    if st.button("💾 Sauvegarder"):
+    if st.button("💾 Sauvegarder Stock Excel"):
         save_to_excel(st.session_state.inventory, "Stock")
 
 elif menu == "Impression":
@@ -134,7 +127,7 @@ elif menu == "Crédits":
     if st.button("Ajouter"):
         st.session_state.credits = pd.concat([st.session_state.credits, pd.DataFrame([[cn, ca]], columns=["Client", "Montant"])], ignore_index=True)
     st.table(st.session_state.credits)
-    if st.button("💾 Sauvegarder"):
+    if st.button("💾 Sauvegarder Crédits Excel"):
         save_to_excel(st.session_state.credits, "Crédits")
 
 elif menu == "Caisse":
