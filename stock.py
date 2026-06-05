@@ -49,6 +49,7 @@ if "inventory" not in st.session_state: st.session_state.inventory = load_data("
 if "cart" not in st.session_state: st.session_state.cart = []
 if "credits" not in st.session_state: st.session_state.credits = load_data("Credits")
 if "sales_total" not in st.session_state: st.session_state.sales_total = 0.0
+if "last_cart" not in st.session_state: st.session_state.last_cart = None
 
 # --- الحماية ---
 if not st.session_state.authenticated:
@@ -92,6 +93,7 @@ if menu == "Point de Vente":
             if st.session_state.cart:
                 st.table(pd.DataFrame(st.session_state.cart))
                 if st.button("🖨️ Valider et Enregistrer (Facture)"):
+                    st.session_state.last_cart = st.session_state.cart
                     st.session_state.sales_total += pd.DataFrame(st.session_state.cart)['Total'].sum()
                     save_to_excel(pd.DataFrame(st.session_state.cart), "Factures_History")
                     st.session_state.cart = []
@@ -100,9 +102,9 @@ if menu == "Point de Vente":
 # --- 2. Factures ---
 elif menu == "Factures":
     st.header("📄 Historique des Factures")
-    if st.session_state.cart:
+    if st.session_state.last_cart:
         if st.button("🖨️ Imprimer la dernière Facture en PDF"):
-            pdf_path = generate_pdf(st.session_state.cart)
+            pdf_path = generate_pdf(st.session_state.last_cart)
             with open(pdf_path, "rb") as pdf_file:
                 st.download_button("📥 Télécharger le PDF", pdf_file, "facture.pdf", "application/pdf")
     if st.button("💾 Sauvegarder Factures dans Excel"): save_to_excel(pd.DataFrame(), "Factures")
