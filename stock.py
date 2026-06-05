@@ -60,7 +60,7 @@ if not st.session_state.authenticated:
             st.rerun()
     st.stop()
 
-menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Factures", "Gestion Stock", "Impression", "Caisse", "Credits"])
+menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Gestion Stock", "Impression", "Caisse", "Credits"])
 
 # --- 1. Point de Vente ---
 if menu == "Point de Vente":
@@ -99,20 +99,18 @@ if menu == "Point de Vente":
                     save_to_excel(pd.DataFrame(st.session_state.cart), "Factures_History")
                     st.session_state.cart = []
                     st.rerun()
+                
+                # إضافات الطباعة الجديدة
+                st.text_area("Espace système:", height=100)
+                if st.button("🖨️ Imprimer en PDF"):
+                    if st.session_state.last_cart:
+                        pdf_path = generate_pdf(st.session_state.last_cart)
+                        with open(pdf_path, "rb") as pdf_file:
+                            st.download_button("📥 Télécharger le PDF", pdf_file, "facture.pdf", "application/pdf")
+                    else:
+                        st.warning("Aucune vente n'a été validée récemment !")
 
-# --- 2. Factures ---
-elif menu == "Factures":
-    st.header("📄 Factures PDF")
-    st.text_area("Espace système:", height=150)
-    if st.button("🖨️ Imprimer la dernière Facture"):
-        if st.session_state.last_cart:
-            pdf_path = generate_pdf(st.session_state.last_cart)
-            with open(pdf_path, "rb") as pdf_file:
-                st.download_button("📥 Télécharger le PDF", pdf_file, "facture.pdf", "application/pdf")
-        else:
-            st.warning("Aucune vente n'a été validée récemment !")
-
-# --- 3. Gestion Stock ---
+# --- 2. Gestion Stock ---
 elif menu == "Gestion Stock":
     st.header("📦 Gestion Stock")
     with st.form("stock"):
@@ -123,7 +121,7 @@ elif menu == "Gestion Stock":
     st.table(st.session_state.inventory)
     if st.button("💾 Sauvegarder Stock dans Excel"): save_to_excel(st.session_state.inventory, "Stock")
 
-# --- 4. Impression ---
+# --- 3. Impression ---
 elif menu == "Impression":
     st.header("🖨️ Service d'Impression")
     p, n = st.number_input("Prix/Page"), st.number_input("Nombre", 1)
@@ -132,13 +130,13 @@ elif menu == "Impression":
         st.success("Impression enregistrée")
     if st.button("💾 Sauvegarder Impression dans Excel"): save_to_excel(pd.DataFrame([{"Prix": p, "N": n}]), "Impression")
 
-# --- 5. Caisse ---
+# --- 4. Caisse ---
 elif menu == "Caisse":
     st.header("💰 Caisse")
     st.metric("Total", f"{st.session_state.sales_total} DH")
     if st.button("💾 Sauvegarder Caisse dans Excel"): save_to_excel(pd.DataFrame([{"Total": st.session_state.sales_total}]), "Caisse")
 
-# --- 6. Credits ---
+# --- 5. Credits ---
 elif menu == "Credits":
     st.header("💳 Gestion des Crédits")
     client, montant = st.text_input("Nom du Client"), st.number_input("Montant (DH)")
