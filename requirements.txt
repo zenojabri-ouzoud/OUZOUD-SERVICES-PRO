@@ -5,3 +5,6 @@ qrcode
 openpyxl
 pillow
 python-docx
+shutil
+os
+datetime
