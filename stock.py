@@ -99,16 +99,17 @@ if menu == "Point de Vente":
                     save_to_excel(pd.DataFrame(st.session_state.cart), "Factures_History")
                     st.session_state.cart = []
                     st.rerun()
-                
-                # إضافات الطباعة الجديدة
-                st.text_area("Espace système:", height=100)
-                if st.button("🖨️ Imprimer en PDF"):
-                    if st.session_state.last_cart:
-                        pdf_path = generate_pdf(st.session_state.last_cart)
-                        with open(pdf_path, "rb") as pdf_file:
-                            st.download_button("📥 Télécharger le PDF", pdf_file, "facture.pdf", "application/pdf")
-                    else:
-                        st.warning("Aucune vente n'a été validée récemment !")
+    
+    # --- العناصر التي تظهر دائماً في جميع حالات البيع ---
+    st.divider()
+    st.text_area("Espace système:", height=100)
+    if st.button("🖨️ Imprimer en PDF"):
+        if st.session_state.last_cart:
+            pdf_path = generate_pdf(st.session_state.last_cart)
+            with open(pdf_path, "rb") as pdf_file:
+                st.download_button("📥 Télécharger le PDF", pdf_file, "facture.pdf", "application/pdf")
+        else:
+            st.warning("Aucune vente validée récemment pour imprimer !")
 
 # --- 2. Gestion Stock ---
 elif menu == "Gestion Stock":
