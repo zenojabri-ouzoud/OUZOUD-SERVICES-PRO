@@ -1,7 +1,2 @@
 streamlit
 pandas
-fpdf
-pytz
-openpyxl
-qrcode
-streamlit-barcode-scanner==0.1.2
