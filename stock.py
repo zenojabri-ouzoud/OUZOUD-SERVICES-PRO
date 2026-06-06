@@ -9,23 +9,6 @@ from streamlit_barcode_scanner import barcode_scanner
 # --- الإعدادات العامة ---
 st.set_page_config(layout="wide")
 
-# --- دالة الكاميرا 1 ---
-def video_frame_callback_vente(frame):
-    img = frame.to_ndarray(format="bgr24")
-    for barcode in decode(img):
-        st.session_state.scanned_val_vente = barcode.data.decode('utf-8')
-    return av.VideoFrame.from_ndarray(img, format="bgr24")
-
-# --- دالة الكاميرا 2 ---
-def video_frame_callback_stock(frame):
-    img = frame.to_ndarray(format="bgr24")
-    for barcode in decode(img):
-        st.session_state.scanned_val_stock = barcode.data.decode('utf-8')
-    return av.VideoFrame.from_ndarray(img, format="bgr24")
-
-if "scanned_val_vente" not in st.session_state: st.session_state.scanned_val_vente = ""
-if "scanned_val_stock" not in st.session_state: st.session_state.scanned_val_stock = ""
-
 # --- دالة الحفظ الذكية في Excel ---
 def save_to_excel(df, sheet_name):
     file_name = 'ouzoud_data.xlsx'
@@ -117,6 +100,8 @@ if "credits" not in st.session_state: st.session_state.credits = load_data("Cred
 if "sales_total" not in st.session_state: st.session_state.sales_total = 0.0
 if "last_cart" not in st.session_state: st.session_state.last_cart = None
 if "system_notes" not in st.session_state: st.session_state.system_notes = ""
+if "scanned_val_vente" not in st.session_state: st.session_state.scanned_val_vente = ""
+if "scanned_val_stock" not in st.session_state: st.session_state.scanned_val_stock = ""
 
 # --- الحماية ---
 if not st.session_state.authenticated:
@@ -132,12 +117,9 @@ menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Gestion Stock"
 # --- 1. Point de Vente ---
 if menu == "Point de Vente":
     st.header("🛒 Point de Vente")
-    if st.checkbox("Scan Caméra Vente"):
-        webrtc_streamer(key="vente", video_frame_callback=video_frame_callback_vente,
-            media_stream_constraints={"video": {"facingMode": {"exact": "environment"}}, "audio": False})
     
-    # إضافة الماسح السريع الجديد
-    if st.button("📸 Scan Rapide (Point de Vente)"):
+    # إضافة الماسح السريع
+    if st.button("📸 Scan Rapide"):
         scanned = barcode_scanner()
         if scanned:
             st.session_state.scanned_val_vente = scanned
@@ -207,17 +189,13 @@ if menu == "Point de Vente":
 # --- 2. Gestion Stock ---
 elif menu == "Gestion Stock":
     st.header("📦 Gestion Stock")
-    if st.checkbox("Scan Caméra Stock"):
-        webrtc_streamer(key="stock", video_frame_callback=video_frame_callback_stock,
-            media_stream_constraints={"video": {"facingMode": {"exact": "environment"}}, "audio": False})
     
-    # إضافة الماسح السريع الجديد للستوك
-    if st.button("📸 Scan Rapide (Stock)"):
+    if st.button("📸 Scan Rapide Stock"):
         scanned_stock = barcode_scanner()
         if scanned_stock:
             st.session_state.scanned_val_stock = scanned_stock
             st.rerun()
-    
+            
     with st.form("stock"):
         name = st.text_input("Nom")
         price = st.number_input("Prix")
@@ -228,7 +206,7 @@ elif menu == "Gestion Stock":
             st.session_state.inventory = pd.concat([st.session_state.inventory, pd.DataFrame([[name, price, qty, barcode]], columns=["Nom", "Prix", "Quantité", "Code-barres"])], ignore_index=True)
             st.session_state.scanned_val_stock = ""
             st.rerun()
-    
+            
     st.table(st.session_state.inventory)
     if st.button("💾 Sauvegarder Stock dans Excel"): save_to_excel(st.session_state.inventory, "Stock")
     download_excel_button()
