@@ -52,47 +52,64 @@ def save_to_excel(df, sheet_name):
     except Exception as e:
         st.error(f"خطأ في الحفظ: {e}")
 
-# --- دالة إنشاء فاتورة PDF احترافية ---
+# --- دالة إنشاء فاتورة PDF احترافية (المعدلة) ---
 def generate_pdf(cart_data):
-    pdf = FPDF(orientation='P', unit='mm', format=(95, 250)) 
+    pdf = FPDF(orientation='P', unit='mm', format=(80, 250)) 
     pdf.add_page()
-    pdf.set_font("Courier", 'B', 16)
-    pdf.cell(75, 10, txt="OUZOUD 2026", ln=True, align='C')
-    pdf.set_font("Courier", size=10)
-    pdf.cell(75, 5, txt="Rabat, Maroc", ln=True, align='C')
-    pdf.cell(75, 5, txt="---------------------------------------", ln=True, align='C')
+    
+    # العنوان
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(60, 10, txt="OUZOUD SERVICES", ln=True, align='C')
+    pdf.set_font("Arial", size=10)
+    pdf.cell(60, 5, txt="Rabat, Maroc", ln=True, align='C')
+    pdf.cell(60, 5, txt="--------------------------------", ln=True, align='C')
+    
+    # التاريخ والوقت
     rabat_tz = pytz.timezone("Africa/Casablanca")
     now = datetime.now(rabat_tz)
-    pdf.ln(5)
-    pdf.cell(75, 6, txt=f"Date: {now.strftime('%d/%m/%Y')}", ln=True, align='L')
-    pdf.cell(75, 6, txt=f"Heure: {now.strftime('%H:%M:%S')}", ln=True, align='L')
-    pdf.ln(5)
-    pdf.set_font("Courier", 'B', 10)
-    pdf.cell(40, 8, txt="Article", border=1, align='L')
-    pdf.cell(10, 8, txt="Qté", border=1, align='C')
-    pdf.cell(15, 8, txt="Prix", border=1, align='C')
-    pdf.cell(15, 8, txt="Total", border=1, align='R')
-    pdf.ln(8)
+    pdf.set_font("Arial", size=9)
+    pdf.cell(60, 5, txt=f"Date: {now.strftime('%d/%m/%Y')}", ln=True, align='L')
+    pdf.cell(60, 5, txt=f"Heure: {now.strftime('%H:%M:%S')}", ln=True, align='L')
+    pdf.ln(2)
+
+    # الجدول
+    pdf.set_font("Arial", 'B', 9)
+    pdf.cell(30, 7, txt="Article", border=1)
+    pdf.cell(8, 7, txt="Qté", border=1, align='C')
+    pdf.cell(10, 7, txt="Prix", border=1, align='C')
+    pdf.cell(12, 7, txt="Total", border=1, align='C')
+    pdf.ln(7)
+    
+    pdf.set_font("Arial", size=9)
     total_general = 0
-    pdf.set_font("Courier", size=10)
     for item in cart_data:
-        code = str(item.get('Code', 'N/A'))[:18]
+        name = str(item.get('Code', 'Article'))[:15] 
         qty = str(item.get('Quantité', 0))
-        prix_unit = float(item.get('Prix', 10.0))
+        prix = float(item.get('Prix', 0))
         total = float(item.get('Total', 0))
         total_general += total
-        pdf.cell(40, 8, txt=code, border=0, align='L')
-        pdf.cell(10, 8, txt=qty, border=0, align='C')
-        pdf.cell(15, 8, txt=f"{prix_unit:.2f}", border=0, align='C')
-        pdf.cell(15, 8, txt=f"{total:.2f}", border=0, align='R')
-        pdf.ln(8)
-    pdf.cell(80, 0, txt="---------------------------------------", ln=True)
-    pdf.ln(5)
-    pdf.set_font("Courier", 'B', 12)
-    pdf.cell(65, 8, txt=f"TOTAL: {total_general:.2f} DH", ln=True, align='R')
+        
+        pdf.cell(30, 6, txt=name, border=1)
+        pdf.cell(8, 6, txt=qty, border=1, align='C')
+        pdf.cell(10, 6, txt=f"{prix:.0f}", border=1, align='C')
+        pdf.cell(12, 6, txt=f"{total:.0f}", border=1, align='C')
+        pdf.ln(6)
+    
+    # المجموع
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(48, 8, txt=f"TOTAL: {total_general:.2f} DH", border=1, align='R')
     pdf.ln(10)
-    pdf.set_font("Courier", 'B', 10)
-    pdf.cell(75, 5, txt="Merci pour votre visite!", ln=True, align='C')
+    
+    # معلومات الاتصال في الأسفل
+    pdf.set_font("Arial", 'B', 9)
+    pdf.cell(60, 5, txt="Contact:", ln=True, align='C')
+    pdf.set_font("Arial", size=9)
+    pdf.cell(60, 5, txt="Tel: 07.81.02.82.43", ln=True, align='C')
+    pdf.cell(60, 5, txt="Email: maaridprint@gmail.com", ln=True, align='C')
+    pdf.ln(5)
+    pdf.set_font("Arial", 'I', 9)
+    pdf.cell(60, 5, txt="Merci pour votre visite!", ln=True, align='C')
+    
     file_path = "facture.pdf"
     pdf.output(file_path)
     return file_path
@@ -228,8 +245,7 @@ elif menu == "Credits":
     st.table(st.session_state.credits)
     download_excel_button()
 
-# --- ختامية النظام لضبط عدد الأسطر ---
+# --- ختامية النظام ---
 st.write("---")
 st.write("OUZOUD 2026 - Système de gestion professionnel")
 st.write("Tous droits réservés © 2026")
-# --- نهاية الكود ---
