@@ -3,3 +3,4 @@ pandas
 fpdf
 pytz
 qrcode
+openpyxl
