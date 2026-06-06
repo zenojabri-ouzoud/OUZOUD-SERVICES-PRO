@@ -19,13 +19,32 @@ def fast_barcode_scanner(key):
     function onScanSuccess(decodedText, decodedResult) {
         window.parent.postMessage({type: 'barcode_result', value: decodedText}, "*");
     }
-    // facingMode: "environment" كتفرض الكاميرا اللورانية
-    let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-        fps: 10, 
-        qrbox: 250, 
-        facingMode: "environment" 
+    
+    // محاولة تحديد الكاميرا الخلفية برمجياً
+    Html5Qrcode.getCameras().then(devices => {
+      let cameraId = null;
+      if (devices && devices.length) {
+        // البحث عن الكاميرا الخلفية (تتضمن عادة كلمة back)
+        for (let i = 0; i < devices.length; i++) {
+          if (devices[i].label.toLowerCase().includes('back')) {
+            cameraId = devices[i].id;
+          }
+        }
+        // إذا لم نجدها، نستخدم الأولى
+        if (!cameraId) cameraId = devices[0].id;
+      }
+      
+      let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+          fps: 10, 
+          qrbox: 250, 
+          facingMode: "environment" 
+      });
+      html5QrcodeScanner.render(onScanSuccess);
+    }).catch(err => {
+      // تشغيل احتياطي في حالة عدم القدرة على تحديد الكاميرا
+      let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250, facingMode: "environment" });
+      html5QrcodeScanner.render(onScanSuccess);
     });
-    html5QrcodeScanner.render(onScanSuccess);
     </script>
     """
     components.html(scanner_html, height=400)
