@@ -3,11 +3,6 @@ pandas
 fpdf
 qrcode
 openpyxl
-pillow
 python-docx
 pytz
-opencv-python-headless
-pyzbar
-streamlit-webrtc
-av
 streamlit-barcode-scanner
