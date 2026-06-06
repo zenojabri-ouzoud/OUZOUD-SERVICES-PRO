@@ -56,7 +56,7 @@ def fast_barcode_scanner():
     """
     components.html(scanner_html, height=400)
 
-# --- دالة إنشاء فاتورة PDF مطابقة للصورة ---
+# --- دالة إنشاء فاتورة PDF ---
 def generate_pdf(cart_data):
     pdf = FPDF(orientation='P', unit='mm', format=(80, 250)) 
     pdf.add_page()
@@ -71,7 +71,7 @@ def generate_pdf(cart_data):
     pdf.cell(60, 5, txt=f"Note: {st.session_state.system_notes}", ln=True, align='L')
     pdf.ln(5)
     pdf.set_font("Arial", 'B', 9)
-    pdf.cell(30, 7, txt="Article", border=1, align='C')
+    pdf.cell(30, 7, txt="Code", border=1, align='C')
     pdf.cell(8, 7, txt="Qté", border=1, align='C')
     pdf.cell(10, 7, txt="Prix", border=1, align='C')
     pdf.cell(12, 7, txt="Total", border=1, align='C')
@@ -79,12 +79,12 @@ def generate_pdf(cart_data):
     pdf.set_font("Arial", size=9)
     total_general = 0
     for item in cart_data:
-        name = str(item.get('Code', 'Article'))[:15] 
+        code = str(item.get('Code', 'Article'))[:15] 
         qty = str(item.get('Quantité', 0))
         prix = float(item.get('Prix', 0))
         total = float(item.get('Total', 0))
         total_general += total
-        pdf.cell(30, 6, txt=name, border=1)
+        pdf.cell(30, 6, txt=code, border=1)
         pdf.cell(8, 6, txt=qty, border=1, align='C')
         pdf.cell(10, 6, txt=f"{prix:.0f}", border=1, align='C')
         pdf.cell(12, 6, txt=f"{total:.0f}", border=1, align='C')
@@ -171,8 +171,10 @@ if menu == "Point de Vente":
             if st.session_state.cart:
                 st.table(pd.DataFrame(st.session_state.cart))
                 if st.button("🖨️ Valider et Enregistrer (Ventes)"):
+                    df_temp = pd.DataFrame(st.session_state.cart)
+                    df_temp['Date'] = datetime.now().strftime('%d/%m/%Y')
+                    save_to_sheet(df_temp, "Ventes")
                     st.session_state.last_cart = st.session_state.cart
-                    save_to_sheet(pd.DataFrame(st.session_state.cart), "Ventes")
                     st.session_state.cart = []
                     st.rerun()
     st.divider()
@@ -204,7 +206,6 @@ elif menu == "Impression":
     st.header("🖨️ Service d'Impression")
     p, n = st.number_input("Prix/Page"), st.number_input("Nombre", 1)
     if st.button("Enregistrer Impression"):
-        st.session_state.sales_total += (p * n)
         st.success("Impression enregistrée")
 elif menu == "Caisse":
     st.header("💰 Caisse")
@@ -212,7 +213,8 @@ elif menu == "Caisse":
     if not df_sales.empty:
         total_ca = df_sales['Total'].sum()
         st.metric("Total des Ventes (DH)", f"{total_ca:,.2f} DH")
-        if st.checkbox("عرض تفاصيل المبيعات"): st.table(df_sales)
+        if st.checkbox("عرض سجل المبيعات (التاريخ والمجموع)"): 
+            st.table(df_sales[['Date', 'Total']])
     else: st.info("لا توجد مبيعات مسجلة.")
 elif menu == "Credits":
     st.header("💳 Gestion des Crédits")
