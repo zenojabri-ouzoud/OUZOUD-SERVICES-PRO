@@ -148,7 +148,10 @@ if menu == "Point de Vente":
     elif mode == "Scan Caméra":
         webrtc_streamer(key="scan", video_frame_callback=video_frame_callback)
         if st.session_state.scanned_val:
-            st.write(f"الكود الممسوح: {st.session_state.scanned_val}")
+            st.warning(f"تم مسح الكود: {st.session_state.scanned_val}")
+            st.session_state.cart.append({"Code": st.session_state.scanned_val, "Quantité": 1, "Prix": 10.0, "Total": 10.0})
+            st.session_state.scanned_val = ""
+            st.rerun()
         
     elif mode == "Vente Libre":
         qty = st.number_input("Quantité:", min_value=1)
