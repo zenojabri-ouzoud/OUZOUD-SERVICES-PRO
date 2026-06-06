@@ -8,9 +8,9 @@ import qrcode
 import streamlit.components.v1 as components
 
 # --- الإعدادات العامة للمشروع ---
-st.set_page_config(layout="wide", page_title="OUZOUD 2026")
+st.set_page_config(layout="wide", page_title="OUZOUD SERVICES")
 
-# --- دوال التعامل مع CSV (بديلة لـ Google Sheets) ---
+# --- دوال التعامل مع CSV (النسخة المستقلة) ---
 def load_data(file_name):
     if os.path.exists(file_name):
         return pd.read_csv(file_name)
@@ -226,5 +226,5 @@ elif menu == "Credits":
 
 # --- ختامية النظام ---
 st.write("---")
-st.write("OUZOUD 2026 - Système de gestion professionnel")
+st.write("OUZOUD SERVICES - Système de gestion professionnel")
 st.write("Tous droits réservés © 2026")
