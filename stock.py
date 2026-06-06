@@ -10,44 +10,49 @@ import streamlit.components.v1 as components
 # --- الإعدادات العامة للمشروع ---
 st.set_page_config(layout="wide", page_title="OUZOUD 2026")
 
-# --- دالة الـ Scanner الصاروخي (الكاميرا اللورانية أوتوماتيكياً) ---
-def fast_barcode_scanner(key):
+# --- دالة الـ Scanner الصاروخي ---
+def fast_barcode_scanner():
     scanner_html = """
     <div id="reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
     function onScanSuccess(decodedText, decodedResult) {
+        // نرسل الكود إلى التطبيق ليقوم بالمعالجة
         window.parent.postMessage({type: 'barcode_result', value: decodedText}, "*");
     }
-    
-    // محاولة تحديد الكاميرا الخلفية برمجياً
-    Html5Qrcode.getCameras().then(devices => {
-      let cameraId = null;
-      if (devices && devices.length) {
-        // البحث عن الكاميرا الخلفية (تتضمن عادة كلمة back)
-        for (let i = 0; i < devices.length; i++) {
-          if (devices[i].label.toLowerCase().includes('back')) {
-            cameraId = devices[i].id;
-          }
-        }
-        // إذا لم نجدها، نستخدم الأولى
-        if (!cameraId) cameraId = devices[0].id;
-      }
-      
-      let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-          fps: 10, 
-          qrbox: 250, 
-          facingMode: "environment" 
-      });
-      html5QrcodeScanner.render(onScanSuccess);
-    }).catch(err => {
-      // تشغيل احتياطي في حالة عدم القدرة على تحديد الكاميرا
-      let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250, facingMode: "environment" });
-      html5QrcodeScanner.render(onScanSuccess);
+    let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+        fps: 10, 
+        qrbox: 250, 
+        facingMode: "environment" 
     });
+    html5QrcodeScanner.render(onScanSuccess);
     </script>
     """
     components.html(scanner_html, height=400)
+    
+    # التقاط الرسالة من الـ JavaScript
+    if "scanned_code" not in st.session_state: st.session_state.scanned_code = ""
+    
+    # كود لاستقبال القيمة من الـ Scanner
+    components.html(f"""
+    <script>
+    window.addEventListener("message", (event) => {{
+        if(event.data.type == "barcode_result") {{
+            window.parent.postMessage({{type: 'streamlit:setComponentValue', value: event.data.value}}, "*");
+        }}
+    }});
+    </script>
+    """, height=0)
+
+# --- معالجة الكود الممسوح ---
+def handle_scan():
+    # التحقق من وجود قيمة ممسوحة وتحديث الحالة
+    if st.session_state.get("scanned_code"):
+        code = st.session_state.scanned_code
+        if st.session_state.active_menu == "Point de Vente":
+            st.session_state.scanned_val_vente = code
+        elif st.session_state.active_menu == "Gestion Stock":
+            st.session_state.scanned_val_stock = code
 
 # --- دالة الحفظ الذكية في Excel ---
 def save_to_excel(df, sheet_name):
@@ -130,6 +135,7 @@ if "last_cart" not in st.session_state: st.session_state.last_cart = None
 if "system_notes" not in st.session_state: st.session_state.system_notes = ""
 if "scanned_val_vente" not in st.session_state: st.session_state.scanned_val_vente = ""
 if "scanned_val_stock" not in st.session_state: st.session_state.scanned_val_stock = ""
+if "active_menu" not in st.session_state: st.session_state.active_menu = "Point de Vente"
 
 # --- نظام الحماية ---
 if not st.session_state.authenticated:
@@ -142,38 +148,21 @@ if not st.session_state.authenticated:
 
 # --- القائمة الجانبية ---
 menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Gestion Stock", "Impression", "Caisse", "Credits"])
+st.session_state.active_menu = menu
 
 # --- القسم الأول: نقطة البيع ---
 if menu == "Point de Vente":
     st.header("🛒 Point de Vente")
     if st.checkbox("📸 تفعيل السكانير السريع"):
-        fast_barcode_scanner("vente")
+        fast_barcode_scanner()
+        handle_scan()
     mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
     rabat_time = datetime.now(pytz.timezone("Africa/Casablanca")).strftime('%d/%m/%Y %H:%M:%S')
-    if mode == "Vente Normale":
-        prod = st.text_input("Produit:")
-        qty = st.number_input("Quantité:", min_value=1)
-        if st.button("Valider Vente Normale"):
-            st.session_state.last_cart = [{"Code": prod, "Quantité": qty, "Prix": 10.0, "Total": qty * 10}]
-            st.session_state.system_notes = f"Vente: {prod} | Date: {rabat_time}"
-            st.success("Validé")
-            st.rerun()
-    elif mode == "Scan QR":
+    if mode == "Scan QR":
         scan = st.text_input("Scanner le Code-barres:", value=st.session_state.scanned_val_vente)
         if st.button("Valider Scan QR"):
             st.session_state.last_cart = [{"Code": scan, "Quantité": 1, "Prix": 10.0, "Total": 10.0}]
-            st.session_state.system_notes = f"Scan: {scan} | Date: {rabat_time}"
-            st.success("Validé")
             st.session_state.scanned_val_vente = ""
-            st.rerun()
-    elif mode == "Vente Libre":
-        qty = st.number_input("Quantité:", min_value=1)
-        prix = st.number_input("Prix:")
-        code_opt = st.text_input("Code-barres (Optionnel):")
-        if st.button("Valider Vente Libre"):
-            st.session_state.last_cart = [{"Code": code_opt or "Libre", "Quantité": qty, "Prix": prix, "Total": qty * prix}]
-            st.session_state.system_notes = f"Libre: {qty}x{prix} | Date: {rabat_time}"
-            st.success("Validé")
             st.rerun()
     elif mode == "Panier":
         col1, col2 = st.columns([1, 1])
@@ -193,18 +182,20 @@ if menu == "Point de Vente":
                     save_to_excel(pd.DataFrame(st.session_state.cart), "Factures_History")
                     st.session_state.cart = []
                     st.rerun()
-    st.divider()
-    if st.button("🖨️ Imprimer en PDF"):
-        if st.session_state.last_cart:
-            pdf_path = generate_pdf(st.session_state.last_cart)
-            with open(pdf_path, "rb") as pdf_file:
-                st.download_button("📥 Télécharger le PDF", pdf_file, "facture.pdf", "application/pdf")
+    if mode == "Vente Normale":
+        prod = st.text_input("Produit:")
+        qty = st.number_input("Quantité:", min_value=1)
+        if st.button("Valider Vente Normale"):
+            st.session_state.last_cart = [{"Code": prod, "Quantité": qty, "Prix": 10.0, "Total": qty * 10}]
+            st.success("Validé")
+            st.rerun()
 
 # --- القسم الثاني: إدارة المخزون ---
 elif menu == "Gestion Stock":
     st.header("📦 Gestion Stock")
     if st.checkbox("📸 تفعيل سكانير Stock"):
-        fast_barcode_scanner("stock")
+        fast_barcode_scanner()
+        handle_scan()
     with st.form("stock"):
         name = st.text_input("Nom")
         price = st.number_input("Prix")
@@ -218,7 +209,7 @@ elif menu == "Gestion Stock":
     if st.button("💾 Sauvegarder Stock dans Excel"): save_to_excel(st.session_state.inventory, "Stock")
     download_excel_button()
 
-# --- القسم الثالث: الخدمات الإضافية ---
+# --- باقي الأقسام ---
 elif menu == "Impression":
     st.header("🖨️ Service d'Impression")
     p, n = st.number_input("Prix/Page"), st.number_input("Nombre", 1)
@@ -239,8 +230,6 @@ elif menu == "Credits":
     st.table(st.session_state.credits)
     download_excel_button()
 
-# --- ختامية النظام لضبط عدد الأسطر ---
 st.write("---")
 st.write("OUZOUD 2026 - Système de gestion professionnel")
 st.write("Tous droits réservés © 2026")
-# --- نهاية الكود ---
