@@ -4,9 +4,6 @@ import os
 from fpdf import FPDF
 from datetime import datetime
 import pytz
-from streamlit_webrtc import webrtc_streamer
-import av
-from pyzbar.pyzbar import decode
 from streamlit_barcode_scanner import barcode_scanner
 
 # --- الإعدادات العامة ---
