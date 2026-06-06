@@ -6,3 +6,6 @@ openpyxl
 pillow
 python-docx
 pytz
+opencv-python-headless
+pyzbar
+streamlit-webrtc
