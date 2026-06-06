@@ -8,20 +8,15 @@ import qrcode
 import streamlit.components.v1 as components
 
 # --- الإعدادات العامة للمشروع ---
-st.set_page_config(layout="wide", page_title="OUZOUD 2026")
+st.set_page_config(layout="wide", page_title="OUZOUD SERVICES")
 
-# 1. تعريف الاتصال بـ Google Sheets
-# conn = st.connection("gsheets", type=GSheetsConnection)
-# SHEET_URL = st.secrets["sheet_url"]
-
-# --- دالة القراءة من السحابة ---
+# --- دوال التعامل مع CSV ---
 def load_data(file_name):
     if os.path.exists(file_name):
         return pd.read_csv(file_name)
     return pd.DataFrame()
 
-# --- دالة الحفظ الذكية ---
-def save_to_sheet(df, file_name):
+def save_to_csv(df, file_name):
     try:
         df.to_csv(file_name, index=False)
         st.success(f"تم حفظ البيانات في الملف: {file_name}")
@@ -173,7 +168,7 @@ if menu == "Point de Vente":
                     df_temp['Date'] = datetime.now().strftime('%d/%m/%Y')
                     df_old = load_data("Ventes.csv")
                     df_final = pd.concat([df_old, df_temp], ignore_index=True)
-                    save_to_sheet(df_final, "Ventes.csv")
+                    save_to_csv(df_final, "Ventes.csv")
                     st.session_state.last_cart = st.session_state.cart
                     st.session_state.cart = []
                     st.rerun()
@@ -189,11 +184,23 @@ elif menu == "Gestion Stock":
     st.header("📦 Gestion Stock")
     if st.checkbox("📸 تفعيل سكانير Stock"):
         fast_barcode_scanner()
-    # خاصية التعديل (Modifier)
+    with st.form("stock"):
+        name = st.text_input("Nom")
+        price = st.number_input("Prix")
+        qty = st.number_input("Qté")
+        barcode = st.text_input("Code-barres", value=st.session_state.scanned_val_stock)
+        if st.form_submit_button("Ajouter"):
+            df_stock = load_data("Stock.csv")
+            new_row = pd.DataFrame([[name, price, qty, barcode]], columns=["Nom", "Prix", "Quantité", "Code-barres"])
+            df_stock = pd.concat([df_stock, new_row], ignore_index=True)
+            save_to_csv(df_stock, "Stock.csv")
+            st.session_state.scanned_val_stock = ""
+            st.rerun()
+    # إضافة خاصية التعديل المباشر
     df_stock = load_data("Stock.csv")
     edited_stock = st.data_editor(df_stock, num_rows="dynamic")
     if st.button("💾 حفظ تعديلات المخزون"):
-        save_to_sheet(edited_stock, "Stock.csv")
+        save_to_csv(edited_stock, "Stock.csv")
         st.rerun()
 
 # --- القسم الثالث: الخدمات الإضافية ---
@@ -212,13 +219,22 @@ elif menu == "Caisse":
             st.table(df_sales[['Date', 'Total']])
     else: st.info("لا توجد مبيعات مسجلة.")
 
-# --- القسم الرابع: Credits (مع خاصية التعديل) ---
+# --- القسم الرابع: Credits ---
 elif menu == "Credits":
     st.header("💳 Gestion des Crédits")
+    client = st.text_input("Nom du Client")
+    montant = st.number_input("Montant (DH)")
+    if st.button("Enregistrer Crédit"):
+        df_cred = load_data("Credits.csv")
+        new_cred = pd.DataFrame([[client, montant]], columns=["Client", "Montant"])
+        df_cred = pd.concat([df_cred, new_cred], ignore_index=True)
+        save_to_csv(df_cred, "Credits.csv")
+        st.rerun()
+    # إضافة خاصية التعديل المباشر
     df_cred = load_data("Credits.csv")
     edited_cred = st.data_editor(df_cred, num_rows="dynamic")
     if st.button("💾 حفظ تعديلات الديون"):
-        save_to_sheet(edited_cred, "Credits.csv")
+        save_to_csv(edited_cred, "Credits.csv")
         st.rerun()
 
 # --- ختامية النظام ---
