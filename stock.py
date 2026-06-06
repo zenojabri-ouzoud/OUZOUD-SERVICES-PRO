@@ -5,7 +5,7 @@ from fpdf import FPDF
 from datetime import datetime
 import pytz
 import qrcode
-from streamlit-barcode-scanner import barcode-scanner
+from streamlit_barcode_scanner import barcode_scanner
 
 # --- الإعدادات العامة للمشروع ---
 st.set_page_config(layout="wide", page_title="OUZOUD 2026")
