@@ -11,6 +11,23 @@ from pyzbar.pyzbar import decode
 # --- الإعدادات العامة ---
 st.set_page_config(layout="wide")
 
+# --- دالة الكاميرا 1 ---
+def video_frame_callback_vente(frame):
+    img = frame.to_ndarray(format="bgr24")
+    for barcode in decode(img):
+        st.session_state.scanned_val_vente = barcode.data.decode('utf-8')
+    return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+# --- دالة الكاميرا 2 ---
+def video_frame_callback_stock(frame):
+    img = frame.to_ndarray(format="bgr24")
+    for barcode in decode(img):
+        st.session_state.scanned_val_stock = barcode.data.decode('utf-8')
+    return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+if "scanned_val_vente" not in st.session_state: st.session_state.scanned_val_vente = ""
+if "scanned_val_stock" not in st.session_state: st.session_state.scanned_val_stock = ""
+
 # --- دالة الحفظ الذكية في Excel ---
 def save_to_excel(df, sheet_name):
     file_name = 'ouzoud_data.xlsx'
@@ -81,13 +98,6 @@ def generate_pdf(cart_data):
     pdf.output(file_path)
     return file_path
 
-# --- دالة الكاميرا ---
-def video_frame_callback(frame):
-    img = frame.to_ndarray(format="bgr24")
-    for barcode in decode(img):
-        st.session_state.scanned_val = barcode.data.decode('utf-8')
-    return av.VideoFrame.from_ndarray(img, format="bgr24")
-
 # --- دالة تحميل البيانات ---
 def load_data(sheet_name):
     if os.path.exists('ouzoud_data.xlsx'):
@@ -109,7 +119,6 @@ if "credits" not in st.session_state: st.session_state.credits = load_data("Cred
 if "sales_total" not in st.session_state: st.session_state.sales_total = 0.0
 if "last_cart" not in st.session_state: st.session_state.last_cart = None
 if "system_notes" not in st.session_state: st.session_state.system_notes = ""
-if "scanned_val" not in st.session_state: st.session_state.scanned_val = ""
 
 # --- الحماية ---
 if not st.session_state.authenticated:
@@ -125,7 +134,10 @@ menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Gestion Stock"
 # --- 1. Point de Vente ---
 if menu == "Point de Vente":
     st.header("🛒 Point de Vente")
-    mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier", "Scan Caméra"])
+    if st.checkbox("Scan Caméra Vente"):
+        webrtc_streamer(key="vente", video_frame_callback=video_frame_callback_vente)
+    
+    mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
     rabat_time = datetime.now(pytz.timezone("Africa/Casablanca")).strftime('%d/%m/%Y %H:%M:%S')
     
     if mode == "Vente Normale":
@@ -138,21 +150,14 @@ if menu == "Point de Vente":
             st.rerun()
         
     elif mode == "Scan QR":
-        scan = st.text_input("Scanner le Code-barres:")
+        scan = st.text_input("Scanner le Code-barres:", value=st.session_state.scanned_val_vente)
         if st.button("Valider Scan QR"):
             st.session_state.last_cart = [{"Code": scan, "Quantité": 1, "Prix": 10.0, "Total": 10.0}]
             st.session_state.system_notes = f"Scan: {scan} | Date: {rabat_time}"
             st.success("Validé")
+            st.session_state.scanned_val_vente = ""
             st.rerun()
 
-    elif mode == "Scan Caméra":
-        webrtc_streamer(key="scan", video_frame_callback=video_frame_callback)
-        if st.session_state.scanned_val:
-            st.warning(f"تم مسح الكود: {st.session_state.scanned_val}")
-            st.session_state.cart.append({"Code": st.session_state.scanned_val, "Quantité": 1, "Prix": 10.0, "Total": 10.0})
-            st.session_state.scanned_val = ""
-            st.rerun()
-        
     elif mode == "Vente Libre":
         qty = st.number_input("Quantité:", min_value=1)
         prix = st.number_input("Prix:")
@@ -166,10 +171,11 @@ if menu == "Point de Vente":
     elif mode == "Panier":
         col1, col2 = st.columns([1, 1])
         with col1:
-            code = st.text_input("Scanner le Code-barres:")
+            code = st.text_input("Scanner le Code-barres:", value=st.session_state.scanned_val_vente)
             qty = st.number_input("Quantité:", min_value=1, step=1)
             if st.button("✅ Ajouter au Panier"):
                 st.session_state.cart.append({"Code": code, "Quantité": qty, "Prix": 10.0, "Total": 10.0 * qty})
+                st.session_state.scanned_val_vente = ""
                 st.rerun()
         with col2:
             if st.session_state.cart:
@@ -195,11 +201,20 @@ if menu == "Point de Vente":
 # --- 2. Gestion Stock ---
 elif menu == "Gestion Stock":
     st.header("📦 Gestion Stock")
+    if st.checkbox("Scan Caméra Stock"):
+        webrtc_streamer(key="stock", video_frame_callback=video_frame_callback_stock)
+    
     with st.form("stock"):
-        name, price, qty, barcode = st.text_input("Nom"), st.number_input("Prix"), st.number_input("Qté"), st.text_input("Code-barres")
+        name = st.text_input("Nom")
+        price = st.number_input("Prix")
+        qty = st.number_input("Qté")
+        barcode = st.text_input("Code-barres", value=st.session_state.scanned_val_stock)
+        
         if st.form_submit_button("Ajouter"):
             st.session_state.inventory = pd.concat([st.session_state.inventory, pd.DataFrame([[name, price, qty, barcode]], columns=["Nom", "Prix", "Quantité", "Code-barres"])], ignore_index=True)
+            st.session_state.scanned_val_stock = ""
             st.rerun()
+    
     st.table(st.session_state.inventory)
     if st.button("💾 Sauvegarder Stock dans Excel"): save_to_excel(st.session_state.inventory, "Stock")
     download_excel_button()
