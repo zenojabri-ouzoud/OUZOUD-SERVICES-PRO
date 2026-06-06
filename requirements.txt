@@ -4,3 +4,4 @@ fpdf
 pytz
 qrcode
 openpyxl
+streamlit-gsheets
