@@ -10,22 +10,16 @@ import streamlit.components.v1 as components
 # --- الإعدادات العامة للمشروع ---
 st.set_page_config(layout="wide", page_title="OUZOUD 2026")
 
-# 1. تعريف الاتصال بـ Google Sheets
-conn = st.connection("gsheets", type=GSheetsConnection)
-SHEET_URL = st.secrets["sheet_url"]
+# --- دوال التعامل مع CSV (بديلة لـ Google Sheets) ---
+def load_data(file_name):
+    if os.path.exists(file_name):
+        return pd.read_csv(file_name)
+    return pd.DataFrame()
 
-# --- دالة القراءة من السحابة ---
-def load_data(sheet_name):
+def save_to_csv(df, file_name):
     try:
-        return conn.read(spreadsheet=SHEET_URL, worksheet=sheet_name)
-    except:
-        return pd.DataFrame()
-
-# --- دالة الحفظ الذكية في Google Sheets ---
-def save_to_sheet(df, sheet_name):
-    try:
-        conn.update(spreadsheet=SHEET_URL, worksheet=sheet_name, data=df)
-        st.success(f"تم حفظ البيانات في الورقة: {sheet_name}")
+        df.to_csv(file_name, index=False)
+        st.success(f"تم حفظ البيانات في الملف: {file_name}")
     except Exception as e:
         st.error(f"خطأ في الحفظ: {e}")
 
@@ -103,9 +97,9 @@ def generate_pdf(cart_data):
 
 # --- تهيئة الحالة الذاكرية ---
 if "authenticated" not in st.session_state: st.session_state.authenticated = False
-if "inventory" not in st.session_state: st.session_state.inventory = load_data("Stock")
+if "inventory" not in st.session_state: st.session_state.inventory = load_data("Stock.csv")
 if "cart" not in st.session_state: st.session_state.cart = []
-if "credits" not in st.session_state: st.session_state.credits = load_data("Credits")
+if "credits" not in st.session_state: st.session_state.credits = load_data("Credits.csv")
 if "sales_total" not in st.session_state: st.session_state.sales_total = 0.0
 if "last_cart" not in st.session_state: st.session_state.last_cart = None
 if "system_notes" not in st.session_state: st.session_state.system_notes = ""
@@ -172,7 +166,9 @@ if menu == "Point de Vente":
                 if st.button("🖨️ Valider et Enregistrer (Ventes)"):
                     df_temp = pd.DataFrame(st.session_state.cart)
                     df_temp['Date'] = datetime.now().strftime('%d/%m/%Y')
-                    save_to_sheet(df_temp, "Ventes")
+                    df_old = load_data("Ventes.csv")
+                    df_final = pd.concat([df_old, df_temp], ignore_index=True)
+                    save_to_csv(df_final, "Ventes.csv")
                     st.session_state.last_cart = st.session_state.cart
                     st.session_state.cart = []
                     st.rerun()
@@ -194,11 +190,13 @@ elif menu == "Gestion Stock":
         qty = st.number_input("Qté")
         barcode = st.text_input("Code-barres", value=st.session_state.scanned_val_stock)
         if st.form_submit_button("Ajouter"):
-            st.session_state.inventory = pd.concat([st.session_state.inventory, pd.DataFrame([[name, price, qty, barcode]], columns=["Nom", "Prix", "Quantité", "Code-barres"])], ignore_index=True)
-            save_to_sheet(st.session_state.inventory, "Stock")
+            df_stock = load_data("Stock.csv")
+            new_row = pd.DataFrame([[name, price, qty, barcode]], columns=["Nom", "Prix", "Quantité", "Code-barres"])
+            df_stock = pd.concat([df_stock, new_row], ignore_index=True)
+            save_to_csv(df_stock, "Stock.csv")
             st.session_state.scanned_val_stock = ""
             st.rerun()
-    st.table(st.session_state.inventory)
+    st.table(load_data("Stock.csv"))
 
 # --- القسم الثالث: الخدمات الإضافية ---
 elif menu == "Impression":
@@ -208,7 +206,7 @@ elif menu == "Impression":
         st.success("Impression enregistrée")
 elif menu == "Caisse":
     st.header("💰 Caisse")
-    df_sales = load_data("Ventes")
+    df_sales = load_data("Ventes.csv")
     if not df_sales.empty:
         total_ca = df_sales['Total'].sum()
         st.metric("Total des Ventes (DH)", f"{total_ca:,.2f} DH")
@@ -219,10 +217,12 @@ elif menu == "Credits":
     st.header("💳 Gestion des Crédits")
     client, montant = st.text_input("Nom du Client"), st.number_input("Montant (DH)")
     if st.button("Enregistrer Crédit"):
-        st.session_state.credits = pd.concat([st.session_state.credits, pd.DataFrame([[client, montant]], columns=["Client", "Montant"])], ignore_index=True)
-        save_to_sheet(st.session_state.credits, "Credits")
+        df_cred = load_data("Credits.csv")
+        new_cred = pd.DataFrame([[client, montant]], columns=["Client", "Montant"])
+        df_cred = pd.concat([df_cred, new_cred], ignore_index=True)
+        save_to_csv(df_cred, "Credits.csv")
         st.rerun()
-    st.table(st.session_state.credits)
+    st.table(load_data("Credits.csv"))
 
 # --- ختامية النظام ---
 st.write("---")
