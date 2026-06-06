@@ -5,9 +5,25 @@ from fpdf import FPDF
 from datetime import datetime
 import pytz
 import qrcode
+import streamlit.components.v1 as components
 
 # --- الإعدادات العامة للمشروع ---
 st.set_page_config(layout="wide", page_title="OUZOUD 2026")
+
+# --- دالة الـ Scanner الصاروخي (بديل سريع جداً) ---
+def fast_barcode_scanner(key):
+    scanner_html = """
+    <div id="reader" style="width:100%"></div>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+    function onScanSuccess(decodedText, decodedResult) {
+        window.parent.postMessage({type: 'barcode_result', value: decodedText}, "*");
+    }
+    let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+    html5QrcodeScanner.render(onScanSuccess);
+    </script>
+    """
+    components.html(scanner_html, height=400)
 
 # --- دالة الحفظ الذكية في Excel ---
 def save_to_excel(df, sheet_name):
@@ -68,7 +84,7 @@ def generate_pdf(cart_data):
     pdf.output(file_path)
     return file_path
 
-# --- دوال إضافية للتنظيم ---
+# --- باقي الدوال (تم الحفاظ عليها كما هي) ---
 def load_data(sheet_name):
     if os.path.exists('ouzoud_data.xlsx'):
         try: return pd.read_excel('ouzoud_data.xlsx', sheet_name=sheet_name)
@@ -106,13 +122,12 @@ menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Gestion Stock"
 # --- القسم الأول: نقطة البيع ---
 if menu == "Point de Vente":
     st.header("🛒 Point de Vente")
-    if st.button("📸 Scan Rapide"):
-        scanned = barcode_scanner()
-        if scanned:
-            st.session_state.scanned_val_vente = scanned
-            st.rerun()
+    if st.checkbox("📸 تفعيل السكانير السريع"):
+        fast_barcode_scanner("vente")
     mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
     rabat_time = datetime.now(pytz.timezone("Africa/Casablanca")).strftime('%d/%m/%Y %H:%M:%S')
+    
+    # ... بقية الكود الخاص بيك كما هو دون أي تغيير ...
     if mode == "Vente Normale":
         prod = st.text_input("Produit:")
         qty = st.number_input("Quantité:", min_value=1)
@@ -166,11 +181,8 @@ if menu == "Point de Vente":
 # --- القسم الثاني: إدارة المخزون ---
 elif menu == "Gestion Stock":
     st.header("📦 Gestion Stock")
-    if st.button("📸 Scan Rapide Stock"):
-        scanned_stock = barcode_scanner()
-        if scanned_stock:
-            st.session_state.scanned_val_stock = scanned_stock
-            st.rerun()
+    if st.checkbox("📸 تفعيل سكانير Stock"):
+        fast_barcode_scanner("stock")
     with st.form("stock"):
         name = st.text_input("Nom")
         price = st.number_input("Prix")
@@ -205,8 +217,5 @@ elif menu == "Credits":
     st.table(st.session_state.credits)
     download_excel_button()
 
-# --- ختامية النظام لضبط عدد الأسطر ---
 st.write("---")
 st.write("OUZOUD 2026 - Système de gestion professionnel")
-st.write("Tous droits réservés © 2026")
-# --- نهاية الكود ---
