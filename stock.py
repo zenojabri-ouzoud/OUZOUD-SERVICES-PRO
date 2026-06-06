@@ -10,7 +10,7 @@ import streamlit.components.v1 as components
 # --- الإعدادات العامة للمشروع ---
 st.set_page_config(layout="wide", page_title="OUZOUD 2026")
 
-# --- دالة الـ Scanner الصاروخي (الكاميرا اللورانية) ---
+# --- دالة الـ Scanner الصاروخي (الكاميرا اللورانية أوتوماتيكياً) ---
 def fast_barcode_scanner(key):
     scanner_html = """
     <div id="reader" style="width:100%"></div>
@@ -19,8 +19,12 @@ def fast_barcode_scanner(key):
     function onScanSuccess(decodedText, decodedResult) {
         window.parent.postMessage({type: 'barcode_result', value: decodedText}, "*");
     }
-    // facingMode: "environment" هي اللي كتخلي الكاميرا اللورانية تخدم
-    let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250, facingMode: "environment" });
+    // facingMode: "environment" كتفرض الكاميرا اللورانية
+    let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+        fps: 10, 
+        qrbox: 250, 
+        facingMode: "environment" 
+    });
     html5QrcodeScanner.render(onScanSuccess);
     </script>
     """
