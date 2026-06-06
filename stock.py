@@ -184,19 +184,17 @@ elif menu == "Gestion Stock":
     st.header("📦 Gestion Stock")
     if st.checkbox("📸 تفعيل سكانير Stock"):
         fast_barcode_scanner()
-    with st.form("stock"):
+    with st.form("stock_form"):
         name = st.text_input("Nom")
         price = st.number_input("Prix")
         qty = st.number_input("Qté")
-        barcode = st.text_input("Code-barres", value=st.session_state.scanned_val_stock)
+        barcode = st.text_input("Code-barres", key="scan_input_stock")
         if st.form_submit_button("Ajouter"):
             df_stock = load_data("Stock.csv")
             new_row = pd.DataFrame([[name, price, qty, barcode]], columns=["Nom", "Prix", "Quantité", "Code-barres"])
             df_stock = pd.concat([df_stock, new_row], ignore_index=True)
             save_to_csv(df_stock, "Stock.csv")
-            st.session_state.scanned_val_stock = ""
             st.rerun()
-    # إضافة خاصية التعديل المباشر
     df_stock = load_data("Stock.csv")
     edited_stock = st.data_editor(df_stock, num_rows="dynamic")
     if st.button("💾 حفظ تعديلات المخزون"):
@@ -230,7 +228,6 @@ elif menu == "Credits":
         df_cred = pd.concat([df_cred, new_cred], ignore_index=True)
         save_to_csv(df_cred, "Credits.csv")
         st.rerun()
-    # إضافة خاصية التعديل المباشر
     df_cred = load_data("Credits.csv")
     edited_cred = st.data_editor(df_cred, num_rows="dynamic")
     if st.button("💾 حفظ تعديلات الديون"):
