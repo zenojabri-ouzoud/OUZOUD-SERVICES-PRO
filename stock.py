@@ -6,9 +6,29 @@ from datetime import datetime
 import pytz
 import qrcode
 import streamlit.components.v1 as components
+from streamlit_gsheets import GSheetsConnection
 
 # --- الإعدادات العامة للمشروع ---
 st.set_page_config(layout="wide", page_title="OUZOUD 2026")
+
+# 1. تعريف الاتصال بـ Google Sheets
+conn = st.connection("gsheets", type=GSheetsConnection)
+SHEET_URL = st.secrets["sheet_url"]
+
+# --- دالة القراءة من السحابة ---
+def load_data(sheet_name):
+    try:
+        return conn.read(spreadsheet=SHEET_URL, worksheet=sheet_name)
+    except:
+        return pd.DataFrame()
+
+# --- دالة الحفظ الذكية في Google Sheets ---
+def save_to_sheet(df, sheet_name):
+    try:
+        conn.update(spreadsheet=SHEET_URL, worksheet=sheet_name, data=df)
+        st.success(f"تم حفظ البيانات في الورقة: {sheet_name}")
+    except Exception as e:
+        st.error(f"خطأ في الحفظ: {e}")
 
 # --- دالة الـ Scanner الصاروخي ---
 def fast_barcode_scanner():
@@ -17,9 +37,7 @@ def fast_barcode_scanner():
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
     function onScanSuccess(decodedText, decodedResult) {
-        // البحث عن جميع خانات الإدخال في الصفحة
         const inputs = window.parent.document.querySelectorAll('input[type="text"]');
-        // محاولة إيجاد الخانة التي تحتوي على "code" (أي خانة كود بار)
         for (let input of inputs) {
             if (input.getAttribute('aria-label') && input.getAttribute('aria-label').toLowerCase().includes('code')) {
                 input.value = decodedText;
@@ -38,32 +56,13 @@ def fast_barcode_scanner():
     """
     components.html(scanner_html, height=400)
 
-# --- دالة الحفظ الذكية في Excel ---
-def save_to_excel(df, sheet_name):
-    file_name = 'ouzoud_data.xlsx'
-    try:
-        if os.path.exists(file_name):
-            with pd.ExcelWriter(file_name, mode='a', engine='openpyxl', if_sheet_exists='replace') as writer:
-                df.to_excel(writer, sheet_name=sheet_name, index=False)
-        else:
-            with pd.ExcelWriter(file_name, mode='w', engine='openpyxl') as writer:
-                df.to_excel(writer, sheet_name=sheet_name, index=False)
-        st.success(f"تم حفظ البيانات في الورقة: {sheet_name}")
-    except Exception as e:
-        st.error(f"خطأ في الحفظ: {e}")
-
 # --- دالة إنشاء فاتورة PDF مطابقة للصورة ---
 def generate_pdf(cart_data):
-    # إعداد الصفحة بقياس عمودي
     pdf = FPDF(orientation='P', unit='mm', format=(80, 250)) 
     pdf.add_page()
-    
-    # --- العنوان ---
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(60, 10, txt="OUZOUD SERVICES", ln=True, align='C')
     pdf.cell(60, 5, txt="--------------------------------", ln=True, align='C')
-    
-    # --- التاريخ والوقت والملاحظة ---
     rabat_tz = pytz.timezone("Africa/Casablanca")
     now = datetime.now(rabat_tz)
     pdf.set_font("Arial", size=9)
@@ -71,15 +70,12 @@ def generate_pdf(cart_data):
     pdf.cell(60, 5, txt=f"Heure: {now.strftime('%H:%M:%S')}", ln=True, align='L')
     pdf.cell(60, 5, txt=f"Note: {st.session_state.system_notes}", ln=True, align='L')
     pdf.ln(5)
-
-    # --- الجدول (Article, Qté, Prix, Total) ---
     pdf.set_font("Arial", 'B', 9)
     pdf.cell(30, 7, txt="Article", border=1, align='C')
     pdf.cell(8, 7, txt="Qté", border=1, align='C')
     pdf.cell(10, 7, txt="Prix", border=1, align='C')
     pdf.cell(12, 7, txt="Total", border=1, align='C')
     pdf.ln(7)
-    
     pdf.set_font("Arial", size=9)
     total_general = 0
     for item in cart_data:
@@ -88,43 +84,23 @@ def generate_pdf(cart_data):
         prix = float(item.get('Prix', 0))
         total = float(item.get('Total', 0))
         total_general += total
-        
         pdf.cell(30, 6, txt=name, border=1)
         pdf.cell(8, 6, txt=qty, border=1, align='C')
         pdf.cell(10, 6, txt=f"{prix:.0f}", border=1, align='C')
         pdf.cell(12, 6, txt=f"{total:.0f}", border=1, align='C')
         pdf.ln(6)
-    
-    # --- المجموع ---
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(60, 8, txt=f"TOTAL: {total_general:.2f} DH", ln=True, align='R')
     pdf.ln(10)
-    
-    # --- معلومات الاتصال في الأسفل ---
     pdf.set_font("Arial", size=9)
     pdf.cell(60, 5, txt="Tel: 07.81.02.82.43", ln=True, align='C')
     pdf.cell(60, 5, txt="Email: maaridprint@gmail.com", ln=True, align='C')
     pdf.ln(5)
-    
-    # --- رسالة الوداع ---
     pdf.set_font("Arial", 'I', 9)
     pdf.cell(60, 5, txt="Merci pour votre visite!", ln=True, align='C')
-    
     file_path = "facture.pdf"
     pdf.output(file_path)
     return file_path
-
-# --- دوال إضافية للتنظيم ---
-def load_data(sheet_name):
-    if os.path.exists('ouzoud_data.xlsx'):
-        try: return pd.read_excel('ouzoud_data.xlsx', sheet_name=sheet_name)
-        except: return pd.DataFrame()
-    return pd.DataFrame()
-
-def download_excel_button():
-    if os.path.exists('ouzoud_data.xlsx'):
-        with open("ouzoud_data.xlsx", "rb") as file:
-            st.download_button(label="📥 Télécharger le fichier Excel global", data=file, file_name="ouzoud_data.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 # --- تهيئة الحالة الذاكرية ---
 if "authenticated" not in st.session_state: st.session_state.authenticated = False
@@ -154,10 +130,7 @@ if menu == "Point de Vente":
     st.header("🛒 Point de Vente")
     if st.checkbox("📸 تفعيل السكانير السريع"):
         fast_barcode_scanner()
-    
-    # الخانة اللي طلبتي باش السيستم يكتب فيها وتشوفها باش تطبع
     st.session_state.system_notes = st.text_input("📝 ملاحظة الفاتورة (التي ستطبع):", value=st.session_state.system_notes)
-    
     mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
     rabat_time = datetime.now(pytz.timezone("Africa/Casablanca")).strftime('%d/%m/%Y %H:%M:%S')
     if mode == "Vente Normale":
@@ -197,10 +170,9 @@ if menu == "Point de Vente":
         with col2:
             if st.session_state.cart:
                 st.table(pd.DataFrame(st.session_state.cart))
-                if st.button("🖨️ Valider et Enregistrer (Facture)"):
+                if st.button("🖨️ Valider et Enregistrer (Ventes)"):
                     st.session_state.last_cart = st.session_state.cart
-                    st.session_state.sales_total += pd.DataFrame(st.session_state.cart)['Total'].sum()
-                    save_to_excel(pd.DataFrame(st.session_state.cart), "Factures_History")
+                    save_to_sheet(pd.DataFrame(st.session_state.cart), "Ventes")
                     st.session_state.cart = []
                     st.rerun()
     st.divider()
@@ -222,11 +194,10 @@ elif menu == "Gestion Stock":
         barcode = st.text_input("Code-barres", value=st.session_state.scanned_val_stock)
         if st.form_submit_button("Ajouter"):
             st.session_state.inventory = pd.concat([st.session_state.inventory, pd.DataFrame([[name, price, qty, barcode]], columns=["Nom", "Prix", "Quantité", "Code-barres"])], ignore_index=True)
+            save_to_sheet(st.session_state.inventory, "Stock")
             st.session_state.scanned_val_stock = ""
             st.rerun()
     st.table(st.session_state.inventory)
-    if st.button("💾 Sauvegarder Stock dans Excel"): save_to_excel(st.session_state.inventory, "Stock")
-    download_excel_button()
 
 # --- القسم الثالث: الخدمات الإضافية ---
 elif menu == "Impression":
@@ -235,19 +206,22 @@ elif menu == "Impression":
     if st.button("Enregistrer Impression"):
         st.session_state.sales_total += (p * n)
         st.success("Impression enregistrée")
-    download_excel_button()
 elif menu == "Caisse":
     st.header("💰 Caisse")
-    st.metric("Total", f"{st.session_state.sales_total} DH")
-    download_excel_button()
+    df_sales = load_data("Ventes")
+    if not df_sales.empty:
+        total_ca = df_sales['Total'].sum()
+        st.metric("Total des Ventes (DH)", f"{total_ca:,.2f} DH")
+        if st.checkbox("عرض تفاصيل المبيعات"): st.table(df_sales)
+    else: st.info("لا توجد مبيعات مسجلة.")
 elif menu == "Credits":
     st.header("💳 Gestion des Crédits")
     client, montant = st.text_input("Nom du Client"), st.number_input("Montant (DH)")
     if st.button("Enregistrer Crédit"):
         st.session_state.credits = pd.concat([st.session_state.credits, pd.DataFrame([[client, montant]], columns=["Client", "Montant"])], ignore_index=True)
+        save_to_sheet(st.session_state.credits, "Credits")
         st.rerun()
     st.table(st.session_state.credits)
-    download_excel_button()
 
 # --- ختامية النظام ---
 st.write("---")
