@@ -3,6 +3,5 @@ pandas
 fpdf
 qrcode
 openpyxl
-python-docx
 pytz
 streamlit-barcode-scanner
