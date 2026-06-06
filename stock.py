@@ -52,29 +52,29 @@ def save_to_excel(df, sheet_name):
     except Exception as e:
         st.error(f"خطأ في الحفظ: {e}")
 
-# --- دالة إنشاء فاتورة PDF احترافية (المعدلة) ---
+# --- دالة إنشاء فاتورة PDF مطابقة للصورة ---
 def generate_pdf(cart_data):
+    # إعداد الصفحة بقياس عمودي
     pdf = FPDF(orientation='P', unit='mm', format=(80, 250)) 
     pdf.add_page()
     
-    # العنوان
+    # --- العنوان ---
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(60, 10, txt="OUZOUD SERVICES", ln=True, align='C')
-    pdf.set_font("Arial", size=10)
-    pdf.cell(60, 5, txt="Rabat, Maroc", ln=True, align='C')
     pdf.cell(60, 5, txt="--------------------------------", ln=True, align='C')
     
-    # التاريخ والوقت
+    # --- التاريخ والوقت والملاحظة ---
     rabat_tz = pytz.timezone("Africa/Casablanca")
     now = datetime.now(rabat_tz)
     pdf.set_font("Arial", size=9)
     pdf.cell(60, 5, txt=f"Date: {now.strftime('%d/%m/%Y')}", ln=True, align='L')
     pdf.cell(60, 5, txt=f"Heure: {now.strftime('%H:%M:%S')}", ln=True, align='L')
-    pdf.ln(2)
+    pdf.cell(60, 5, txt=f"Note: {st.session_state.system_notes}", ln=True, align='L')
+    pdf.ln(5)
 
-    # الجدول
+    # --- الجدول (Article, Qté, Prix, Total) ---
     pdf.set_font("Arial", 'B', 9)
-    pdf.cell(30, 7, txt="Article", border=1)
+    pdf.cell(30, 7, txt="Article", border=1, align='C')
     pdf.cell(8, 7, txt="Qté", border=1, align='C')
     pdf.cell(10, 7, txt="Prix", border=1, align='C')
     pdf.cell(12, 7, txt="Total", border=1, align='C')
@@ -95,18 +95,18 @@ def generate_pdf(cart_data):
         pdf.cell(12, 6, txt=f"{total:.0f}", border=1, align='C')
         pdf.ln(6)
     
-    # المجموع
+    # --- المجموع ---
     pdf.set_font("Arial", 'B', 11)
-    pdf.cell(48, 8, txt=f"TOTAL: {total_general:.2f} DH", border=1, align='R')
+    pdf.cell(60, 8, txt=f"TOTAL: {total_general:.2f} DH", ln=True, align='R')
     pdf.ln(10)
     
-    # معلومات الاتصال في الأسفل
-    pdf.set_font("Arial", 'B', 9)
-    pdf.cell(60, 5, txt="Contact:", ln=True, align='C')
+    # --- معلومات الاتصال في الأسفل (كما في الصورة) ---
     pdf.set_font("Arial", size=9)
     pdf.cell(60, 5, txt="Tel: 07.81.02.82.43", ln=True, align='C')
     pdf.cell(60, 5, txt="Email: maaridprint@gmail.com", ln=True, align='C')
     pdf.ln(5)
+    
+    # --- رسالة الوداع ---
     pdf.set_font("Arial", 'I', 9)
     pdf.cell(60, 5, txt="Merci pour votre visite!", ln=True, align='C')
     
