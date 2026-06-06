@@ -6,7 +6,6 @@ from datetime import datetime
 import pytz
 import qrcode
 import streamlit.components.v1 as components
-from streamlit_gsheets import GSheetsConnection
 
 # --- الإعدادات العامة للمشروع ---
 st.set_page_config(layout="wide", page_title="OUZOUD 2026")
