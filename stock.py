@@ -135,7 +135,8 @@ menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Gestion Stock"
 if menu == "Point de Vente":
     st.header("🛒 Point de Vente")
     if st.checkbox("Scan Caméra Vente"):
-        webrtc_streamer(key="vente", video_frame_callback=video_frame_callback_vente)
+        webrtc_streamer(key="vente", video_frame_callback=video_frame_callback_vente,
+            media_stream_constraints={"video": {"facingMode": {"exact": "environment"}}, "audio": False})
     
     mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
     rabat_time = datetime.now(pytz.timezone("Africa/Casablanca")).strftime('%d/%m/%Y %H:%M:%S')
@@ -202,7 +203,8 @@ if menu == "Point de Vente":
 elif menu == "Gestion Stock":
     st.header("📦 Gestion Stock")
     if st.checkbox("Scan Caméra Stock"):
-        webrtc_streamer(key="stock", video_frame_callback=video_frame_callback_stock)
+        webrtc_streamer(key="stock", video_frame_callback=video_frame_callback_stock,
+            media_stream_constraints={"video": {"facingMode": {"exact": "environment"}}, "audio": False})
     
     with st.form("stock"):
         name = st.text_input("Nom")
