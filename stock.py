@@ -7,6 +7,7 @@ import pytz
 from streamlit_webrtc import webrtc_streamer
 import av
 from pyzbar.pyzbar import decode
+from streamlit_barcode_scanner import barcode_scanner
 
 # --- الإعدادات العامة ---
 st.set_page_config(layout="wide")
@@ -138,6 +139,13 @@ if menu == "Point de Vente":
         webrtc_streamer(key="vente", video_frame_callback=video_frame_callback_vente,
             media_stream_constraints={"video": {"facingMode": {"exact": "environment"}}, "audio": False})
     
+    # إضافة الماسح السريع الجديد
+    if st.button("📸 Scan Rapide (Point de Vente)"):
+        scanned = barcode_scanner()
+        if scanned:
+            st.session_state.scanned_val_vente = scanned
+            st.rerun()
+    
     mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
     rabat_time = datetime.now(pytz.timezone("Africa/Casablanca")).strftime('%d/%m/%Y %H:%M:%S')
     
@@ -205,6 +213,13 @@ elif menu == "Gestion Stock":
     if st.checkbox("Scan Caméra Stock"):
         webrtc_streamer(key="stock", video_frame_callback=video_frame_callback_stock,
             media_stream_constraints={"video": {"facingMode": {"exact": "environment"}}, "audio": False})
+    
+    # إضافة الماسح السريع الجديد للستوك
+    if st.button("📸 Scan Rapide (Stock)"):
+        scanned_stock = barcode_scanner()
+        if scanned_stock:
+            st.session_state.scanned_val_stock = scanned_stock
+            st.rerun()
     
     with st.form("stock"):
         name = st.text_input("Nom")
