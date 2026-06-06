@@ -3,4 +3,4 @@ pandas
 fpdf
 pytz
 qrcode
-barcode-scanner
+streamlit-barcode-scanner
