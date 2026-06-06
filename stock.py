@@ -4,6 +4,9 @@ import os
 from fpdf import FPDF
 from datetime import datetime
 import pytz
+from streamlit_webrtc import webrtc_streamer
+import av
+from pyzbar.pyzbar import decode
 
 # --- الإعدادات العامة ---
 st.set_page_config(layout="wide")
@@ -78,6 +81,13 @@ def generate_pdf(cart_data):
     pdf.output(file_path)
     return file_path
 
+# --- دالة الكاميرا ---
+def video_frame_callback(frame):
+    img = frame.to_ndarray(format="bgr24")
+    for barcode in decode(img):
+        st.session_state.scanned_val = barcode.data.decode('utf-8')
+    return av.VideoFrame.from_ndarray(img, format="bgr24")
+
 # --- دالة تحميل البيانات ---
 def load_data(sheet_name):
     if os.path.exists('ouzoud_data.xlsx'):
@@ -99,6 +109,7 @@ if "credits" not in st.session_state: st.session_state.credits = load_data("Cred
 if "sales_total" not in st.session_state: st.session_state.sales_total = 0.0
 if "last_cart" not in st.session_state: st.session_state.last_cart = None
 if "system_notes" not in st.session_state: st.session_state.system_notes = ""
+if "scanned_val" not in st.session_state: st.session_state.scanned_val = ""
 
 # --- الحماية ---
 if not st.session_state.authenticated:
@@ -114,7 +125,7 @@ menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Gestion Stock"
 # --- 1. Point de Vente ---
 if menu == "Point de Vente":
     st.header("🛒 Point de Vente")
-    mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
+    mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier", "Scan Caméra"])
     rabat_time = datetime.now(pytz.timezone("Africa/Casablanca")).strftime('%d/%m/%Y %H:%M:%S')
     
     if mode == "Vente Normale":
@@ -133,6 +144,11 @@ if menu == "Point de Vente":
             st.session_state.system_notes = f"Scan: {scan} | Date: {rabat_time}"
             st.success("Validé")
             st.rerun()
+
+    elif mode == "Scan Caméra":
+        webrtc_streamer(key="scan", video_frame_callback=video_frame_callback)
+        if st.session_state.scanned_val:
+            st.write(f"الكود الممسوح: {st.session_state.scanned_val}")
         
     elif mode == "Vente Libre":
         qty = st.number_input("Quantité:", min_value=1)
