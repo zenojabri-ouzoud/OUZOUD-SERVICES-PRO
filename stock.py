@@ -100,7 +100,7 @@ def generate_pdf(cart_data):
     pdf.cell(60, 8, txt=f"TOTAL: {total_general:.2f} DH", ln=True, align='R')
     pdf.ln(10)
     
-    # --- معلومات الاتصال في الأسفل (كما في الصورة) ---
+    # --- معلومات الاتصال في الأسفل ---
     pdf.set_font("Arial", size=9)
     pdf.cell(60, 5, txt="Tel: 07.81.02.82.43", ln=True, align='C')
     pdf.cell(60, 5, txt="Email: maaridprint@gmail.com", ln=True, align='C')
@@ -154,6 +154,10 @@ if menu == "Point de Vente":
     st.header("🛒 Point de Vente")
     if st.checkbox("📸 تفعيل السكانير السريع"):
         fast_barcode_scanner()
+    
+    # الخانة اللي طلبتي باش السيستم يكتب فيها وتشوفها باش تطبع
+    st.session_state.system_notes = st.text_input("📝 ملاحظة الفاتورة (التي ستطبع):", value=st.session_state.system_notes)
+    
     mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
     rabat_time = datetime.now(pytz.timezone("Africa/Casablanca")).strftime('%d/%m/%Y %H:%M:%S')
     if mode == "Vente Normale":
