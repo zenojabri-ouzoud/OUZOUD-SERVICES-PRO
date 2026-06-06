@@ -61,23 +61,28 @@ def generate_pdf(cart_data):
     pdf.set_font("Arial", size=9)
     pdf.cell(60, 5, txt=f"Date: {now.strftime('%d/%m/%Y')}", ln=True, align='L')
     pdf.cell(60, 5, txt=f"Heure: {now.strftime('%H:%M:%S')}", ln=True, align='L')
-    pdf.cell(60, 5, txt=f"Note: {st.session_state.system_notes}", ln=True, align='L')
     pdf.ln(5)
     pdf.set_font("Arial", 'B', 9)
-    pdf.cell(30, 7, txt="Code", border=1, align='C')
+    pdf.cell(30, 7, txt="Produit", border=1, align='C')
     pdf.cell(8, 7, txt="Qté", border=1, align='C')
     pdf.cell(10, 7, txt="Prix", border=1, align='C')
     pdf.cell(12, 7, txt="Total", border=1, align='C')
     pdf.ln(7)
     pdf.set_font("Arial", size=9)
     total_general = 0
+    df_stock = load_data("Stock.csv")
     for item in cart_data:
-        code = str(item.get('Code', 'Article'))[:15] 
+        code = str(item.get('Code', ''))
+        nom = "Inconnu"
+        if not df_stock.empty and 'Code-barres' in df_stock.columns:
+            match = df_stock[df_stock['Code-barres'].astype(str) == code]
+            if not match.empty:
+                nom = str(match.iloc[0]['Nom'])
         qty = str(item.get('Quantité', 0))
         prix = float(item.get('Prix', 0))
         total = float(item.get('Total', 0))
         total_general += total
-        pdf.cell(30, 6, txt=code, border=1)
+        pdf.cell(30, 6, txt=nom[:15], border=1)
         pdf.cell(8, 6, txt=qty, border=1, align='C')
         pdf.cell(10, 6, txt=f"{prix:.0f}", border=1, align='C')
         pdf.cell(12, 6, txt=f"{total:.0f}", border=1, align='C')
@@ -102,7 +107,6 @@ if "cart" not in st.session_state: st.session_state.cart = []
 if "credits" not in st.session_state: st.session_state.credits = load_data("Credits.csv")
 if "sales_total" not in st.session_state: st.session_state.sales_total = 0.0
 if "last_cart" not in st.session_state: st.session_state.last_cart = None
-if "system_notes" not in st.session_state: st.session_state.system_notes = ""
 if "scanned_val_vente" not in st.session_state: st.session_state.scanned_val_vente = ""
 if "scanned_val_stock" not in st.session_state: st.session_state.scanned_val_stock = ""
 
@@ -123,22 +127,18 @@ if menu == "Point de Vente":
     st.header("🛒 Point de Vente")
     if st.checkbox("📸 تفعيل السكانير السريع"):
         fast_barcode_scanner()
-    st.session_state.system_notes = st.text_input("📝 ملاحظة الفاتورة (التي ستطبع):", value=st.session_state.system_notes)
     mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
-    rabat_time = datetime.now(pytz.timezone("Africa/Casablanca")).strftime('%d/%m/%Y %H:%M:%S')
     if mode == "Vente Normale":
         prod = st.text_input("Produit:")
         qty = st.number_input("Quantité:", min_value=1)
         if st.button("Valider Vente Normale"):
             st.session_state.last_cart = [{"Code": prod, "Quantité": qty, "Prix": 10.0, "Total": qty * 10}]
-            st.session_state.system_notes = f"Vente: {prod} | Date: {rabat_time}"
             st.success("Validé")
             st.rerun()
     elif mode == "Scan QR":
         scan = st.text_input("Scanner le Code-barres:", value=st.session_state.scanned_val_vente)
         if st.button("Valider Scan QR"):
             st.session_state.last_cart = [{"Code": scan, "Quantité": 1, "Prix": 10.0, "Total": 10.0}]
-            st.session_state.system_notes = f"Scan: {scan} | Date: {rabat_time}"
             st.success("Validé")
             st.session_state.scanned_val_vente = ""
             st.rerun()
@@ -148,7 +148,6 @@ if menu == "Point de Vente":
         code_opt = st.text_input("Code-barres (Optionnel):")
         if st.button("Valider Vente Libre"):
             st.session_state.last_cart = [{"Code": code_opt or "Libre", "Quantité": qty, "Prix": prix, "Total": qty * prix}]
-            st.session_state.system_notes = f"Libre: {qty}x{prix} | Date: {rabat_time}"
             st.success("Validé")
             st.rerun()
     elif mode == "Panier":
