@@ -4,4 +4,4 @@ fpdf
 pytz
 openpyxl
 qrcode
-streamlit_barcode_scanner
+streamlit-barcode-scanner
