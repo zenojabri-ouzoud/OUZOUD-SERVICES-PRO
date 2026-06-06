@@ -10,7 +10,7 @@ import streamlit.components.v1 as components
 # --- الإعدادات العامة للمشروع ---
 st.set_page_config(layout="wide", page_title="OUZOUD 2026")
 
-# --- دالة الـ Scanner الصاروخي (بديل سريع جداً) ---
+# --- دالة الـ Scanner الصاروخي (الكاميرا اللورانية) ---
 def fast_barcode_scanner(key):
     scanner_html = """
     <div id="reader" style="width:100%"></div>
@@ -19,7 +19,8 @@ def fast_barcode_scanner(key):
     function onScanSuccess(decodedText, decodedResult) {
         window.parent.postMessage({type: 'barcode_result', value: decodedText}, "*");
     }
-    let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+    // facingMode: "environment" هي اللي كتخلي الكاميرا اللورانية تخدم
+    let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250, facingMode: "environment" });
     html5QrcodeScanner.render(onScanSuccess);
     </script>
     """
@@ -84,7 +85,7 @@ def generate_pdf(cart_data):
     pdf.output(file_path)
     return file_path
 
-# --- باقي الدوال (تم الحفاظ عليها كما هي) ---
+# --- دوال إضافية للتنظيم ---
 def load_data(sheet_name):
     if os.path.exists('ouzoud_data.xlsx'):
         try: return pd.read_excel('ouzoud_data.xlsx', sheet_name=sheet_name)
@@ -126,8 +127,6 @@ if menu == "Point de Vente":
         fast_barcode_scanner("vente")
     mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
     rabat_time = datetime.now(pytz.timezone("Africa/Casablanca")).strftime('%d/%m/%Y %H:%M:%S')
-    
-    # ... بقية الكود الخاص بيك كما هو دون أي تغيير ...
     if mode == "Vente Normale":
         prod = st.text_input("Produit:")
         qty = st.number_input("Quantité:", min_value=1)
@@ -217,5 +216,8 @@ elif menu == "Credits":
     st.table(st.session_state.credits)
     download_excel_button()
 
+# --- ختامية النظام لضبط عدد الأسطر ---
 st.write("---")
 st.write("OUZOUD 2026 - Système de gestion professionnel")
+st.write("Tous droits réservés © 2026")
+# --- نهاية الكود ---
