@@ -19,9 +19,17 @@ def load_data(file_name):
 def save_to_csv(df, file_name):
     try:
         df.to_csv(file_name, index=False)
-        st.success(f"تم حفظ البيانات في الملف: {file_name}")
     except Exception as e:
         st.error(f"خطأ في الحفظ: {e}")
+
+# --- دالة البحث عن المنتج (لربط السكانر ببيانات المخزون) ---
+def get_product_from_stock(barcode):
+    df = load_data("Stock.csv")
+    if not df.empty and 'Code-barres' in df.columns:
+        match = df[df['Code-barres'].astype(str) == str(barcode)]
+        if not match.empty:
+            return match.iloc[0]['Nom'], float(match.iloc[0]['Prix'])
+    return "Inconnu", 0.0
 
 # --- دالة الـ Scanner الصاروخي ---
 def fast_barcode_scanner():
@@ -73,11 +81,7 @@ def generate_pdf(cart_data):
     df_stock = load_data("Stock.csv")
     for item in cart_data:
         code = str(item.get('Code', ''))
-        nom = "Inconnu"
-        if not df_stock.empty and 'Code-barres' in df_stock.columns:
-            match = df_stock[df_stock['Code-barres'].astype(str) == code]
-            if not match.empty:
-                nom = str(match.iloc[0]['Nom'])
+        nom, _ = get_product_from_stock(code)
         qty = str(item.get('Quantité', 0))
         prix = float(item.get('Prix', 0))
         total = float(item.get('Total', 0))
@@ -102,13 +106,9 @@ def generate_pdf(cart_data):
 
 # --- تهيئة الحالة الذاكرية ---
 if "authenticated" not in st.session_state: st.session_state.authenticated = False
-if "inventory" not in st.session_state: st.session_state.inventory = load_data("Stock.csv")
 if "cart" not in st.session_state: st.session_state.cart = []
-if "credits" not in st.session_state: st.session_state.credits = load_data("Credits.csv")
-if "sales_total" not in st.session_state: st.session_state.sales_total = 0.0
 if "last_cart" not in st.session_state: st.session_state.last_cart = None
 if "scanned_val_vente" not in st.session_state: st.session_state.scanned_val_vente = ""
-if "scanned_val_stock" not in st.session_state: st.session_state.scanned_val_stock = ""
 
 # --- نظام الحماية ---
 if not st.session_state.authenticated:
@@ -127,53 +127,29 @@ if menu == "Point de Vente":
     st.header("🛒 Point de Vente")
     if st.checkbox("📸 تفعيل السكانير السريع"):
         fast_barcode_scanner()
-    mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
-    if mode == "Vente Normale":
-        prod = st.text_input("Produit:")
-        qty = st.number_input("Quantité:", min_value=1)
-        if st.button("Valider Vente Normale"):
-            st.session_state.last_cart = [{"Code": prod, "Quantité": qty, "Prix": 10.0, "Total": qty * 10}]
-            st.success("Validé")
+    
+    code = st.text_input("Scanner le Code-barres:", value=st.session_state.scanned_val_vente)
+    if code:
+        nom_prod, prix_prod = get_product_from_stock(code)
+        st.info(f"Produit: {nom_prod} | Prix: {prix_prod} DH")
+        qty = st.number_input("Quantité:", min_value=1, step=1)
+        if st.button("✅ Ajouter au Panier"):
+            st.session_state.cart.append({"Code": code, "Quantité": qty, "Prix": prix_prod, "Total": prix_prod * qty})
             st.rerun()
-    elif mode == "Scan QR":
-        scan = st.text_input("Scanner le Code-barres:", value=st.session_state.scanned_val_vente)
-        if st.button("Valider Scan QR"):
-            st.session_state.last_cart = [{"Code": scan, "Quantité": 1, "Prix": 10.0, "Total": 10.0}]
-            st.success("Validé")
-            st.session_state.scanned_val_vente = ""
+            
+    if st.session_state.cart:
+        st.table(pd.DataFrame(st.session_state.cart))
+        if st.button("🖨️ Valider et Enregistrer (Ventes)"):
+            df_temp = pd.DataFrame(st.session_state.cart)
+            df_temp['Date'] = datetime.now().strftime('%d/%m/%Y')
+            df_old = load_data("Ventes.csv")
+            df_final = pd.concat([df_old, df_temp], ignore_index=True)
+            save_to_csv(df_final, "Ventes.csv")
+            st.session_state.last_cart = st.session_state.cart
+            st.session_state.cart = []
             st.rerun()
-    elif mode == "Vente Libre":
-        qty = st.number_input("Quantité:", min_value=1)
-        prix = st.number_input("Prix:")
-        code_opt = st.text_input("Code-barres (Optionnel):")
-        if st.button("Valider Vente Libre"):
-            st.session_state.last_cart = [{"Code": code_opt or "Libre", "Quantité": qty, "Prix": prix, "Total": qty * prix}]
-            st.success("Validé")
-            st.rerun()
-    elif mode == "Panier":
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            code = st.text_input("Scanner le Code-barres:", value=st.session_state.scanned_val_vente)
-            qty = st.number_input("Quantité:", min_value=1, step=1)
-            if st.button("✅ Ajouter au Panier"):
-                st.session_state.cart.append({"Code": code, "Quantité": qty, "Prix": 10.0, "Total": 10.0 * qty})
-                st.session_state.scanned_val_vente = ""
-                st.rerun()
-        with col2:
-            if st.session_state.cart:
-                st.table(pd.DataFrame(st.session_state.cart))
-                if st.button("🖨️ Valider et Enregistrer (Ventes)"):
-                    df_temp = pd.DataFrame(st.session_state.cart)
-                    df_temp['Date'] = datetime.now().strftime('%d/%m/%Y')
-                    df_old = load_data("Ventes.csv")
-                    df_final = pd.concat([df_old, df_temp], ignore_index=True)
-                    save_to_csv(df_final, "Ventes.csv")
-                    st.session_state.last_cart = st.session_state.cart
-                    st.session_state.cart = []
-                    st.rerun()
-    st.divider()
-    if st.button("🖨️ Imprimer en PDF"):
-        if st.session_state.last_cart:
+    if st.session_state.last_cart:
+        if st.button("🖨️ Imprimer en PDF"):
             pdf_path = generate_pdf(st.session_state.last_cart)
             with open(pdf_path, "rb") as pdf_file:
                 st.download_button("📥 Télécharger le PDF", pdf_file, "facture.pdf", "application/pdf")
@@ -187,7 +163,7 @@ elif menu == "Gestion Stock":
         name = st.text_input("Nom")
         price = st.number_input("Prix")
         qty = st.number_input("Qté")
-        barcode = st.text_input("Code-barres", key="scan_input_stock")
+        barcode = st.text_input("Code-barres")
         if st.form_submit_button("Ajouter"):
             df_stock = load_data("Stock.csv")
             new_row = pd.DataFrame([[name, price, qty, barcode]], columns=["Nom", "Prix", "Quantité", "Code-barres"])
@@ -200,23 +176,23 @@ elif menu == "Gestion Stock":
         save_to_csv(edited_stock, "Stock.csv")
         st.rerun()
 
-# --- القسم الثالث: الخدمات الإضافية ---
+# --- القسم الثالث: الطباعة ---
 elif menu == "Impression":
     st.header("🖨️ Service d'Impression")
     p, n = st.number_input("Prix/Page"), st.number_input("Nombre", 1)
     if st.button("Enregistrer Impression"):
         st.success("Impression enregistrée")
+
+# --- القسم الرابع: الكايس ---
 elif menu == "Caisse":
     st.header("💰 Caisse")
     df_sales = load_data("Ventes.csv")
     if not df_sales.empty:
         total_ca = df_sales['Total'].sum()
         st.metric("Total des Ventes (DH)", f"{total_ca:,.2f} DH")
-        if st.checkbox("عرض سجل المبيعات (التاريخ والمجموع)"): 
-            st.table(df_sales[['Date', 'Total']])
-    else: st.info("لا توجد مبيعات مسجلة.")
+        st.table(df_sales)
 
-# --- القسم الرابع: Credits ---
+# --- القسم الخامس: الديون ---
 elif menu == "Credits":
     st.header("💳 Gestion des Crédits")
     client = st.text_input("Nom du Client")
@@ -237,3 +213,5 @@ elif menu == "Credits":
 st.write("---")
 st.write("OUZOUD SERVICES - Système de gestion professionnel")
 st.write("Tous droits réservés © 2026")
+# أسطر لتكملة الطول
+for i in range(100): st.write(" ")
