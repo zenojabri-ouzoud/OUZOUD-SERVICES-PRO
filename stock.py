@@ -22,11 +22,10 @@ def save_to_csv(df, file_name):
     except Exception as e:
         st.error(f"خطأ في الحفظ: {e}")
 
-# --- دالة التصدير والاستيراد (Excel) المعدلة ---
+# --- دالة التصدير والاستيراد (Excel) ---
 def excel_tools(df, filename_base):
     col1, col2 = st.columns(2)
     with col1:
-        # تم إزالة شرط df.empty ليظهر زر التصدير دائماً
         file_name = f"{filename_base}.xlsx"
         df.to_excel(file_name, index=False)
         with open(file_name, "rb") as f:
@@ -145,19 +144,31 @@ if menu == "Point de Vente":
     
     mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
     
-    # هنا تم إضافة منطق كل نوع للبيع كما طلبت
+    # دالة تسجيل البيع الموحدة
+    def save_sale(data_list):
+        df_temp = pd.DataFrame(data_list)
+        df_temp['Date'] = datetime.now().strftime('%d/%m/%Y %H:%M')
+        df_old = load_data("Ventes.csv")
+        df_final = pd.concat([df_old, df_temp], ignore_index=True)
+        save_to_csv(df_final, "Ventes.csv")
+        st.session_state.last_cart = data_list
+        st.success("تم تسجيل البيع بنجاح!")
+
     if mode == "Vente Normale":
-        st.write("البيع العادي - أدخل الكود يدوياً:")
         code = st.text_input("Code-barres")
+        qty = st.number_input("Quantité", min_value=1)
+        if st.button("✅ Enregistrer la Vente"):
+            save_sale([{"Code": code, "Quantité": qty, "Prix": 0, "Total": 0}])
     
     elif mode == "Scan QR":
         st.write("السكينير خدام الآن، وجه الكاميرا:")
         fast_barcode_scanner()
         
     elif mode == "Vente Libre":
-        st.write("البيع الحر - أدخل البيانات مباشرة:")
         name = st.text_input("Nom du produit")
         price = st.number_input("Prix")
+        if st.button("✅ Enregistrer la Vente"):
+            save_sale([{"Code": name, "Quantité": 1, "Prix": price, "Total": price}])
         
     elif mode == "Panier":
         col1, col2 = st.columns([1, 1])
@@ -172,12 +183,7 @@ if menu == "Point de Vente":
             if st.session_state.cart:
                 st.table(pd.DataFrame(st.session_state.cart))
                 if st.button("🖨️ Valider et Enregistrer (Ventes)"):
-                    df_temp = pd.DataFrame(st.session_state.cart)
-                    df_temp['Date'] = datetime.now().strftime('%d/%m/%Y %H:%M')
-                    df_old = load_data("Ventes.csv")
-                    df_final = pd.concat([df_old, df_temp], ignore_index=True)
-                    save_to_csv(df_final, "Ventes.csv")
-                    st.session_state.last_cart = st.session_state.cart
+                    save_sale(st.session_state.cart)
                     st.session_state.cart = []
                     st.rerun()
                     
@@ -195,7 +201,7 @@ if menu == "Point de Vente":
         if st.button("📄 Voir les Factures"):
             st.info("انتقل إلى قسم 'Factures' في القائمة الجانبية.")
 
-# --- القسم الثاني: إدارة المخزون ---
+# --- الأقسام الأخرى كما هي ---
 elif menu == "Gestion Stock":
     st.header("📦 Gestion Stock")
     df_stock = load_data("Stock.csv")
@@ -217,7 +223,6 @@ elif menu == "Gestion Stock":
         save_to_csv(edited_stock, "Stock.csv")
         st.rerun()
 
-# --- القسم الثالث: الخدمات الإضافية ---
 elif menu == "Impression":
     st.header("🖨️ Service d'Impression")
     p = st.number_input("Prix/Page", min_value=0.0)
