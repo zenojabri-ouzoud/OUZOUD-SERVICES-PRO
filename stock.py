@@ -41,7 +41,7 @@ def excel_tools(df, filename_base):
             except Exception as e:
                 st.error(f"خطأ في الاستيراد: {e}")
 
-# --- دالة الـ Scanner الصاروخي (المعدلة للعمل مع ID و Session State) ---
+# --- دالة الـ Scanner الصاروخي ---
 def fast_barcode_scanner():
     scanner_html = """
     <div id="reader" style="width:100%"></div>
@@ -121,7 +121,6 @@ if "authenticated" not in st.session_state: st.session_state.authenticated = Fal
 if "cart" not in st.session_state: st.session_state.cart = []
 if "last_cart" not in st.session_state: st.session_state.last_cart = None
 if "scanned_val_vente" not in st.session_state: st.session_state.scanned_val_vente = ""
-if "barcode_val" not in st.session_state: st.session_state.barcode_val = ""
 
 # --- نظام الحماية ---
 if not st.session_state.authenticated:
@@ -207,18 +206,19 @@ elif menu == "Gestion Stock":
     if st.checkbox("📸 تفعيل سكانير Stock"):
         fast_barcode_scanner()
         
-    with st.form("stock_form", clear_on_submit=True):
-        name = st.text_input("Nom")
-        price = st.number_input("Prix")
-        qty = st.number_input("Qté")
-        barcode = st.text_input("Code-barres", value=st.session_state.barcode_val, key="scan_input_stock")
-        if st.form_submit_button("Ajouter"):
-            new_row = pd.DataFrame([[name, price, qty, barcode]], columns=["Nom", "Prix", "Quantité", "Code-barres"])
-            df_stock = pd.concat([df_stock, new_row], ignore_index=True)
-            save_to_csv(df_stock, "Stock.csv")
-            st.session_state.barcode_val = ""
-            st.success(f"تم إضافة: {name} بنجاح!")
-            st.rerun()
+    # التعديل: إزالة الـ form واستخدام الأعمدة للربط المباشر
+    col1, col2, col3, col4 = st.columns(4)
+    with col1: name = st.text_input("Nom")
+    with col2: price = st.number_input("Prix")
+    with col3: qty = st.number_input("Qté")
+    with col4: barcode = st.text_input("Code-barres", key="scan_input_stock")
+    
+    if st.button("Ajouter"):
+        new_row = pd.DataFrame([[name, price, qty, barcode]], columns=["Nom", "Prix", "Quantité", "Code-barres"])
+        df_stock = pd.concat([df_stock, new_row], ignore_index=True)
+        save_to_csv(df_stock, "Stock.csv")
+        st.success(f"تم إضافة: {name} بنجاح!")
+        st.rerun()
             
     edited_stock = st.data_editor(load_data("Stock.csv"), num_rows="dynamic")
     if st.button("💾 حفظ تعديلات المخزون"):
