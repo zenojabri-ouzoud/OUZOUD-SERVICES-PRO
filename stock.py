@@ -41,7 +41,7 @@ def excel_tools(df, filename_base):
             except Exception as e:
                 st.error(f"خطأ في الاستيراد: {e}")
 
-# --- دالة الـ Scanner الصاروخي ---
+# --- دالة الـ Scanner ---
 def fast_barcode_scanner():
     scanner_html = """
     <div id="reader" style="width:100%"></div>
@@ -198,7 +198,7 @@ if menu == "Point de Vente":
         if st.button("📄 Voir les Factures"):
             st.info("انتقل إلى قسم 'Factures' في القائمة الجانبية.")
 
-# --- القسم الثاني: إدارة المخزون ---
+# --- القسم الثاني: إدارة المخزون (تعديل ليعمل السكانير مباشرة) ---
 elif menu == "Gestion Stock":
     st.header("📦 Gestion Stock")
     df_stock = load_data("Stock.csv")
@@ -206,7 +206,7 @@ elif menu == "Gestion Stock":
     if st.checkbox("📸 تفعيل سكانير Stock"):
         fast_barcode_scanner()
         
-    # التعديل: إزالة الـ form واستخدام الأعمدة للربط المباشر
+    # هنا حيدنا الـ form باش السكانير يكتب مباشرة
     col1, col2, col3, col4 = st.columns(4)
     with col1: name = st.text_input("Nom")
     with col2: price = st.number_input("Prix")
@@ -220,6 +220,7 @@ elif menu == "Gestion Stock":
         st.success(f"تم إضافة: {name} بنجاح!")
         st.rerun()
             
+    st.subheader("📊 جدول المخزون")
     edited_stock = st.data_editor(load_data("Stock.csv"), num_rows="dynamic")
     if st.button("💾 حفظ تعديلات المخزون"):
         save_to_csv(edited_stock, "Stock.csv")
