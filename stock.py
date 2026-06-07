@@ -41,20 +41,18 @@ def excel_tools(df, filename_base):
             except Exception as e:
                 st.error(f"خطأ في الاستيراد: {e}")
 
-# --- دالة الـ Scanner الصاروخي ---
+# --- دالة الـ Scanner الصاروخي (المعدلة للعمل مع ID) ---
 def fast_barcode_scanner():
     scanner_html = """
     <div id="reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
     function onScanSuccess(decodedText, decodedResult) {
-        const inputs = window.parent.document.querySelectorAll('input[type="text"]');
-        for (let input of inputs) {
-            if (input.getAttribute('aria-label') && input.getAttribute('aria-label').toLowerCase().includes('code')) {
-                input.value = decodedText;
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-                input.dispatchEvent(new Event('change', { bubbles: true }));
-            }
+        const input = window.parent.document.getElementById('scan_input_stock');
+        if (input) {
+            input.value = decodedText;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
         }
     }
     let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
@@ -200,7 +198,7 @@ if menu == "Point de Vente":
         if st.button("📄 Voir les Factures"):
             st.info("انتقل إلى قسم 'Factures' في القائمة الجانبية.")
 
-# --- القسم الثاني: إدارة المخزون (بعد التعديل لعدم المسح) ---
+# --- القسم الثاني: إدارة المخزون ---
 elif menu == "Gestion Stock":
     st.header("📦 Gestion Stock")
     df_stock = load_data("Stock.csv")
@@ -208,7 +206,7 @@ elif menu == "Gestion Stock":
     if st.checkbox("📸 تفعيل سكانير Stock"):
         fast_barcode_scanner()
         
-    # التعديل هنا: clear_on_submit=False يمنع مسح الخانات بعد الإضافة
+    # هنا تم التعديل: clear_on_submit=False يمنع مسح الخانات و key=scan_input_stock يربطها بالسكانير
     with st.form("stock_form", clear_on_submit=False):
         name = st.text_input("Nom")
         price = st.number_input("Prix")
