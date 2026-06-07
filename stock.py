@@ -22,15 +22,15 @@ def save_to_csv(df, file_name):
     except Exception as e:
         st.error(f"خطأ في الحفظ: {e}")
 
-# --- دالة التصدير والاستيراد (Excel) ---
+# --- دالة التصدير والاستيراد (Excel) المعدلة ---
 def excel_tools(df, filename_base):
     col1, col2 = st.columns(2)
     with col1:
-        if not df.empty:
-            file_name = f"{filename_base}.xlsx"
-            df.to_excel(file_name, index=False)
-            with open(file_name, "rb") as f:
-                st.download_button(f"📤 Exporter {filename_base} (Excel)", f, file_name)
+        # تم إزالة شرط df.empty ليظهر زر التصدير دائماً
+        file_name = f"{filename_base}.xlsx"
+        df.to_excel(file_name, index=False)
+        with open(file_name, "rb") as f:
+            st.download_button(f"📤 Exporter {filename_base} (Excel)", f, file_name)
     with col2:
         uploaded_file = st.file_uploader(f"📥 Importer {filename_base}", type=["xlsx"])
         if uploaded_file is not None:
