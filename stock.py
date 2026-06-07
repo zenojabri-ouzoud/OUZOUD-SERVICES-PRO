@@ -41,14 +41,15 @@ def excel_tools(df, filename_base):
             except Exception as e:
                 st.error(f"خطأ في الاستيراد: {e}")
 
-# --- دالة الـ Scanner ---
+# --- دالة الـ Scanner (المعدلة للعمل مع أي إعدادات) ---
 def fast_barcode_scanner():
     scanner_html = """
     <div id="reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
     function onScanSuccess(decodedText, decodedResult) {
-        const input = window.parent.document.getElementById('scan_input_stock');
+        // البحث عن الخانة بالـ aria-label المعتمد من طرف Streamlit
+        const input = window.parent.document.querySelector('input[aria-label="Code-barres"]');
         if (input) {
             input.value = decodedText;
             input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -198,7 +199,7 @@ if menu == "Point de Vente":
         if st.button("📄 Voir les Factures"):
             st.info("انتقل إلى قسم 'Factures' في القائمة الجانبية.")
 
-# --- القسم الثاني: إدارة المخزون (تعديل ليعمل السكانير مباشرة) ---
+# --- القسم الثاني: إدارة المخزون ---
 elif menu == "Gestion Stock":
     st.header("📦 Gestion Stock")
     df_stock = load_data("Stock.csv")
@@ -206,12 +207,12 @@ elif menu == "Gestion Stock":
     if st.checkbox("📸 تفعيل سكانير Stock"):
         fast_barcode_scanner()
         
-    # هنا حيدنا الـ form باش السكانير يكتب مباشرة
+    # حيدنا الـ form باش السكانير يكتب مباشرة
     col1, col2, col3, col4 = st.columns(4)
     with col1: name = st.text_input("Nom")
     with col2: price = st.number_input("Prix")
     with col3: qty = st.number_input("Qté")
-    with col4: barcode = st.text_input("Code-barres", key="scan_input_stock")
+    with col4: barcode = st.text_input("Code-barres")
     
     if st.button("Ajouter"):
         new_row = pd.DataFrame([[name, price, qty, barcode]], columns=["Nom", "Prix", "Quantité", "Code-barres"])
