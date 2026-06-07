@@ -118,7 +118,7 @@ if not st.session_state.authenticated:
     st.stop()
 
 # --- القائمة الجانبية ---
-menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Gestion Stock", "Impression", "Caisse", "Credits"])
+menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Gestion Stock", "Impression", "Caisse", "Credits", "Factures"])
 
 # --- القسم الأول: نقطة البيع ---
 if menu == "Point de Vente":
@@ -170,11 +170,16 @@ if menu == "Point de Vente":
                     st.session_state.cart = []
                     st.rerun()
     st.divider()
-    if st.button("🖨️ Imprimer en PDF"):
-        if st.session_state.last_cart:
-            pdf_path = generate_pdf(st.session_state.last_cart)
-            with open(pdf_path, "rb") as pdf_file:
-                st.download_button("📥 Télécharger le PDF", pdf_file, "facture.pdf", "application/pdf")
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
+        if st.button("🖨️ Imprimer en PDF"):
+            if st.session_state.last_cart:
+                pdf_path = generate_pdf(st.session_state.last_cart)
+                with open(pdf_path, "rb") as pdf_file:
+                    st.download_button("📥 Télécharger le PDF", pdf_file, "facture.pdf", "application/pdf")
+    with col_btn2:
+        if st.button("📄 Voir les Factures"):
+            st.info("انتقل إلى قسم 'Factures' في القائمة الجانبية.")
 
 # --- القسم الثاني: إدارة المخزون ---
 elif menu == "Gestion Stock":
@@ -213,8 +218,6 @@ elif menu == "Caisse":
         if st.checkbox("عرض سجل المبيعات (التاريخ والمجموع)"): 
             st.table(df_sales[['Date', 'Total']])
     else: st.info("لا توجد مبيعات مسجلة.")
-
-# --- القسم الرابع: Credits ---
 elif menu == "Credits":
     st.header("💳 Gestion des Crédits")
     client = st.text_input("Nom du Client")
@@ -230,6 +233,14 @@ elif menu == "Credits":
     if st.button("💾 حفظ تعديلات الديون"):
         save_to_csv(edited_cred, "Credits.csv")
         st.rerun()
+elif menu == "Factures":
+    st.header("📄 Gestion des Factures")
+    if os.path.exists("facture.pdf"):
+        st.success("آخر فاتورة تم إنشاؤها موجودة:")
+        with open("facture.pdf", "rb") as f:
+            st.download_button("📥 تحميل آخر فاتورة (PDF)", f, "facture.pdf", "application/pdf")
+    else:
+        st.info("لا توجد فاتورة حديثة.")
 
 # --- ختامية النظام ---
 st.write("---")
