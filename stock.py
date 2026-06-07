@@ -144,7 +144,6 @@ if menu == "Point de Vente":
     
     mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
     
-    # دالة تسجيل البيع الموحدة
     def save_sale(data_list):
         df_temp = pd.DataFrame(data_list)
         df_temp['Date'] = datetime.now().strftime('%d/%m/%Y %H:%M')
@@ -201,14 +200,16 @@ if menu == "Point de Vente":
         if st.button("📄 Voir les Factures"):
             st.info("انتقل إلى قسم 'Factures' في القائمة الجانبية.")
 
-# --- الأقسام الأخرى كما هي ---
+# --- القسم الثاني: إدارة المخزون (بعد التعديل لعدم المسح) ---
 elif menu == "Gestion Stock":
     st.header("📦 Gestion Stock")
     df_stock = load_data("Stock.csv")
     excel_tools(df_stock, "Stock")
     if st.checkbox("📸 تفعيل سكانير Stock"):
         fast_barcode_scanner()
-    with st.form("stock_form"):
+        
+    # التعديل هنا: clear_on_submit=False يمنع مسح الخانات بعد الإضافة
+    with st.form("stock_form", clear_on_submit=False):
         name = st.text_input("Nom")
         price = st.number_input("Prix")
         qty = st.number_input("Qté")
@@ -217,7 +218,8 @@ elif menu == "Gestion Stock":
             new_row = pd.DataFrame([[name, price, qty, barcode]], columns=["Nom", "Prix", "Quantité", "Code-barres"])
             df_stock = pd.concat([df_stock, new_row], ignore_index=True)
             save_to_csv(df_stock, "Stock.csv")
-            st.rerun()
+            st.success(f"تم إضافة: {name} بنجاح!")
+            
     edited_stock = st.data_editor(load_data("Stock.csv"), num_rows="dynamic")
     if st.button("💾 حفظ تعديلات المخزون"):
         save_to_csv(edited_stock, "Stock.csv")
