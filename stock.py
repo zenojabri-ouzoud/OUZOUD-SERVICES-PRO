@@ -142,8 +142,24 @@ if menu == "Point de Vente":
     st.header("🛒 Point de Vente")
     if st.checkbox("📸 تفعيل السكانير السريع"):
         fast_barcode_scanner()
+    
     mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
-    if mode == "Panier":
+    
+    # هنا تم إضافة منطق كل نوع للبيع كما طلبت
+    if mode == "Vente Normale":
+        st.write("البيع العادي - أدخل الكود يدوياً:")
+        code = st.text_input("Code-barres")
+    
+    elif mode == "Scan QR":
+        st.write("السكينير خدام الآن، وجه الكاميرا:")
+        fast_barcode_scanner()
+        
+    elif mode == "Vente Libre":
+        st.write("البيع الحر - أدخل البيانات مباشرة:")
+        name = st.text_input("Nom du produit")
+        price = st.number_input("Prix")
+        
+    elif mode == "Panier":
         col1, col2 = st.columns([1, 1])
         with col1:
             code = st.text_input("Scanner le Code-barres:", value=st.session_state.scanned_val_vente)
@@ -164,6 +180,7 @@ if menu == "Point de Vente":
                     st.session_state.last_cart = st.session_state.cart
                     st.session_state.cart = []
                     st.rerun()
+                    
     st.divider()
     st.subheader("📊 إدارة ملف المبيعات")
     excel_tools(load_data("Ventes.csv"), "Ventes")
