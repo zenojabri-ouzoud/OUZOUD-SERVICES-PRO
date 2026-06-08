@@ -57,17 +57,13 @@ def fast_barcode_scanner(input_label):
             }}
         }});
     }}
-    let html5QrcodeScanner = new Html5QrcodeScanner("reader", {{ 
-        fps: 10, 
-        qrbox: 250, 
-        facingMode: "environment" 
-    }});
+    let html5QrcodeScanner = new Html5QrcodeScanner("reader", {{ fps: 10, qrbox: 250, facingMode: "environment" }});
     html5QrcodeScanner.render(onScanSuccess);
     </script>
     """
     components.html(scanner_html, height=400)
 
-# --- دالة إنشاء فاتورة PDF ---
+# --- دالة إنشاء فاتورة PDF (معدلة لتظهر اسم المنتج) ---
 def generate_pdf(cart_data):
     pdf = FPDF(orientation='P', unit='mm', format=(80, 250)) 
     pdf.add_page()
@@ -87,18 +83,31 @@ def generate_pdf(cart_data):
     pdf.cell(12, 7, txt="Total", border=1, align='C')
     pdf.ln(7)
     pdf.set_font("Arial", size=9)
+    
     total_general = 0
+    conn = get_db_connection()
+    c = conn.cursor()
+    
     for item in cart_data:
-        nom = str(item.get('Code', ''))
+        code_input = str(item.get('Code', ''))
+        # البحث عن الاسم في جدول المخزون
+        c.execute("SELECT Nom FROM stock WHERE [Code-barres] = ?", (code_input,))
+        res = c.fetchone()
+        nom_produit = res['Nom'] if res else code_input
+        
         qty = str(item.get('Quantité', 0))
         prix = float(item.get('Prix', 0))
         total = float(item.get('Total', 0))
         total_general += total
-        pdf.cell(30, 6, txt=nom[:15], border=1)
+        
+        pdf.cell(30, 6, txt=nom_produit[:15], border=1)
         pdf.cell(8, 6, txt=qty, border=1, align='C')
         pdf.cell(10, 6, txt=f"{prix:.0f}", border=1, align='C')
         pdf.cell(12, 6, txt=f"{total:.0f}", border=1, align='C')
         pdf.ln(6)
+    
+    conn.close()
+    
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(60, 8, txt=f"TOTAL: {total_general:.2f} DH", ln=True, align='R')
     pdf.ln(10)
