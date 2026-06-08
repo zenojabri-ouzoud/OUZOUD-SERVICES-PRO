@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import sqlite3
 import os
 from fpdf import FPDF
 from datetime import datetime
@@ -7,60 +8,60 @@ import pytz
 import qrcode
 import streamlit.components.v1 as components
 
+# --- إعداد قاعدة البيانات ---
+def get_db_connection():
+    conn = sqlite3.connect('ouzoud.db', check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS stock (id INTEGER PRIMARY KEY AUTOINCREMENT, Nom TEXT, Prix REAL, Quantité REAL, [Code-barres] TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS ventes (id INTEGER PRIMARY KEY AUTOINCREMENT, Code TEXT, Quantité REAL, Prix REAL, Total REAL, Date TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS impressions (id INTEGER PRIMARY KEY AUTOINCREMENT, Date TEXT, Prix_Page REAL, Nombre REAL, Total REAL)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS credits (id INTEGER PRIMARY KEY AUTOINCREMENT, Client TEXT, Montant REAL)''')
+    conn.commit()
+    conn.close()
+
+init_db()
+
+def execute_query(query, params=()):
+    conn = get_db_connection()
+    conn.execute(query, params)
+    conn.commit()
+    conn.close()
+
+def get_df(table_name):
+    conn = get_db_connection()
+    df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
+    conn.close()
+    return df
+
 # --- الإعدادات العامة للمشروع ---
 st.set_page_config(layout="wide", page_title="OUZOUD SERVICES")
 
-# --- دوال التعامل مع الملفات ---
-def load_data(file_name):
-    if os.path.exists(file_name):
-        return pd.read_csv(file_name)
-    return pd.DataFrame()
-
-def save_to_csv(df, file_name):
-    try:
-        df.to_csv(file_name, index=False)
-    except Exception as e:
-        st.error(f"خطأ في الحفظ: {e}")
-
-# --- دالة التصدير والاستيراد (Excel) ---
-def excel_tools(df, filename_base):
-    col1, col2 = st.columns(2)
-    with col1:
-        file_name = f"{filename_base}.xlsx"
-        df.to_excel(file_name, index=False)
-        with open(file_name, "rb") as f:
-            st.download_button(f"📤 Exporter {filename_base} (Excel)", f, file_name)
-    with col2:
-        uploaded_file = st.file_uploader(f"📥 Importer {filename_base}", type=["xlsx"])
-        if uploaded_file is not None:
-            try:
-                df_new = pd.read_excel(uploaded_file)
-                save_to_csv(df_new, f"{filename_base}.csv")
-                st.success("تم التحديث بنجاح!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"خطأ في الاستيراد: {e}")
-
-# --- دالة الـ Scanner (المعدلة للعمل مع أي إعدادات) ---
-def fast_barcode_scanner():
-    scanner_html = """
+# --- دالة الـ Scanner ---
+def fast_barcode_scanner(input_label):
+    scanner_html = f"""
     <div id="reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
-    function onScanSuccess(decodedText, decodedResult) {
-        // البحث عن الخانة بالـ aria-label المعتمد من طرف Streamlit
-        const input = window.parent.document.querySelector('input[aria-label="Code-barres"]');
-        if (input) {
-            input.value = decodedText;
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-    }
-    let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+    function onScanSuccess(decodedText, decodedResult) {{
+        const inputs = window.parent.document.querySelectorAll('input');
+        inputs.forEach(input => {{
+            if (input.getAttribute('aria-label') === '{input_label}') {{
+                input.value = decodedText;
+                input.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                input.dispatchEvent(new Event('change', {{ bubbles: true }}));
+            }}
+        }});
+    }}
+    let html5QrcodeScanner = new Html5QrcodeScanner("reader", {{ 
         fps: 10, 
         qrbox: 250, 
         facingMode: "environment" 
-    });
+    }});
     html5QrcodeScanner.render(onScanSuccess);
     </script>
     """
@@ -87,14 +88,8 @@ def generate_pdf(cart_data):
     pdf.ln(7)
     pdf.set_font("Arial", size=9)
     total_general = 0
-    df_stock = load_data("Stock.csv")
     for item in cart_data:
-        code = str(item.get('Code', ''))
-        nom = "Inconnu"
-        if not df_stock.empty and 'Code-barres' in df_stock.columns:
-            match = df_stock[df_stock['Code-barres'].astype(str) == code]
-            if not match.empty:
-                nom = str(match.iloc[0]['Nom'])
+        nom = str(item.get('Code', ''))
         qty = str(item.get('Quantité', 0))
         prix = float(item.get('Prix', 0))
         total = float(item.get('Total', 0))
@@ -139,55 +134,58 @@ menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Gestion Stock"
 if menu == "Point de Vente":
     st.header("🛒 Point de Vente")
     if st.checkbox("📸 تفعيل السكانير السريع"):
-        fast_barcode_scanner()
+        fast_barcode_scanner("Code-barres")
     
     mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
     
-    def save_sale(data_list):
-        df_temp = pd.DataFrame(data_list)
-        df_temp['Date'] = datetime.now().strftime('%d/%m/%Y %H:%M')
-        df_old = load_data("Ventes.csv")
-        df_final = pd.concat([df_old, df_temp], ignore_index=True)
-        save_to_csv(df_final, "Ventes.csv")
-        st.session_state.last_cart = data_list
-        st.success("تم تسجيل البيع بنجاح!")
-
     if mode == "Vente Normale":
         code = st.text_input("Code-barres")
         qty = st.number_input("Quantité", min_value=1)
         if st.button("✅ Enregistrer la Vente"):
-            save_sale([{"Code": code, "Quantité": qty, "Prix": 0, "Total": 0}])
+            execute_query("INSERT INTO ventes (Code, Quantité, Prix, Total, Date) VALUES (?, ?, ?, ?, ?)", 
+                          (code, qty, 0, 0, datetime.now().strftime('%d/%m/%Y %H:%M')))
+            st.success("تم تسجيل البيع بنجاح!")
     
     elif mode == "Scan QR":
         st.write("السكينير خدام الآن، وجه الكاميرا:")
-        fast_barcode_scanner()
+        fast_barcode_scanner("Code-barres")
         
     elif mode == "Vente Libre":
         name = st.text_input("Nom du produit")
         price = st.number_input("Prix")
         if st.button("✅ Enregistrer la Vente"):
-            save_sale([{"Code": name, "Quantité": 1, "Prix": price, "Total": price}])
+            execute_query("INSERT INTO ventes (Code, Quantité, Prix, Total, Date) VALUES (?, ?, ?, ?, ?)", 
+                          (name, 1, price, price, datetime.now().strftime('%d/%m/%Y %H:%M')))
+            st.success("تم تسجيل البيع بنجاح!")
         
     elif mode == "Panier":
         col1, col2 = st.columns([1, 1])
         with col1:
-            code = st.text_input("Scanner le Code-barres:", value=st.session_state.scanned_val_vente)
+            code = st.text_input("Scanner le Code-barres:")
             qty = st.number_input("Quantité:", min_value=1, step=1)
             if st.button("✅ Ajouter au Panier"):
                 st.session_state.cart.append({"Code": code, "Quantité": qty, "Prix": 10.0, "Total": 10.0 * qty})
-                st.session_state.scanned_val_vente = ""
                 st.rerun()
         with col2:
             if st.session_state.cart:
                 st.table(pd.DataFrame(st.session_state.cart))
                 if st.button("🖨️ Valider et Enregistrer (Ventes)"):
-                    save_sale(st.session_state.cart)
+                    for item in st.session_state.cart:
+                        execute_query("INSERT INTO ventes (Code, Quantité, Prix, Total, Date) VALUES (?, ?, ?, ?, ?)", 
+                                      (item['Code'], item['Quantité'], item['Prix'], item['Total'], datetime.now().strftime('%d/%m/%Y %H:%M')))
+                    st.session_state.last_cart = st.session_state.cart
                     st.session_state.cart = []
                     st.rerun()
                     
     st.divider()
     st.subheader("📊 إدارة ملف المبيعات")
-    excel_tools(load_data("Ventes.csv"), "Ventes")
+    df_ventes = get_df("ventes")
+    st.dataframe(df_ventes)
+    del_id_v = st.number_input("ID للمسح (Ventes):", min_value=1, step=1, key="del_v")
+    if st.button("🗑️ حذف المبيعة"):
+        execute_query("DELETE FROM ventes WHERE id = ?", (del_id_v,))
+        st.rerun()
+    
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
         if st.button("🖨️ Imprimer en PDF"):
@@ -202,12 +200,9 @@ if menu == "Point de Vente":
 # --- القسم الثاني: إدارة المخزون ---
 elif menu == "Gestion Stock":
     st.header("📦 Gestion Stock")
-    df_stock = load_data("Stock.csv")
-    excel_tools(df_stock, "Stock")
     if st.checkbox("📸 تفعيل سكانير Stock"):
-        fast_barcode_scanner()
+        fast_barcode_scanner("Code-barres")
         
-    # حيدنا الـ form باش السكانير يكتب مباشرة
     col1, col2, col3, col4 = st.columns(4)
     with col1: name = st.text_input("Nom")
     with col2: price = st.number_input("Prix")
@@ -215,62 +210,69 @@ elif menu == "Gestion Stock":
     with col4: barcode = st.text_input("Code-barres")
     
     if st.button("Ajouter"):
-        new_row = pd.DataFrame([[name, price, qty, barcode]], columns=["Nom", "Prix", "Quantité", "Code-barres"])
-        df_stock = pd.concat([df_stock, new_row], ignore_index=True)
-        save_to_csv(df_stock, "Stock.csv")
+        execute_query("INSERT INTO stock (Nom, Prix, Quantité, [Code-barres]) VALUES (?, ?, ?, ?)", (name, price, qty, barcode))
         st.success(f"تم إضافة: {name} بنجاح!")
         st.rerun()
             
     st.subheader("📊 جدول المخزون")
-    edited_stock = st.data_editor(load_data("Stock.csv"), num_rows="dynamic")
-    if st.button("💾 حفظ تعديلات المخزون"):
-        save_to_csv(edited_stock, "Stock.csv")
-        st.rerun()
+    df_stock = get_df("stock")
+    st.dataframe(df_stock, use_container_width=True)
+    
+    col_del1, col_del2 = st.columns(2)
+    with col_del1:
+        del_id_s = st.number_input("ID للمسح:", min_value=1, step=1, key="del_s")
+        if st.button("🗑️ حذف المنتج"):
+            execute_query("DELETE FROM stock WHERE id = ?", (del_id_s,))
+            st.rerun()
+    with col_del2:
+        upd_id = st.number_input("ID للتعديل:", min_value=1, step=1)
+        new_price = st.number_input("ثمن جديد:")
+        if st.button("🔄 تحديث الثمن"):
+            execute_query("UPDATE stock SET Prix = ? WHERE id = ?", (new_price, upd_id))
+            st.rerun()
 
 elif menu == "Impression":
     st.header("🖨️ Service d'Impression")
     p = st.number_input("Prix/Page", min_value=0.0)
     n = st.number_input("Nombre", min_value=1)
     if st.button("Enregistrer Impression"):
-        df_imp = load_data("Impressions.csv")
-        new_imp = pd.DataFrame([[datetime.now().strftime('%d/%m/%Y %H:%M'), p, n, p*n]], 
-                               columns=["Date", "Prix_Page", "Nombre", "Total"])
-        df_imp = pd.concat([df_imp, new_imp], ignore_index=True)
-        save_to_csv(df_imp, "Impressions.csv")
+        execute_query("INSERT INTO impressions (Date, Prix_Page, Nombre, Total) VALUES (?, ?, ?, ?)", 
+                      (datetime.now().strftime('%d/%m/%Y %H:%M'), p, n, p*n))
         st.success("تم تسجيل عملية الطباعة بنجاح!")
         components.html("<script>window.print()</script>")
     st.subheader("📊 إدارة ملف الطباعة")
-    excel_tools(load_data("Impressions.csv"), "Impressions")
+    df_imp = get_df("impressions")
+    st.dataframe(df_imp, use_container_width=True)
+    del_id_i = st.number_input("ID للمسح (Impression):", min_value=1, step=1, key="del_i")
+    if st.button("🗑️ حذف عملية الطباعة"):
+        execute_query("DELETE FROM impressions WHERE id = ?", (del_id_i,))
+        st.rerun()
 
 elif menu == "Caisse":
     st.header("💰 Caisse - الحصيلة الكاملة")
-    df_sales = load_data("Ventes.csv")
-    df_imp = load_data("Impressions.csv")
+    df_sales = get_df("ventes")
+    df_imp = get_df("impressions")
     total_sales = df_sales['Total'].sum() if not df_sales.empty else 0
     total_imp = df_imp['Total'].sum() if not df_imp.empty else 0
     st.metric("Total Général (Produits + Impressions)", f"{total_sales + total_imp:,.2f} DH")
     st.subheader("🛒 مبيعات المنتجات")
-    excel_tools(df_sales, "Ventes")
-    if not df_sales.empty: st.table(df_sales)
+    st.dataframe(df_sales)
     st.divider()
     st.subheader("🖨️ عمليات الطباعة")
-    excel_tools(df_imp, "Impressions")
-    if not df_imp.empty: st.table(df_imp)
+    st.dataframe(df_imp)
 
 elif menu == "Credits":
     st.header("💳 Gestion des Crédits")
-    df_cred = load_data("Credits.csv")
-    excel_tools(df_cred, "Credits")
     client = st.text_input("Nom du Client")
     montant = st.number_input("Montant (DH)")
     if st.button("Enregistrer Crédit"):
-        new_cred = pd.DataFrame([[client, montant]], columns=["Client", "Montant"])
-        df_cred = pd.concat([df_cred, new_cred], ignore_index=True)
-        save_to_csv(df_cred, "Credits.csv")
+        execute_query("INSERT INTO credits (Client, Montant) VALUES (?, ?)", (client, montant))
         st.rerun()
-    edited_cred = st.data_editor(df_cred, num_rows="dynamic")
-    if st.button("💾 حفظ تعديلات الديون"):
-        save_to_csv(edited_cred, "Credits.csv")
+    df_cred = get_df("credits")
+    st.dataframe(df_cred, use_container_width=True)
+    del_id_c = st.number_input("ID للمسح (Crédit):", min_value=1, step=1, key="del_c")
+    if st.button("🗑️ حذف الدين"):
+        execute_query("DELETE FROM credits WHERE id = ?", (del_id_c,))
         st.rerun()
 
 elif menu == "Factures":
