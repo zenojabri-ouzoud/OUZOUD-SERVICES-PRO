@@ -7,6 +7,14 @@ from datetime import datetime
 import pytz
 import qrcode
 import streamlit.components.v1 as components
+import io
+
+# --- دالة التصدير للإكسيل ---
+def to_excel(df):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Sheet1')
+    return output.getvalue()
 
 # --- إعداد قاعدة البيانات ---
 def get_db_connection():
@@ -90,7 +98,6 @@ def generate_pdf(cart_data):
     
     for item in cart_data:
         code_input = str(item.get('Code', ''))
-        # البحث عن الاسم في جدول المخزون
         c.execute("SELECT Nom FROM stock WHERE [Code-barres] = ?", (code_input,))
         res = c.fetchone()
         nom_produit = res['Nom'] if res else code_input
@@ -190,6 +197,8 @@ if menu == "Point de Vente":
     st.subheader("📊 إدارة ملف المبيعات")
     df_ventes = get_df("ventes")
     st.dataframe(df_ventes)
+    st.download_button("📥 Export Excel", to_excel(df_ventes), "ventes.xlsx", "application/vnd.ms-excel")
+    
     del_id_v = st.number_input("ID للمسح (Ventes):", min_value=1, step=1, key="del_v")
     if st.button("🗑️ حذف المبيعة"):
         execute_query("DELETE FROM ventes WHERE id = ?", (del_id_v,))
@@ -226,6 +235,7 @@ elif menu == "Gestion Stock":
     st.subheader("📊 جدول المخزون")
     df_stock = get_df("stock")
     st.dataframe(df_stock, use_container_width=True)
+    st.download_button("📥 Export Excel", to_excel(df_stock), "stock.xlsx", "application/vnd.ms-excel")
     
     col_del1, col_del2 = st.columns(2)
     with col_del1:
@@ -252,6 +262,8 @@ elif menu == "Impression":
     st.subheader("📊 إدارة ملف الطباعة")
     df_imp = get_df("impressions")
     st.dataframe(df_imp, use_container_width=True)
+    st.download_button("📥 Export Excel", to_excel(df_imp), "impressions.xlsx", "application/vnd.ms-excel")
+    
     del_id_i = st.number_input("ID للمسح (Impression):", min_value=1, step=1, key="del_i")
     if st.button("🗑️ حذف عملية الطباعة"):
         execute_query("DELETE FROM impressions WHERE id = ?", (del_id_i,))
@@ -266,9 +278,11 @@ elif menu == "Caisse":
     st.metric("Total Général (Produits + Impressions)", f"{total_sales + total_imp:,.2f} DH")
     st.subheader("🛒 مبيعات المنتجات")
     st.dataframe(df_sales)
+    st.download_button("📥 Export Ventes", to_excel(df_sales), "ventes_export.xlsx", "application/vnd.ms-excel")
     st.divider()
     st.subheader("🖨️ عمليات الطباعة")
     st.dataframe(df_imp)
+    st.download_button("📥 Export Impressions", to_excel(df_imp), "impressions_export.xlsx", "application/vnd.ms-excel")
 
 elif menu == "Credits":
     st.header("💳 Gestion des Crédits")
@@ -279,6 +293,8 @@ elif menu == "Credits":
         st.rerun()
     df_cred = get_df("credits")
     st.dataframe(df_cred, use_container_width=True)
+    st.download_button("📥 Export Excel", to_excel(df_cred), "credits.xlsx", "application/vnd.ms-excel")
+    
     del_id_c = st.number_input("ID للمسح (Crédit):", min_value=1, step=1, key="del_c")
     if st.button("🗑️ حذف الدين"):
         execute_query("DELETE FROM credits WHERE id = ?", (del_id_c,))
