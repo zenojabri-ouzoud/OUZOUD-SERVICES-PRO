@@ -12,9 +12,26 @@ import io
 # --- دالة التصدير للإكسيل ---
 def to_excel(df):
     output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Sheet1')
     return output.getvalue()
+
+# --- دالة فاتورة خاصة بالطباعة ---
+def generate_impression_pdf(prix_page, nombre):
+    pdf = FPDF(orientation='P', unit='mm', format=(80, 250))
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(60, 10, txt="RECU IMPRESSION", ln=True, align='C')
+    pdf.set_font("Arial", size=10)
+    pdf.cell(60, 5, txt=f"Date: {datetime.now().strftime('%d/%m/%Y')}", ln=True, align='L')
+    pdf.ln(5)
+    pdf.cell(60, 7, txt=f"Prix par page: {prix_page} DH", ln=True)
+    pdf.cell(60, 7, txt=f"Nombre de pages: {nombre}", ln=True)
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(60, 10, txt=f"TOTAL: {prix_page * nombre} DH", ln=True, align='R')
+    file_path = "facture_impression.pdf"
+    pdf.output(file_path)
+    return file_path
 
 # --- إعداد قاعدة البيانات ---
 def get_db_connection():
@@ -197,8 +214,15 @@ if menu == "Point de Vente":
     st.subheader("📊 إدارة ملف المبيعات")
     df_ventes = get_df("ventes")
     st.dataframe(df_ventes)
-    st.download_button("📥 Export Excel", to_excel(df_ventes), "ventes.xlsx", "application/vnd.ms-excel")
     
+    # Export/Import Ventes
+    st.download_button("📥 Export Excel (Ventes)", to_excel(df_ventes), "ventes.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    uploaded_v = st.file_uploader("📂 Import Ventes", type=["xlsx"], key="v")
+    if uploaded_v:
+        pd.read_excel(uploaded_v).to_sql("ventes", get_db_connection(), if_exists='append', index=False)
+        st.success("تم الاستيراد!")
+        st.rerun()
+
     del_id_v = st.number_input("ID للمسح (Ventes):", min_value=1, step=1, key="del_v")
     if st.button("🗑️ حذف المبيعة"):
         execute_query("DELETE FROM ventes WHERE id = ?", (del_id_v,))
@@ -235,7 +259,14 @@ elif menu == "Gestion Stock":
     st.subheader("📊 جدول المخزون")
     df_stock = get_df("stock")
     st.dataframe(df_stock, use_container_width=True)
-    st.download_button("📥 Export Excel", to_excel(df_stock), "stock.xlsx", "application/vnd.ms-excel")
+    
+    # Export/Import Stock
+    st.download_button("📥 Export Excel (Stock)", to_excel(df_stock), "stock.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    uploaded_s = st.file_uploader("📂 Import Stock", type=["xlsx"], key="s")
+    if uploaded_s:
+        pd.read_excel(uploaded_s).to_sql("stock", get_db_connection(), if_exists='append', index=False)
+        st.success("تم الاستيراد!")
+        st.rerun()
     
     col_del1, col_del2 = st.columns(2)
     with col_del1:
@@ -254,16 +285,30 @@ elif menu == "Impression":
     st.header("🖨️ Service d'Impression")
     p = st.number_input("Prix/Page", min_value=0.0)
     n = st.number_input("Nombre", min_value=1)
-    if st.button("Enregistrer Impression"):
+    if st.button("Enregistrer et Imprimer"):
         execute_query("INSERT INTO impressions (Date, Prix_Page, Nombre, Total) VALUES (?, ?, ?, ?)", 
                       (datetime.now().strftime('%d/%m/%Y %H:%M'), p, n, p*n))
-        st.success("تم تسجيل عملية الطباعة بنجاح!")
+        
+        # توليد الفاتورة الخاصة بالطباعة
+        pdf_path = generate_impression_pdf(p, n)
+        with open(pdf_path, "rb") as pdf_file:
+            st.download_button("📥 تحميل فاتورة الطباعة (PDF)", pdf_file, "facture_impression.pdf", "application/pdf")
+            
+        st.success("تم تسجيل وطباعة الفاتورة بنجاح!")
         components.html("<script>window.print()</script>")
+        
     st.subheader("📊 إدارة ملف الطباعة")
     df_imp = get_df("impressions")
     st.dataframe(df_imp, use_container_width=True)
-    st.download_button("📥 Export Excel", to_excel(df_imp), "impressions.xlsx", "application/vnd.ms-excel")
     
+    # Export/Import Impression
+    st.download_button("📥 Export Excel (Impression)", to_excel(df_imp), "impressions.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    uploaded_i = st.file_uploader("📂 Import Impression", type=["xlsx"], key="i")
+    if uploaded_i:
+        pd.read_excel(uploaded_i).to_sql("impressions", get_db_connection(), if_exists='append', index=False)
+        st.success("تم الاستيراد!")
+        st.rerun()
+
     del_id_i = st.number_input("ID للمسح (Impression):", min_value=1, step=1, key="del_i")
     if st.button("🗑️ حذف عملية الطباعة"):
         execute_query("DELETE FROM impressions WHERE id = ?", (del_id_i,))
@@ -278,11 +323,13 @@ elif menu == "Caisse":
     st.metric("Total Général (Produits + Impressions)", f"{total_sales + total_imp:,.2f} DH")
     st.subheader("🛒 مبيعات المنتجات")
     st.dataframe(df_sales)
-    st.download_button("📥 Export Ventes", to_excel(df_sales), "ventes_export.xlsx", "application/vnd.ms-excel")
+    # Export Ventes
+    st.download_button("📥 Export Ventes", to_excel(df_sales), "ventes_export.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     st.divider()
     st.subheader("🖨️ عمليات الطباعة")
     st.dataframe(df_imp)
-    st.download_button("📥 Export Impressions", to_excel(df_imp), "impressions_export.xlsx", "application/vnd.ms-excel")
+    # Export Impression
+    st.download_button("📥 Export Impressions", to_excel(df_imp), "impressions_export.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 elif menu == "Credits":
     st.header("💳 Gestion des Crédits")
@@ -293,7 +340,14 @@ elif menu == "Credits":
         st.rerun()
     df_cred = get_df("credits")
     st.dataframe(df_cred, use_container_width=True)
-    st.download_button("📥 Export Excel", to_excel(df_cred), "credits.xlsx", "application/vnd.ms-excel")
+    
+    # Export/Import Credits
+    st.download_button("📥 Export Excel (Credits)", to_excel(df_cred), "credits.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    uploaded_c = st.file_uploader("📂 Import Credits", type=["xlsx"], key="c")
+    if uploaded_c:
+        pd.read_excel(uploaded_c).to_sql("credits", get_db_connection(), if_exists='append', index=False)
+        st.success("تم الاستيراد!")
+        st.rerun()
     
     del_id_c = st.number_input("ID للمسح (Crédit):", min_value=1, step=1, key="del_c")
     if st.button("🗑️ حذف الدين"):
@@ -302,8 +356,14 @@ elif menu == "Credits":
 
 elif menu == "Factures":
     st.header("📄 Gestion des Factures")
+    # فاتورة المبيعات العادية
     if os.path.exists("facture.pdf"):
         with open("facture.pdf", "rb") as f:
-            st.download_button("📥 تحميل آخر فاتورة (PDF)", f, "facture.pdf", "application/pdf")
+            st.download_button("📥 تحميل آخر فاتورة مبيعات (PDF)", f, "facture.pdf", "application/pdf")
+    
+    # فاتورة الطباعة
+    if os.path.exists("facture_impression.pdf"):
+        with open("facture_impression.pdf", "rb") as f:
+            st.download_button("📥 تحميل آخر فاتورة طباعة (PDF)", f, "facture_impression.pdf", "application/pdf")
 
 for i in range(50): st.write(" ")
