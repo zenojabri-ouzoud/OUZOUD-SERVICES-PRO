@@ -166,6 +166,13 @@ menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Gestion Stock"
 # --- القسم الأول: نقطة البيع ---
 if menu == "Point de Vente":
     st.header("🛒 Point de Vente")
+    
+    # --- التنبيه (10/10) ---
+    df_alert = get_df("stock")
+    low_stock = df_alert[df_alert['Quantité'] < 3]
+    if not low_stock.empty:
+        st.error(f"⚠️ تنبيه: هذه المنتجات على وشك النفاذ: {', '.join(low_stock['Nom'].tolist())}")
+        
     if st.checkbox("📸 تفعيل السكانير السريع"):
         fast_barcode_scanner("Code-barres")
     
@@ -242,6 +249,10 @@ if menu == "Point de Vente":
 # --- القسم الثاني: إدارة المخزون ---
 elif menu == "Gestion Stock":
     st.header("📦 Gestion Stock")
+    
+    # --- البحث السريع (10/10) ---
+    search_q = st.text_input("🔍 بحث عن منتج...")
+    
     if st.checkbox("📸 تفعيل سكانير Stock"):
         fast_barcode_scanner("Code-barres")
         
@@ -258,6 +269,8 @@ elif menu == "Gestion Stock":
             
     st.subheader("📊 جدول المخزون")
     df_stock = get_df("stock")
+    if search_q:
+        df_stock = df_stock[df_stock['Nom'].str.contains(search_q, case=False, na=False)]
     st.dataframe(df_stock, use_container_width=True)
     
     # Export/Import Stock
@@ -318,6 +331,11 @@ elif menu == "Caisse":
     st.header("💰 Caisse - الحصيلة الكاملة")
     df_sales = get_df("ventes")
     df_imp = get_df("impressions")
+    
+    # --- الرسم البياني (10/10) ---
+    if not df_sales.empty:
+        st.bar_chart(df_sales.set_index('Date')['Total'])
+        
     total_sales = df_sales['Total'].sum() if not df_sales.empty else 0
     total_imp = df_imp['Total'].sum() if not df_imp.empty else 0
     st.metric("Total Général (Produits + Impressions)", f"{total_sales + total_imp:,.2f} DH")
