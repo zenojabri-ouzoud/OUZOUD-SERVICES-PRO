@@ -194,7 +194,7 @@ if menu == "Point de Vente":
     elif mode == "Panier":
         col1, col2 = st.columns([1, 1])
         with col1:
-            code = st.text_input("Scanner le Code-barres:")
+            code = st.text_input("Code-barres")
             qty = st.number_input("Quantité:", min_value=1, step=1)
             if st.button("✅ Ajouter au Panier"):
                 st.session_state.cart.append({"Code": code, "Quantité": qty, "Prix": 10.0, "Total": 10.0 * qty})
@@ -323,6 +323,17 @@ elif menu == "Caisse":
     st.metric("Total Général (Produits + Impressions)", f"{total_sales + total_imp:,.2f} DH")
     st.subheader("🛒 مبيعات المنتجات")
     st.dataframe(df_sales)
+    
+    # زر تصفير الحصيلة
+    if st.button("⚠️ تصفير الحصيلة (بداية يوم جديد)"):
+        with pd.ExcelWriter("archives_journalier.xlsx") as writer:
+            df_sales.to_excel(writer, sheet_name='Ventes', index=False)
+            df_imp.to_excel(writer, sheet_name='Impressions', index=False)
+        execute_query("DELETE FROM ventes")
+        execute_query("DELETE FROM impressions")
+        st.success("تم التصفير والحفظ في archives_journalier.xlsx")
+        st.rerun()
+
     # Export Ventes
     st.download_button("📥 Export Ventes", to_excel(df_sales), "ventes_export.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     st.divider()
