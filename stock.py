@@ -13,9 +13,16 @@ import json
 
 # --- إعداد Firebase باستخدام Secrets ---
 if not firebase_admin._apps:
-    # قراءة المعلومات من secrets (تأكد أنك وضعت [textkey] في Streamlit Secrets)
-    key_dict = st.secrets["textkey"]
-    cred = credentials.Certificate(dict(key_dict))
+    # قراءة المعلومات من secrets
+    secret_dict = st.secrets["textkey"]
+    
+    # تحويل المعلومات إلى قاموس (Dictionary) بشكل صحيح
+    if isinstance(secret_dict, str):
+        key_dict = json.loads(secret_dict)
+    else:
+        key_dict = dict(secret_dict)
+        
+    cred = credentials.Certificate(key_dict)
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
@@ -76,7 +83,7 @@ def fast_barcode_scanner(input_label):
                 input.value = decodedText;
                 input.dispatchEvent(new Event('input', {{ bubbles: true }}));
                 input.dispatchEvent(new Event('change', {{ bubbles: true }}));
-        }}
+            }
         }});
     }}
     let html5QrcodeScanner = new Html5QrcodeScanner("reader", {{ fps: 10, qrbox: 250, facingMode: "environment" }});
