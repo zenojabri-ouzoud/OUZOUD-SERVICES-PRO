@@ -9,10 +9,13 @@ import pytz
 import qrcode
 import streamlit.components.v1 as components
 import io
+import json
 
-# --- إعداد Firebase ---
+# --- إعداد Firebase باستخدام Secrets ---
 if not firebase_admin._apps:
-    cred = credentials.Certificate("serviceAccountKey.json")
+    # قراءة المعلومات من secrets (تأكد أنك وضعت [textkey] في Streamlit Secrets)
+    key_dict = st.secrets["textkey"]
+    cred = credentials.Certificate(dict(key_dict))
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
@@ -73,7 +76,7 @@ def fast_barcode_scanner(input_label):
                 input.value = decodedText;
                 input.dispatchEvent(new Event('input', {{ bubbles: true }}));
                 input.dispatchEvent(new Event('change', {{ bubbles: true }}));
-            }}
+            }
         }});
     }}
     let html5QrcodeScanner = new Html5QrcodeScanner("reader", {{ fps: 10, qrbox: 250, facingMode: "environment" }});
