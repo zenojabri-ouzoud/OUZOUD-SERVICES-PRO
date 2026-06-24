@@ -6,23 +6,18 @@ import os
 from fpdf import FPDF
 from datetime import datetime
 import pytz
-import qrcode
 import streamlit.components.v1 as components
 import io
-import json
 
-# --- إعداد Firebase باستخدام Secrets ---
+# --- إعداد Firebase المصحح ---
 if not firebase_admin._apps:
-    # قراءة المعلومات من secrets (تأكد أنك وضعت [textkey] في Streamlit Secrets)
-    secret_dict = st.secrets["textkey"]
+    # قراءة البيانات من Secrets
+    config = dict(st.secrets["textkey"])
+    # تصحيح الـ private_key برمجياً
+    if "private_key" in config:
+        config["private_key"] = config["private_key"].replace("\\n", "\n")
     
-    # تحويل المعلومات إلى قاموس (Dictionary) بشكل صحيح
-    if isinstance(secret_dict, str):
-        key_dict = json.loads(secret_dict)
-    else:
-        key_dict = dict(secret_dict)
-        
-    cred = credentials.Certificate(key_dict)
+    cred = credentials.Certificate(config)
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
