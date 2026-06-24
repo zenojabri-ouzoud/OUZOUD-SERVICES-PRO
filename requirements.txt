@@ -1,6 +1,6 @@
 streamlit
 pandas
-firebase_admin
+firebase-admin
 fpdf
 pytz
 qrcode
