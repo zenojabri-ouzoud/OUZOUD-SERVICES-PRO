@@ -13,7 +13,7 @@ import json
 
 # --- إعداد Firebase باستخدام Secrets ---
 if not firebase_admin._apps:
-    # قراءة المعلومات من secrets
+    # قراءة المعلومات من secrets (تأكد أنك وضعت [textkey] في Streamlit Secrets)
     secret_dict = st.secrets["textkey"]
     
     # تحويل المعلومات إلى قاموس (Dictionary) بشكل صحيح
@@ -72,6 +72,7 @@ st.set_page_config(layout="wide", page_title="OUZOUD SERVICES")
 
 # --- دالة الـ Scanner ---
 def fast_barcode_scanner(input_label):
+    # تم تدبيل الأقواس {{ }} هنا لتفادي خطأ الـ f-string
     scanner_html = f"""
     <div id="reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -83,7 +84,7 @@ def fast_barcode_scanner(input_label):
                 input.value = decodedText;
                 input.dispatchEvent(new Event('input', {{ bubbles: true }}));
                 input.dispatchEvent(new Event('change', {{ bubbles: true }}));
-            }
+            }}
         }});
     }}
     let html5QrcodeScanner = new Html5QrcodeScanner("reader", {{ fps: 10, qrbox: 250, facingMode: "environment" }});
