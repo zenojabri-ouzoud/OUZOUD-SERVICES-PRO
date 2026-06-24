@@ -8,15 +8,13 @@ from datetime import datetime
 import pytz
 import streamlit.components.v1 as components
 import io
+import json
 
-# --- إعداد Firebase المصحح ---
+# --- إعداد Firebase (هاد الجزء هو اللي زدتو ليك باش يخدم الـ Secrets) ---
 if not firebase_admin._apps:
-    # قراءة البيانات من Secrets
     config = dict(st.secrets["textkey"])
-    # تصحيح الـ private_key برمجياً
     if "private_key" in config:
         config["private_key"] = config["private_key"].replace("\\n", "\n")
-    
     cred = credentials.Certificate(config)
     firebase_admin.initialize_app(cred)
 
@@ -52,15 +50,19 @@ def generate_impression_pdf(prix_page, nombre):
     pdf.output(file_path)
     return file_path
 
-# --- دالة لجلب البيانات ---
+# --- دالة لجلب البيانات (مصححة باش ما تهرسش يلا كانت المجموعة خاوية) ---
 def get_df(collection_name):
-    docs = db.collection(collection_name).stream()
-    data = []
-    for doc in docs:
-        item = doc.to_dict()
-        item['id'] = doc.id
-        data.append(item)
-    return pd.DataFrame(data)
+    try:
+        docs = list(db.collection(collection_name).stream())
+        if not docs: return pd.DataFrame()
+        data = []
+        for doc in docs:
+            item = doc.to_dict()
+            item['id'] = doc.id
+            data.append(item)
+        return pd.DataFrame(data)
+    except:
+        return pd.DataFrame()
 
 # --- الإعدادات العامة للمشروع ---
 st.set_page_config(layout="wide", page_title="OUZOUD SERVICES")
