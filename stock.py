@@ -73,7 +73,7 @@ def fast_barcode_scanner(input_label):
                 input.value = decodedText;
                 input.dispatchEvent(new Event('input', {{ bubbles: true }}));
                 input.dispatchEvent(new Event('change', {{ bubbles: true }}));
-            }
+            }}
         }});
     }}
     let html5QrcodeScanner = new Html5QrcodeScanner("reader", {{ fps: 10, qrbox: 250, facingMode: "environment" }});
