@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
-import sqlite3
+import firebase_admin
+from firebase_admin import credentials, firestore
 import os
 from fpdf import FPDF
 from datetime import datetime
@@ -9,12 +10,25 @@ import qrcode
 import streamlit.components.v1 as components
 import io
 
+# --- إعداد Firebase ---
+if not firebase_admin._apps:
+    cred = credentials.Certificate("serviceAccountKey.json")
+    firebase_admin.initialize_app(cred)
+
+db = firestore.client()
+
 # --- دالة التصدير للإكسيل ---
 def to_excel(df):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Sheet1')
     return output.getvalue()
+
+# --- دالة استيراد من إكسيل ---
+def import_excel(uploaded_file, collection_name):
+    df = pd.read_excel(uploaded_file)
+    for _, row in df.iterrows():
+        db.collection(collection_name).add(row.to_dict())
 
 # --- دالة فاتورة خاصة بالطباعة ---
 def generate_impression_pdf(prix_page, nombre):
@@ -33,35 +47,15 @@ def generate_impression_pdf(prix_page, nombre):
     pdf.output(file_path)
     return file_path
 
-# --- إعداد قاعدة البيانات ---
-def get_db_connection():
-    conn = sqlite3.connect('ouzoud.db', check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def init_db():
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS stock (id INTEGER PRIMARY KEY AUTOINCREMENT, Nom TEXT, Prix REAL, Quantité REAL, [Code-barres] TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS ventes (id INTEGER PRIMARY KEY AUTOINCREMENT, Code TEXT, Quantité REAL, Prix REAL, Total REAL, Date TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS impressions (id INTEGER PRIMARY KEY AUTOINCREMENT, Date TEXT, Prix_Page REAL, Nombre REAL, Total REAL)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS credits (id INTEGER PRIMARY KEY AUTOINCREMENT, Client TEXT, Montant REAL)''')
-    conn.commit()
-    conn.close()
-
-init_db()
-
-def execute_query(query, params=()):
-    conn = get_db_connection()
-    conn.execute(query, params)
-    conn.commit()
-    conn.close()
-
-def get_df(table_name):
-    conn = get_db_connection()
-    df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
-    conn.close()
-    return df
+# --- دالة لجلب البيانات ---
+def get_df(collection_name):
+    docs = db.collection(collection_name).stream()
+    data = []
+    for doc in docs:
+        item = doc.to_dict()
+        item['id'] = doc.id
+        data.append(item)
+    return pd.DataFrame(data)
 
 # --- الإعدادات العامة للمشروع ---
 st.set_page_config(layout="wide", page_title="OUZOUD SERVICES")
@@ -79,7 +73,7 @@ def fast_barcode_scanner(input_label):
                 input.value = decodedText;
                 input.dispatchEvent(new Event('input', {{ bubbles: true }}));
                 input.dispatchEvent(new Event('change', {{ bubbles: true }}));
-            }}
+            }
         }});
     }}
     let html5QrcodeScanner = new Html5QrcodeScanner("reader", {{ fps: 10, qrbox: 250, facingMode: "environment" }});
@@ -88,7 +82,7 @@ def fast_barcode_scanner(input_label):
     """
     components.html(scanner_html, height=400)
 
-# --- دالة إنشاء فاتورة PDF (معدلة لتظهر اسم المنتج) ---
+# --- دالة إنشاء فاتورة PDF ---
 def generate_pdf(cart_data):
     pdf = FPDF(orientation='P', unit='mm', format=(80, 250)) 
     pdf.add_page()
@@ -110,15 +104,9 @@ def generate_pdf(cart_data):
     pdf.set_font("Arial", size=9)
     
     total_general = 0
-    conn = get_db_connection()
-    c = conn.cursor()
-    
     for item in cart_data:
         code_input = str(item.get('Code', ''))
-        c.execute("SELECT Nom FROM stock WHERE [Code-barres] = ?", (code_input,))
-        res = c.fetchone()
-        nom_produit = res['Nom'] if res else code_input
-        
+        nom_produit = code_input
         qty = str(item.get('Quantité', 0))
         prix = float(item.get('Prix', 0))
         total = float(item.get('Total', 0))
@@ -129,8 +117,6 @@ def generate_pdf(cart_data):
         pdf.cell(10, 6, txt=f"{prix:.0f}", border=1, align='C')
         pdf.cell(12, 6, txt=f"{total:.0f}", border=1, align='C')
         pdf.ln(6)
-    
-    conn.close()
     
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(60, 8, txt=f"TOTAL: {total_general:.2f} DH", ln=True, align='R')
@@ -149,7 +135,6 @@ def generate_pdf(cart_data):
 if "authenticated" not in st.session_state: st.session_state.authenticated = False
 if "cart" not in st.session_state: st.session_state.cart = []
 if "last_cart" not in st.session_state: st.session_state.last_cart = None
-if "scanned_val_vente" not in st.session_state: st.session_state.scanned_val_vente = ""
 
 # --- نظام الحماية ---
 if not st.session_state.authenticated:
@@ -166,8 +151,7 @@ menu = st.sidebar.selectbox("Menu Principal", ["Point de Vente", "Gestion Stock"
 # --- القسم الأول: نقطة البيع ---
 if menu == "Point de Vente":
     st.header("🛒 Point de Vente")
-    if st.checkbox("📸 تفعيل السكانير السريع"):
-        fast_barcode_scanner("Code-barres")
+    if st.checkbox("📸 تفعيل السكانير السريع"): fast_barcode_scanner("Code-barres")
     
     mode = st.radio("Type de vente:", ["Vente Normale", "Scan QR", "Vente Libre", "Panier"])
     
@@ -175,18 +159,19 @@ if menu == "Point de Vente":
         code = st.text_input("Code-barres")
         qty = st.number_input("Quantité", min_value=1)
         if st.button("✅ Enregistrer la Vente"):
-            # جلب الثمن من Stock باش نسجلو في الـ Ventes
-            conn = get_db_connection()
-            c = conn.cursor()
-            c.execute("SELECT Prix FROM stock WHERE [Code-barres] = ?", (code,))
-            res = c.fetchone()
-            prix = res['Prix'] if res else 0
-            total = prix * qty
-            conn.close()
-            
-            execute_query("INSERT INTO ventes (Code, Quantité, Prix, Total, Date) VALUES (?, ?, ?, ?, ?)", 
-                          (code, qty, prix, total, datetime.now().strftime('%d/%m/%Y %H:%M')))
-            st.success("تم تسجيل البيع بنجاح!")
+            stocks = db.collection("stock").where("Code-barres", "==", code).stream()
+            prix = 0
+            doc_id = None
+            q_old = 0
+            for s in stocks:
+                prix = s.to_dict().get('Prix', 0)
+                q_old = s.to_dict().get('Quantité', 0)
+                doc_id = s.id
+            if doc_id:
+                total = prix * qty
+                db.collection("ventes").add({"Code": code, "Quantité": qty, "Prix": prix, "Total": total, "Date": datetime.now().strftime('%d/%m/%Y %H:%M')})
+                db.collection("stock").document(doc_id).update({"Quantité": q_old - qty})
+                st.success("تم تسجيل البيع بنجاح!")
     
     elif mode == "Scan QR":
         st.write("السكينير خدام الآن، وجه الكاميرا:")
@@ -196,8 +181,7 @@ if menu == "Point de Vente":
         name = st.text_input("Nom du produit")
         price = st.number_input("Prix")
         if st.button("✅ Enregistrer la Vente"):
-            execute_query("INSERT INTO ventes (Code, Quantité, Prix, Total, Date) VALUES (?, ?, ?, ?, ?)", 
-                          (name, 1, price, price, datetime.now().strftime('%d/%m/%Y %H:%M')))
+            db.collection("ventes").add({"Code": name, "Quantité": 1, "Prix": price, "Total": price, "Date": datetime.now().strftime('%d/%m/%Y %H:%M')})
             st.success("تم تسجيل البيع بنجاح!")
         
     elif mode == "Panier":
@@ -205,14 +189,9 @@ if menu == "Point de Vente":
         with col1:
             code = st.text_input("Code-barres")
             qty = st.number_input("Quantité:", min_value=1, step=1)
-            # جلب الثمن تلقائياً
-            conn = get_db_connection()
-            c = conn.cursor()
-            c.execute("SELECT Prix FROM stock WHERE [Code-barres] = ?", (code,))
-            res = c.fetchone()
-            prix_u = res['Prix'] if res else 10.0
-            conn.close()
-            
+            stocks = db.collection("stock").where("Code-barres", "==", code).stream()
+            prix_u = 0
+            for s in stocks: prix_u = s.to_dict().get('Prix', 0)
             if st.button("✅ Ajouter au Panier"):
                 st.session_state.cart.append({"Code": code, "Quantité": qty, "Prix": prix_u, "Total": prix_u * qty})
                 st.rerun()
@@ -221,8 +200,7 @@ if menu == "Point de Vente":
                 st.table(pd.DataFrame(st.session_state.cart))
                 if st.button("🖨️ Valider et Enregistrer (Ventes)"):
                     for item in st.session_state.cart:
-                        execute_query("INSERT INTO ventes (Code, Quantité, Prix, Total, Date) VALUES (?, ?, ?, ?, ?)", 
-                                      (item['Code'], item['Quantité'], item['Prix'], item['Total'], datetime.now().strftime('%d/%m/%Y %H:%M')))
+                        db.collection("ventes").add({**item, "Date": datetime.now().strftime('%d/%m/%Y %H:%M')})
                     st.session_state.last_cart = st.session_state.cart
                     st.session_state.cart = []
                     st.rerun()
@@ -231,37 +209,33 @@ if menu == "Point de Vente":
     st.subheader("📊 إدارة ملف المبيعات")
     df_ventes = get_df("ventes")
     st.dataframe(df_ventes)
-    
-    # Export/Import Ventes
     st.download_button("📥 Export Excel (Ventes)", to_excel(df_ventes), "ventes.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    uploaded_v = st.file_uploader("📂 Import Ventes", type=["xlsx"], key="v")
-    if uploaded_v:
-        pd.read_excel(uploaded_v).to_sql("ventes", get_db_connection(), if_exists='append', index=False)
-        st.success("تم الاستيراد!")
-        st.rerun()
-
-    del_id_v = st.number_input("ID للمسح (Ventes):", min_value=1, step=1, key="del_v")
-    if st.button("🗑️ حذف المبيعة"):
-        execute_query("DELETE FROM ventes WHERE id = ?", (del_id_v,))
+    uploaded_v = st.file_uploader("Import Ventes (Excel)", type=["xlsx"], key="import_v")
+    if uploaded_v and st.button("🚀 استيراد المبيعات"):
+        import_excel(uploaded_v, "ventes")
         st.rerun()
     
-    col_btn1, col_btn2 = st.columns(2)
-    with col_btn1:
-        if st.button("🖨️ Imprimer en PDF"):
-            if st.session_state.last_cart:
-                pdf_path = generate_pdf(st.session_state.last_cart)
-                with open(pdf_path, "rb") as pdf_file:
-                    st.download_button("📥 Télécharger le PDF", pdf_file, "facture.pdf", "application/pdf")
-    with col_btn2:
-        if st.button("📄 Voir les Factures"):
-            st.info("انتقل إلى قسم 'Factures' في القائمة الجانبية.")
+    del_id_v = st.text_input("ID للمسح (Ventes):", key="del_v")
+    if st.button("🗑️ حذف المبيعة"):
+        db.collection("ventes").document(del_id_v).delete()
+        st.rerun()
 
 # --- القسم الثاني: إدارة المخزون ---
 elif menu == "Gestion Stock":
     st.header("📦 Gestion Stock")
-    if st.checkbox("📸 تفعيل سكانير Stock"):
-        fast_barcode_scanner("Code-barres")
+    
+    df_s = get_df("stock")
+    if not df_s.empty:
+        low_stock = df_s[df_s['Quantité'] < 5]
+        if not low_stock.empty:
+            st.warning(f"⚠️ تحذير: المنتجات التالية قربات تسالا: {', '.join(low_stock['Nom'].tolist())}")
+    
+    search = st.text_input("🔍 بحث عن منتج بالاسم:")
+    if search:
+        df_s = df_s[df_s['Nom'].str.contains(search, case=False, na=False)]
         
+    if st.checkbox("📸 تفعيل سكانير Stock"): fast_barcode_scanner("Code-barres")
+    
     col1, col2, col3, col4 = st.columns(4)
     with col1: name = st.text_input("Nom")
     with col2: price = st.number_input("Prix")
@@ -269,33 +243,29 @@ elif menu == "Gestion Stock":
     with col4: barcode = st.text_input("Code-barres")
     
     if st.button("Ajouter"):
-        execute_query("INSERT INTO stock (Nom, Prix, Quantité, [Code-barres]) VALUES (?, ?, ?, ?)", (name, price, qty, barcode))
+        db.collection("stock").add({"Nom": name, "Prix": price, "Quantité": qty, "Code-barres": barcode})
         st.success(f"تم إضافة: {name} بنجاح!")
         st.rerun()
             
     st.subheader("📊 جدول المخزون")
-    df_stock = get_df("stock")
-    st.dataframe(df_stock, use_container_width=True)
-    
-    # Export/Import Stock
-    st.download_button("📥 Export Excel (Stock)", to_excel(df_stock), "stock.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    uploaded_s = st.file_uploader("📂 Import Stock", type=["xlsx"], key="s")
-    if uploaded_s:
-        pd.read_excel(uploaded_s).to_sql("stock", get_db_connection(), if_exists='append', index=False)
-        st.success("تم الاستيراد!")
+    st.dataframe(df_s, use_container_width=True)
+    st.download_button("📥 Export Excel (Stock)", to_excel(df_s), "stock.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    uploaded_s = st.file_uploader("Import Stock (Excel)", type=["xlsx"], key="import_s")
+    if uploaded_s and st.button("🚀 استيراد المخزون"):
+        import_excel(uploaded_s, "stock")
         st.rerun()
     
     col_del1, col_del2 = st.columns(2)
     with col_del1:
-        del_id_s = st.number_input("ID للمسح:", min_value=1, step=1, key="del_s")
+        del_id_s = st.text_input("ID للمسح:", key="del_s")
         if st.button("🗑️ حذف المنتج"):
-            execute_query("DELETE FROM stock WHERE id = ?", (del_id_s,))
+            db.collection("stock").document(del_id_s).delete()
             st.rerun()
     with col_del2:
-        upd_id = st.number_input("ID للتعديل:", min_value=1, step=1)
+        upd_id = st.text_input("ID للتعديل:")
         new_price = st.number_input("ثمن جديد:")
         if st.button("🔄 تحديث الثمن"):
-            execute_query("UPDATE stock SET Prix = ? WHERE id = ?", (new_price, upd_id))
+            db.collection("stock").document(upd_id).update({"Prix": new_price})
             st.rerun()
 
 elif menu == "Impression":
@@ -303,32 +273,24 @@ elif menu == "Impression":
     p = st.number_input("Prix/Page", min_value=0.0)
     n = st.number_input("Nombre", min_value=1)
     if st.button("Enregistrer et Imprimer"):
-        execute_query("INSERT INTO impressions (Date, Prix_Page, Nombre, Total) VALUES (?, ?, ?, ?)", 
-                      (datetime.now().strftime('%d/%m/%Y %H:%M'), p, n, p*n))
-        
-        # توليد الفاتورة الخاصة بالطباعة
+        db.collection("impressions").add({"Date": datetime.now().strftime('%d/%m/%Y %H:%M'), "Prix_Page": p, "Nombre": n, "Total": p*n})
         pdf_path = generate_impression_pdf(p, n)
         with open(pdf_path, "rb") as pdf_file:
             st.download_button("📥 تحميل فاتورة الطباعة (PDF)", pdf_file, "facture_impression.pdf", "application/pdf")
-            
         st.success("تم تسجيل وطباعة الفاتورة بنجاح!")
-        components.html("<script>window.print()</script>")
         
     st.subheader("📊 إدارة ملف الطباعة")
     df_imp = get_df("impressions")
     st.dataframe(df_imp, use_container_width=True)
-    
-    # Export/Import Impression
     st.download_button("📥 Export Excel (Impression)", to_excel(df_imp), "impressions.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    uploaded_i = st.file_uploader("📂 Import Impression", type=["xlsx"], key="i")
-    if uploaded_i:
-        pd.read_excel(uploaded_i).to_sql("impressions", get_db_connection(), if_exists='append', index=False)
-        st.success("تم الاستيراد!")
+    uploaded_i = st.file_uploader("Import Impressions (Excel)", type=["xlsx"], key="import_i")
+    if uploaded_i and st.button("🚀 استيراد الطباعة"):
+        import_excel(uploaded_i, "impressions")
         st.rerun()
-
-    del_id_i = st.number_input("ID للمسح (Impression):", min_value=1, step=1, key="del_i")
+    
+    del_id_i = st.text_input("ID للمسح (Impression):", key="del_i")
     if st.button("🗑️ حذف عملية الطباعة"):
-        execute_query("DELETE FROM impressions WHERE id = ?", (del_id_i,))
+        db.collection("impressions").document(del_id_i).delete()
         st.rerun()
 
 elif menu == "Caisse":
@@ -341,55 +303,38 @@ elif menu == "Caisse":
     st.subheader("🛒 مبيعات المنتجات")
     st.dataframe(df_sales)
     
-    # زر تصفير الحصيلة
     if st.button("⚠️ تصفير الحصيلة (بداية يوم جديد)"):
-        with pd.ExcelWriter("archives_journalier.xlsx") as writer:
-            df_sales.to_excel(writer, sheet_name='Ventes', index=False)
-            df_imp.to_excel(writer, sheet_name='Impressions', index=False)
-        execute_query("DELETE FROM ventes")
-        execute_query("DELETE FROM impressions")
-        st.success("تم التصفير والحفظ في archives_journalier.xlsx")
+        for col in ["ventes", "impressions"]:
+            docs = db.collection(col).stream()
+            for doc in docs: doc.reference.delete()
+        st.success("تم التصفير بنجاح")
         st.rerun()
-
-    # Export Ventes
-    st.download_button("📥 Export Ventes", to_excel(df_sales), "ventes_export.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    st.divider()
-    st.subheader("🖨️ عمليات الطباعة")
-    st.dataframe(df_imp)
-    # Export Impression
-    st.download_button("📥 Export Impressions", to_excel(df_imp), "impressions_export.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 elif menu == "Credits":
     st.header("💳 Gestion des Crédits")
     client = st.text_input("Nom du Client")
     montant = st.number_input("Montant (DH)")
     if st.button("Enregistrer Crédit"):
-        execute_query("INSERT INTO credits (Client, Montant) VALUES (?, ?)", (client, montant))
+        db.collection("credits").add({"Client": client, "Montant": montant})
         st.rerun()
     df_cred = get_df("credits")
     st.dataframe(df_cred, use_container_width=True)
-    
-    # Export/Import Credits
     st.download_button("📥 Export Excel (Credits)", to_excel(df_cred), "credits.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    uploaded_c = st.file_uploader("📂 Import Credits", type=["xlsx"], key="c")
-    if uploaded_c:
-        pd.read_excel(uploaded_c).to_sql("credits", get_db_connection(), if_exists='append', index=False)
-        st.success("تم الاستيراد!")
+    uploaded_c = st.file_uploader("Import Credits (Excel)", type=["xlsx"], key="import_c")
+    if uploaded_c and st.button("🚀 استيراد الديون"):
+        import_excel(uploaded_c, "credits")
         st.rerun()
     
-    del_id_c = st.number_input("ID للمسح (Crédit):", min_value=1, step=1, key="del_c")
+    del_id_c = st.text_input("ID للمسح (Crédit):", key="del_c")
     if st.button("🗑️ حذف الدين"):
-        execute_query("DELETE FROM credits WHERE id = ?", (del_id_c,))
+        db.collection("credits").document(del_id_c).delete()
         st.rerun()
 
 elif menu == "Factures":
     st.header("📄 Gestion des Factures")
-    # فاتورة المبيعات العادية
     if os.path.exists("facture.pdf"):
         with open("facture.pdf", "rb") as f:
             st.download_button("📥 تحميل آخر فاتورة مبيعات (PDF)", f, "facture.pdf", "application/pdf")
-    
-    # فاتورة الطباعة
     if os.path.exists("facture_impression.pdf"):
         with open("facture_impression.pdf", "rb") as f:
             st.download_button("📥 تحميل آخر فاتورة طباعة (PDF)", f, "facture_impression.pdf", "application/pdf")
