@@ -10,7 +10,7 @@ import streamlit.components.v1 as components
 import io
 import json
 
-# --- إعداد Firebase ---
+# --- إعداد Firebase (هاد الجزء هو اللي زدتو ليك باش يخدم الـ Secrets) ---
 if not firebase_admin._apps:
     config = dict(st.secrets["textkey"])
     if "private_key" in config:
@@ -18,8 +18,7 @@ if not firebase_admin._apps:
     cred = credentials.Certificate(config)
     firebase_admin.initialize_app(cred)
 
-# تم تحديد قاعدة البيانات الافتراضية هنا لحل مشكل الـ 404
-db = firestore.client(database="(default)")
+db = firestore.client()
 
 # --- دالة التصدير للإكسيل ---
 def to_excel(df):
@@ -34,7 +33,7 @@ def import_excel(uploaded_file, collection_name):
     for _, row in df.iterrows():
         db.collection(collection_name).add(row.to_dict())
 
-# --- دالة حذف Collection (للتنظيف) ---
+# --- دالة حذف Collection (للتنظيف - زدتها باش نتهناو من ccredits) ---
 def delete_collection(collection_name, batch_size=50):
     coll_ref = db.collection(collection_name)
     docs = coll_ref.limit(batch_size).stream()
@@ -63,7 +62,7 @@ def generate_impression_pdf(prix_page, nombre):
     pdf.output(file_path)
     return file_path
 
-# --- دالة لجلب البيانات ---
+# --- دالة لجلب البيانات (مصححة باش ما تهرسش يلا كانت المجموعة خاوية) ---
 def get_df(collection_name):
     try:
         docs = list(db.collection(collection_name).stream())
@@ -82,6 +81,7 @@ st.set_page_config(layout="wide", page_title="OUZOUD SERVICES")
 
 # --- دالة الـ Scanner ---
 def fast_barcode_scanner(input_label):
+    # تم تدبيل الأقواس {{ }} هنا لتفادي خطأ الـ f-string
     scanner_html = f"""
     <div id="reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -344,7 +344,7 @@ elif menu == "Credits":
         count = delete_collection("ccredits")
         st.success(f"تم حذف {count} عنصر من ccredits بنجاح!")
         st.rerun()
-        
+    
     st.subheader("📋 قائمة الديون")
     df_cred = get_df("credits")
     st.dataframe(df_cred, use_container_width=True)
