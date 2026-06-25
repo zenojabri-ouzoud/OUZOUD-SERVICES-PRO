@@ -1,6 +1,6 @@
-import streamlit as st
+Import streamlit as st
 import pandas as pd
-from supabase import create_client, client
+from supabase import create_client, Client
 import os
 from fpdf import FPDF
 from datetime import datetime
@@ -1077,21 +1077,13 @@ elif menu == t("stock"):
         with col3: qty = st.number_input(t("quantity"), min_value=0.0, step=0.1)
         with col4: barcode = st.text_input(t("barcode"))
         
-       try:
-    data = {
-        "Nom": name,
-        "Prix": float(price),
-        "Quantité": float(qty),
-        "Code-barres": barcode
-    }
-    response = supabase.table("stock").insert(data).execute()
-    st.success(t("product_added"))
-    st.rerun()
-except Exception as e:
-    # هذا السطر سيجبر التطبيق على عرض سبب الخطأ الحقيقي
-    st.error(f"خطأ Supabase: {str(e)}") 
-    # في حال لم تظهر تفاصيل، اطبع البيانات التي نحاول إرسالها للتحقق
-    st.write("البيانات المرسلة:", data)
+        if st.button(t("add_button")):
+            if name and barcode:
+                supabase.table("stock").insert({
+                    "Nom": name, 
+                    "Prix": float(price), 
+                    "Quantité": float(qty), 
+                    "Code-barres": barcode
                 }).execute()
                 st.success(t("product_added"))
                 st.rerun()
