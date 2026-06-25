@@ -1,13 +1,9 @@
-# ==================== OUZOUD SERVICES - APPLICATION DE GESTION ====================
-# Développé avec Streamlit + Supabase
-# Version: 2.0 - Avec Auto Sale, Panier Auto, Scan Stock, Live Sync
-
 import streamlit as st
 import pandas as pd
-from supabase import create_client, client
+from supabase import create_client, Client
 import os
 from fpdf import FPDF
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
 import streamlit.components.v1 as components
 import io
@@ -15,56 +11,35 @@ import json
 import time
 
 # ==================== CONFIGURATION SUPABASE ====================
-# Connexion à la base de données Supabase
-# Les identifiants sont stockés dans les secrets Streamlit
-
 try:
     supabase: Client = create_client(
         st.secrets["supabase_url"],
         st.secrets["supabase_key"]
     )
-    # Si la connexion réussit, on continue
-    print("✅ Connexion Supabase établie avec succès!")
 except Exception as e:
-    # Si la connexion échoue, on affiche l'erreur et on arrête tout
     st.error(f"❌ Erreur de connexion à Supabase: {e}")
-    st.error("Vérifiez vos secrets dans .streamlit/secrets.toml")
     st.stop()
 
-# ==================== INITIALISATION DES VARIABLES DE SESSION ====================
-# Ces variables persistent pendant toute la session utilisateur
-# Elles sont initialisées une seule fois au démarrage
-
+# ==================== INITIALISATION SESSION STATE ====================
 if "lang" not in st.session_state:
-    st.session_state.lang = "ar"  # Langue par défaut: Arabe
-
+    st.session_state.lang = "ar"
 if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False  # Non connecté par défaut
-
+    st.session_state.authenticated = False
 if "cart" not in st.session_state:
-    st.session_state.cart = []  # Panier vide au démarrage
-
+    st.session_state.cart = []
 if "last_cart" not in st.session_state:
-    st.session_state.last_cart = None  # Dernier panier validé
-
+    st.session_state.last_cart = None
 if "commande_cart" not in st.session_state:
-    st.session_state.commande_cart = []  # Panier de commandes fournisseur
-
+    st.session_state.commande_cart = []
 if "caisse_reset_confirmed" not in st.session_state:
-    st.session_state.caisse_reset_confirmed = False  # Confirmation reset caisse
-
+    st.session_state.caisse_reset_confirmed = False
 if "auto_sale_mode" not in st.session_state:
-    st.session_state.auto_sale_mode = False  # Mode vente automatique désactivé
-
+    st.session_state.auto_sale_mode = False
 if "live_sync_active" not in st.session_state:
-    st.session_state.live_sync_active = False  # Synchronisation en direct désactivée
+    st.session_state.live_sync_active = False
 
-# ==================== SYSTEME DE TRADUCTION MULTILINGUE ====================
-# Dictionnaire contenant toutes les traductions en 3 langues: Arabe, Français, Anglais
-# Chaque clé a 3 valeurs: ar, fr, en
-
+# ==================== SYSTEME DE TRADUCTION (AR/FR/EN) ====================
 translations = {
-    # ========== PAGE DE CONNEXION ==========
     "login_title": {
         "ar": "🔐 تسجيل الدخول",
         "fr": "🔐 Connexion",
@@ -85,8 +60,6 @@ translations = {
         "fr": "❌ Mot de passe incorrect!",
         "en": "❌ Wrong password!"
     },
-    
-    # ========== MENU PRINCIPAL ==========
     "menu_main": {
         "ar": "القائمة الرئيسية",
         "fr": "Menu Principal",
@@ -127,8 +100,6 @@ translations = {
         "fr": "📋 Commandes Fournisseur",
         "en": "📋 Supplier Orders"
     },
-    
-    # ========== POINT DE VENTE - SCANNERS ==========
     "activate_scanner": {
         "ar": "📸 تفعيل الماسح الضوئي السريع",
         "fr": "📸 Activer le scanner rapide",
@@ -139,8 +110,6 @@ translations = {
         "fr": "⚡ Vente Auto (Scan = Vente Directe + Facture 80mm)",
         "en": "⚡ Auto Sale (Scan = Direct Sale + 80mm Invoice)"
     },
-    
-    # ========== POINT DE VENTE - TYPES DE VENTE ==========
     "sale_type": {
         "ar": "نوع البيع:",
         "fr": "Type de vente:",
@@ -166,8 +135,6 @@ translations = {
         "fr": "Panier",
         "en": "Cart"
     },
-    
-    # ========== PANIER - MODES ==========
     "cart_mode_label": {
         "ar": "🚀 نوع السلة:",
         "fr": "🚀 Type de panier:",
@@ -198,8 +165,6 @@ translations = {
         "fr": "produits",
         "en": "products"
     },
-    
-    # ========== CHAMPS COMMUNS ==========
     "barcode": {
         "ar": "الباركود",
         "fr": "Code-barres",
@@ -225,13 +190,6 @@ translations = {
         "fr": "Total",
         "en": "Total"
     },
-    "product_name": {
-        "ar": "اسم المنتج",
-        "fr": "Nom du Produit",
-        "en": "Product Name"
-    },
-    
-    # ========== BOUTONS D'ACTION ==========
     "confirm_sale": {
         "ar": "✅ تأكيد البيع",
         "fr": "✅ Confirmer la Vente",
@@ -257,28 +215,6 @@ translations = {
         "fr": "🧾 Terminer et Imprimer la Facture",
         "en": "🧾 Finish & Print Invoice"
     },
-    "add_button": {
-        "ar": "➕ إضافة",
-        "fr": "➕ Ajouter",
-        "en": "➕ Add"
-    },
-    "update_button": {
-        "ar": "✏️ تحديث",
-        "fr": "✏️ Modifier",
-        "en": "✏️ Update"
-    },
-    "save": {
-        "ar": "💾 حفظ",
-        "fr": "💾 Sauvegarder",
-        "en": "💾 Save"
-    },
-    "cancel": {
-        "ar": "❌ إلغاء",
-        "fr": "❌ Annuler",
-        "en": "❌ Cancel"
-    },
-    
-    # ========== MESSAGES DE SUCCÈS/ERREUR ==========
     "sale_success": {
         "ar": "✅ تم تسجيل البيع بنجاح!",
         "fr": "✅ Vente enregistrée avec succès!",
@@ -294,62 +230,20 @@ translations = {
         "fr": "⚠️ Produit introuvable dans le stock",
         "en": "⚠️ Product not found in stock"
     },
-    "error_generic": {
-        "ar": "❌ حدث خطأ. الرجاء المحاولة مرة أخرى.",
-        "fr": "❌ Une erreur est survenue. Veuillez réessayer.",
-        "en": "❌ An error occurred. Please try again."
-    },
-    "fill_all_fields": {
-        "ar": "⚠️ الرجاء ملء جميع الحقول",
-        "fr": "⚠️ Veuillez remplir tous les champs",
-        "en": "⚠️ Please fill all fields"
-    },
-    "product_added": {
-        "ar": "✅ تم إضافة المنتج بنجاح!",
-        "fr": "✅ Produit ajouté avec succès!",
-        "en": "✅ Product added successfully!"
-    },
-    "product_updated": {
-        "ar": "✅ تم تحديث المنتج بنجاح!",
-        "fr": "✅ Produit mis à jour avec succès!",
-        "en": "✅ Product updated successfully!"
-    },
-    "invoice_printed": {
-        "ar": "🧾 تمت طباعة الفاتورة تلقائياً",
-        "fr": "🧾 Facture imprimée automatiquement",
-        "en": "🧾 Invoice printed automatically"
-    },
-    "scan_success_sound": {
-        "ar": "✅ تم المسح بنجاح! 🔔",
-        "fr": "✅ Scan réussi! 🔔",
-        "en": "✅ Scan successful! 🔔"
-    },
-    "import_success": {
-        "ar": "✅ تم الاستيراد بنجاح!",
-        "fr": "✅ Import réussi!",
-        "en": "✅ Import successful!"
-    },
-    "order_saved": {
-        "ar": "✅ تم حفظ الطلبية بنجاح!",
-        "fr": "✅ Commande sauvegardée avec succès!",
-        "en": "✅ Order saved successfully!"
-    },
-    "order_received": {
-        "ar": "✅ تم تأكيد الاستلام وتحديث المخزون!",
-        "fr": "✅ Réception confirmée et stock mis à jour!",
-        "en": "✅ Reception confirmed and stock updated!"
-    },
-    "reset_success": {
-        "ar": "✅ تم تصفير الخزينة بنجاح! إجمالي اليوم:",
-        "fr": "✅ Caisse réinitialisée avec succès! Total du jour:",
-        "en": "✅ Cash register reset successfully! Daily total:"
-    },
-    
-    # ========== STOCK ==========
     "add_product": {
         "ar": "➕ إضافة منتج",
         "fr": "➕ Ajouter un Produit",
         "en": "➕ Add Product"
+    },
+    "product_name": {
+        "ar": "اسم المنتج",
+        "fr": "Nom du Produit",
+        "en": "Product Name"
+    },
+    "add_button": {
+        "ar": "➕ إضافة",
+        "fr": "➕ Ajouter",
+        "en": "➕ Add"
     },
     "update_product": {
         "ar": "✏️ تحديث منتج",
@@ -416,18 +310,11 @@ translations = {
         "fr": "Nouveau Prix",
         "en": "New Price"
     },
-    "stock_scanner_add": {
-        "ar": "📸 مسح الباركود للإضافة",
-        "fr": "📸 Scanner pour ajouter",
-        "en": "📸 Scan barcode to add"
+    "update_button": {
+        "ar": "✏️ تحديث",
+        "fr": "✏️ Modifier",
+        "en": "✏️ Update"
     },
-    "stock_scanner_update": {
-        "ar": "📸 مسح الباركود للتحديث",
-        "fr": "📸 Scanner pour modifier",
-        "en": "📸 Scan barcode to update"
-    },
-    
-    # ========== IMPRESSION ==========
     "price_per_page": {
         "ar": "سعر الصفحة",
         "fr": "Prix/Page",
@@ -448,17 +335,15 @@ translations = {
         "fr": "📊 Historique d'Impression",
         "en": "📊 Print History"
     },
-    "total_printing": {
-        "ar": "🖨️ إجمالي الطباعة",
-        "fr": "🖨️ Total Impressions",
-        "en": "🖨️ Total Printing"
-    },
-    
-    # ========== CAISSE ==========
     "total_sales": {
         "ar": "💰 إجمالي المبيعات",
         "fr": "💰 Total des Ventes",
         "en": "💰 Total Sales"
+    },
+    "total_printing": {
+        "ar": "🖨️ إجمالي الطباعة",
+        "fr": "🖨️ Total Impressions",
+        "en": "🖨️ Total Printing"
     },
     "total_credits": {
         "ar": "💳 إجمالي الديون",
@@ -495,6 +380,16 @@ translations = {
         "fr": "✅ Oui, réinitialiser",
         "en": "✅ Yes, reset"
     },
+    "cancel": {
+        "ar": "❌ إلغاء",
+        "fr": "❌ Annuler",
+        "en": "❌ Cancel"
+    },
+    "reset_success": {
+        "ar": "✅ تم تصفير الخزينة بنجاح! إجمالي اليوم:",
+        "fr": "✅ Caisse réinitialisée avec succès! Total du jour:",
+        "en": "✅ Cash register reset successfully! Daily total:"
+    },
     "history": {
         "ar": "📅 سجل الأيام السابقة",
         "fr": "📅 Historique des Jours Précédents",
@@ -505,8 +400,6 @@ translations = {
         "fr": "📋 Ventes Récentes",
         "en": "📋 Recent Sales"
     },
-    
-    # ========== CREDITS ==========
     "add_credit": {
         "ar": "➕ إضافة دين جديد",
         "fr": "➕ Ajouter un Crédit",
@@ -567,8 +460,6 @@ translations = {
         "fr": "Aucun crédit pour le moment",
         "en": "No credits currently"
     },
-    
-    # ========== FACTURES ==========
     "last_sale": {
         "ar": "🛒 آخر عملية بيع",
         "fr": "🛒 Dernière Vente",
@@ -599,8 +490,6 @@ translations = {
         "fr": "📊 Toutes les Ventes (pour facturation)",
         "en": "📊 All Sales (for invoicing)"
     },
-    
-    # ========== COMMANDES ==========
     "new_order": {
         "ar": "➕ إضافة طلبية جديدة",
         "fr": "➕ Nouvelle Commande",
@@ -671,8 +560,16 @@ translations = {
         "fr": "Aucune commande en attente",
         "en": "No pending orders"
     },
-    
-    # ========== SIDEBAR ==========
+    "order_saved": {
+        "ar": "✅ تم حفظ الطلبية بنجاح!",
+        "fr": "✅ Commande sauvegardée avec succès!",
+        "en": "✅ Order saved successfully!"
+    },
+    "order_received": {
+        "ar": "✅ تم تأكيد الاستلام وتحديث المخزون!",
+        "fr": "✅ Réception confirmée et stock mis à jour!",
+        "en": "✅ Reception confirmed and stock updated!"
+    },
     "quick_stats": {
         "ar": "📊 إحصائيات سريعة",
         "fr": "📊 Statistiques Rapides",
@@ -693,6 +590,26 @@ translations = {
         "fr": "📋 Commandes",
         "en": "📋 Orders"
     },
+    "error_generic": {
+        "ar": "❌ حدث خطأ. الرجاء المحاولة مرة أخرى.",
+        "fr": "❌ Une erreur est survenue. Veuillez réessayer.",
+        "en": "❌ An error occurred. Please try again."
+    },
+    "fill_all_fields": {
+        "ar": "⚠️ الرجاء ملء جميع الحقول",
+        "fr": "⚠️ Veuillez remplir tous les champs",
+        "en": "⚠️ Please fill all fields"
+    },
+    "product_added": {
+        "ar": "✅ تم إضافة المنتج بنجاح!",
+        "fr": "✅ Produit ajouté avec succès!",
+        "en": "✅ Product added successfully!"
+    },
+    "product_updated": {
+        "ar": "✅ تم تحديث المنتج بنجاح!",
+        "fr": "✅ Produit mis à jour avec succès!",
+        "en": "✅ Product updated successfully!"
+    },
     "export_excel": {
         "ar": "📥 تصدير Excel",
         "fr": "📥 Exporter Excel",
@@ -702,6 +619,11 @@ translations = {
         "ar": "📤 استيراد Excel",
         "fr": "📤 Importer Excel",
         "en": "📤 Import Excel"
+    },
+    "import_success": {
+        "ar": "✅ تم الاستيراد بنجاح!",
+        "fr": "✅ Import réussi!",
+        "en": "✅ Import successful!"
     },
     "lang_select": {
         "ar": "🌐 اللغة",
@@ -713,6 +635,16 @@ translations = {
         "fr": "Aucune donnée",
         "en": "No data"
     },
+    "invoice_printed": {
+        "ar": "🧾 تمت طباعة الفاتورة تلقائياً",
+        "fr": "🧾 Facture imprimée automatiquement",
+        "en": "🧾 Invoice printed automatically"
+    },
+    "scan_success_sound": {
+        "ar": "✅ تم المسح بنجاح! 🔔",
+        "fr": "✅ Scan réussi! 🔔",
+        "en": "✅ Scan successful! 🔔"
+    },
     "live_sync_label": {
         "ar": "🔄 مزامنة مباشرة",
         "fr": "🔄 Synchro Live",
@@ -723,47 +655,36 @@ translations = {
         "fr": "🔄 Synchro Live active - Mise à jour toutes les 5 secondes",
         "en": "🔄 Live Sync active - Updating every 5 seconds"
     },
+    "stock_scanner_add": {
+        "ar": "📸 مسح الباركود للإضافة",
+        "fr": "📸 Scanner pour ajouter",
+        "en": "📸 Scan barcode to add"
+    },
+    "stock_scanner_update": {
+        "ar": "📸 مسح الباركود للتحديث",
+        "fr": "📸 Scanner pour modifier",
+        "en": "📸 Scan barcode to update"
+    },
 }
 
-# ==================== FONCTION DE TRADUCTION ====================
 def t(key):
-    """
-    Traduit une clé dans la langue sélectionnée
-    Args:
-        key: La clé de traduction
-    Returns:
-        Le texte traduit dans la langue courante
-    """
+    """ترجمة المفتاح إلى اللغة المختارة"""
     return translations.get(key, {}).get(st.session_state.lang, key)
 
-# ==================== FONCTIONS DE GESTION EXCEL ====================
+# ==================== FONCTIONS UTILITAIRES ====================
 def to_excel(df):
-    """
-    Convertit un DataFrame Pandas en fichier Excel téléchargeable
-    Args:
-        df: DataFrame à convertir
-    Returns:
-        Bytes du fichier Excel
-    """
+    """تحويل DataFrame إلى ملف Excel"""
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Sheet1')
     return output.getvalue()
 
 def import_excel_data(uploaded_file, table_name):
-    """
-    Importe les données d'un fichier Excel vers une table Supabase
-    Args:
-        uploaded_file: Fichier Excel téléchargé
-        table_name: Nom de la table Supabase
-    Returns:
-        True si succès, False si échec
-    """
+    """استيراد بيانات من ملف Excel إلى جدول Supabase"""
     try:
         df = pd.read_excel(uploaded_file)
         for _, row in df.iterrows():
             data_dict = row.to_dict()
-            # Supprimer la colonne id si elle existe (auto-générée par Supabase)
             if 'id' in data_dict:
                 del data_dict['id']
             supabase.table(table_name).insert(data_dict).execute()
@@ -773,12 +694,7 @@ def import_excel_data(uploaded_file, table_name):
         return False
 
 def export_import_buttons(table_name, data_df):
-    """
-    Affiche les boutons d'export et d'import Excel pour une table
-    Args:
-        table_name: Nom de la table
-        data_df: DataFrame des données
-    """
+    """أزرار تصدير واستيراد Excel"""
     col_exp, col_imp = st.columns(2)
     with col_exp:
         if not data_df.empty:
@@ -800,15 +716,8 @@ def export_import_buttons(table_name, data_df):
                     st.success(t('import_success'))
                     st.rerun()
 
-# ==================== FONCTIONS SUPABASE ====================
 def get_df(table_name):
-    """
-    Récupère toutes les données d'une table Supabase
-    Args:
-        table_name: Nom de la table
-    Returns:
-        DataFrame contenant les données
-    """
+    """جلب البيانات من جدول Supabase كـ DataFrame"""
     try:
         response = supabase.table(table_name).select("*").execute()
         if not response.data:
@@ -819,41 +728,25 @@ def get_df(table_name):
         return pd.DataFrame()
 
 def check_stock_levels():
-    """
-    Vérifie les produits dont le stock est bas (< 5 unités)
-    Returns:
-        DataFrame des produits en stock bas
-    """
+    """التحقق من المنتجات ذات المخزون المنخفض"""
     df = get_df("stock")
     if not df.empty and 'Quantité' in df.columns:
         return df[df['Quantité'] < 5]
     return pd.DataFrame()
 
 def get_product_info(code_or_name):
-    """
-    Recherche un produit par code-barres ou par nom
-    Args:
-        code_or_name: Code-barres ou nom du produit
-    Returns:
-        Dictionnaire du produit ou None
-    """
+    """البحث عن منتج بالباركود أو الاسم"""
     if code_or_name:
-        # Recherche par code-barres d'abord
         stocks = supabase.table("stock").select("*").eq("Code-barres", code_or_name).execute()
         if stocks.data:
             return stocks.data[0]
-        # Recherche par nom ensuite
         stocks = supabase.table("stock").select("*").eq("Nom", code_or_name).execute()
         if stocks.data:
             return stocks.data[0]
     return None
 
 def confirm_purchase(cmd_id):
-    """
-    Confirme la réception d'une commande et met à jour le stock
-    Args:
-        cmd_id: ID de la commande
-    """
+    """تأكيد استلام طلبية وتحديث المخزون"""
     try:
         item = supabase.table("commandes").select("*").eq("id", int(cmd_id)).execute().data[0]
         stk = supabase.table("stock").select("*").eq("Nom", item['Nom']).execute().data[0]
@@ -864,11 +757,7 @@ def confirm_purchase(cmd_id):
         st.error(f"Erreur confirmation: {str(e)}")
 
 def reset_caisse():
-    """
-    Réinitialise la caisse et sauvegarde le résumé du jour
-    Returns:
-        Total de la journée
-    """
+    """تصفير الخزينة وحفظ ملخص اليوم"""
     date_aujourdhui = datetime.now().strftime('%d/%m/%Y')
     df_ventes = get_df("ventes")
     df_impressions = get_df("impressions")
@@ -887,14 +776,7 @@ def reset_caisse():
     return total_jour
 
 def reduce_credit(credit_id, montant_reduction):
-    """
-    Réduit le montant d'un crédit et enregistre le paiement
-    Args:
-        credit_id: ID du crédit
-        montant_reduction: Montant à déduire
-    Returns:
-        Nouveau montant restant
-    """
+    """تقليل مبلغ الدين مع تسجيل المدفوعات"""
     credit_actuel = supabase.table("credits").select("*").eq("id", int(credit_id)).execute().data[0]
     nouveau_montant = float(credit_actuel['Montant']) - float(montant_reduction)
     if nouveau_montant < 0:
@@ -909,16 +791,8 @@ def reduce_credit(credit_id, montant_reduction):
     }).execute()
     return nouveau_montant
 
-# ==================== FONCTIONS PDF ====================
 def generate_impression_pdf(prix_page, nombre):
-    """
-    Génère un reçu PDF pour une impression
-    Args:
-        prix_page: Prix par page
-        nombre: Nombre de pages
-    Returns:
-        Chemin du fichier PDF
-    """
+    """توليد فاتورة طباعة"""
     pdf = FPDF(orientation='P', unit='mm', format=(80, 250))
     pdf.add_page()
     pdf.set_font("Arial", 'B', 14)
@@ -935,13 +809,7 @@ def generate_impression_pdf(prix_page, nombre):
     return file_path
 
 def generate_commande_pdf(commandes_data):
-    """
-    Génère un bon de commande PDF
-    Args:
-        commandes_data: Liste des produits commandés
-    Returns:
-        Chemin du fichier PDF
-    """
+    """توليد PDF للطلبية"""
     pdf = FPDF(orientation='P', unit='mm', format=(80, 250))
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
@@ -985,18 +853,11 @@ def generate_commande_pdf(commandes_data):
     return file_path
 
 def generate_pdf_80mm(cart_data):
-    """
-    Génère une facture format 80mm (imprimante thermique)
-    Args:
-        cart_data: Liste des articles dans le panier
-    Returns:
-        Chemin du fichier PDF
-    """
+    """طباعة فاتورة 80mm حرارية"""
     pdf = FPDF('P', 'mm', (80, 297))
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=5)
     
-    # En-tête du magasin
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(70, 8, "OUZOUD SERVICES", ln=True, align='C')
     pdf.set_font("Arial", size=8)
@@ -1004,13 +865,11 @@ def generate_pdf_80mm(cart_data):
     pdf.cell(70, 4, "maaridprint@gmail.com", ln=True, align='C')
     pdf.cell(70, 4, "-" * 40, ln=True, align='C')
     
-    # Date et heure
     now = datetime.now(pytz.timezone("Africa/Casablanca"))
     pdf.set_font("Arial", size=8)
     pdf.cell(70, 4, f"Date: {now.strftime('%d/%m/%Y %H:%M')}", ln=True, align='L')
     pdf.cell(70, 4, "-" * 40, ln=True, align='C')
     
-    # En-tête du tableau
     pdf.set_font("Arial", 'B', 8)
     pdf.cell(35, 5, "Produit", 1, 0, 'C')
     pdf.cell(10, 5, "Qte", 1, 0, 'C')
@@ -1018,7 +877,6 @@ def generate_pdf_80mm(cart_data):
     pdf.cell(13, 5, "Total", 1, 0, 'C')
     pdf.ln(5)
     
-    # Lignes des produits
     pdf.set_font("Arial", size=7)
     tg = 0
     for item in cart_data:
@@ -1033,13 +891,11 @@ def generate_pdf_80mm(cart_data):
         pdf.cell(13, 4, f"{tot:.2f}", 1, 0, 'C')
         pdf.ln(4)
     
-    # Total
     pdf.set_font("Arial", 'B', 10)
     pdf.cell(70, 6, "-" * 40, ln=True, align='C')
     pdf.cell(70, 6, f"TOTAL: {tg:.2f} DH", ln=True, align='R')
     pdf.cell(70, 4, "-" * 40, ln=True, align='C')
     
-    # Pied de page
     pdf.set_font("Arial", 'I', 7)
     pdf.cell(70, 4, "Merci pour votre visite!", ln=True, align='C')
     pdf.cell(70, 4, "A bientot!", ln=True, align='C')
@@ -1049,15 +905,11 @@ def generate_pdf_80mm(cart_data):
     return file_path
 
 def generate_pdf(cart_data):
-    """Fonction wrapper pour la génération de facture"""
+    """توليد الفاتورة الافتراضية (80mm)"""
     return generate_pdf_80mm(cart_data)
 
-# ==================== FONCTIONS AUDIO ====================
 def play_success_sound():
-    """
-    Joue un son de succès après une opération réussie
-    Utilise un fichier audio WAV encodé en base64
-    """
+    """تشغيل صوت عند نجاح العملية"""
     sound_html = """
     <audio autoplay>
         <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=">
@@ -1065,14 +917,8 @@ def play_success_sound():
     """
     components.html(sound_html, height=0)
 
-# ==================== FONCTIONS SCANNER CODE-BARRES ====================
 def fast_barcode_scanner_with_qty(input_label, qty_label):
-    """
-    Scanner code-barres standard avec champ de quantité
-    Args:
-        input_label: Label aria du champ code-barres
-        qty_label: Label aria du champ quantité
-    """
+    """سكانير عادي مع خانة الكمية"""
     scanner_html = f"""
     <div id="reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -1107,10 +953,7 @@ def fast_barcode_scanner_with_qty(input_label, qty_label):
     components.html(scanner_html, height=400)
 
 def auto_sale_scanner():
-    """
-    Scanner pour le mode vente automatique
-    Chaque scan déclenche une vente directe
-    """
+    """سكانير البيع التلقائي: يمسح = يبيع تلقائياً + يطبع فاتورة 80mm"""
     scanner_html = """
     <div id="reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -1139,10 +982,7 @@ def auto_sale_scanner():
     components.html(scanner_html, height=350)
 
 def auto_cart_scanner():
-    """
-    Scanner pour le panier automatique
-    Chaque scan ajoute le produit au panier
-    """
+    """سكانير السلة التلقائية: يمسح = يضاف للسلة"""
     scanner_html = """
     <div id="auto_cart_reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -1171,11 +1011,7 @@ def auto_cart_scanner():
     components.html(scanner_html, height=300)
 
 def stock_barcode_scanner(target_input_label):
-    """
-    Scanner pour le stock (remplit uniquement le champ code-barres)
-    Args:
-        target_input_label: Label aria du champ code-barres cible
-    """
+    """ماسح باركود يملأ خانة محددة فقط"""
     scanner_html = f"""
     <div id="stock_reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -1196,219 +1032,123 @@ def stock_barcode_scanner(target_input_label):
     """
     components.html(scanner_html, height=300)
 
-# ==================== CONFIGURATION DE LA PAGE ====================
-st.set_page_config(
-    layout="wide",
-    page_title="OUZOUD SERVICES",
-    page_icon="🛒",
-    initial_sidebar_state="expanded"
-)
-# ==================== PAGE DE CONNEXION ====================
-# Cette section s'affiche uniquement si l'utilisateur n'est pas connecté
+st.set_page_config(layout="wide", page_title="OUZOUD SERVICES")
 
+# ==================== PAGE DE LOGIN ====================
 if not st.session_state.authenticated:
-    # Titre de la page de connexion
     st.title(t("login_title"))
     
-    # Sélecteur de langue sur la page de connexion
-    st.markdown("---")
     lang_col1, lang_col2, lang_col3 = st.columns(3)
     with lang_col1:
-        if st.button("🇲🇦 العربية", use_container_width=True):
+        if st.button("🇲🇦 العربية"):
             st.session_state.lang = "ar"
             st.rerun()
     with lang_col2:
-        if st.button("🇫🇷 Français", use_container_width=True):
+        if st.button("🇫🇷 Français"):
             st.session_state.lang = "fr"
             st.rerun()
     with lang_col3:
-        if st.button("🇬🇧 English", use_container_width=True):
+        if st.button("🇬🇧 English"):
             st.session_state.lang = "en"
             st.rerun()
     
-    st.markdown("---")
-    
-    # Formulaire de connexion
-    password = st.text_input(
-        t("password_label"),
-        type="password",
-        placeholder="Entrez le mot de passe..."
-    )
-    
-    if st.button(t("login_button"), type="primary", use_container_width=True):
+    password = st.text_input(t("password_label"), type="password")
+    if st.button(t("login_button")):
         if password == "ouzoud2026":
-            # Mot de passe correct : connexion réussie
             st.session_state.authenticated = True
-            st.success("✅ Connexion réussie!")
-            time.sleep(0.5)
             st.rerun()
         else:
-            # Mot de passe incorrect
             st.error(t("wrong_password"))
-    
-    # On arrête l'exécution ici tant que non connecté
     st.stop()
 
-# ==================== BARRE LATÉRALE (SIDEBAR) ====================
-# Cette section s'affiche sur toutes les pages une fois connecté
-
+# ==================== SIDEBAR ====================
 with st.sidebar:
-    # Logo et titre
-    st.title("🛒 OUZOUD SERVICES")
-    st.markdown("---")
+    st.title("OUZOUD SERVICES")
     
-    # ========== SÉLECTEUR DE LANGUE ==========
     st.markdown(f"### {t('lang_select')}")
     lang_col1, lang_col2, lang_col3 = st.columns(3)
     with lang_col1:
-        if st.button("🇲🇦", use_container_width=True, help="العربية"):
+        if st.button("🇲🇦"):
             st.session_state.lang = "ar"
             st.rerun()
     with lang_col2:
-        if st.button("🇫🇷", use_container_width=True, help="Français"):
+        if st.button("🇫🇷"):
             st.session_state.lang = "fr"
             st.rerun()
     with lang_col3:
-        if st.button("🇬🇧", use_container_width=True, help="English"):
+        if st.button("🇬🇧"):
             st.session_state.lang = "en"
             st.rerun()
     
-    st.markdown("---")
+    st.divider()
     
-    # ========== MENU DE NAVIGATION ==========
-    st.markdown(f"### {t('menu_main')}")
     menu_options = [
-        t("pos"),           # Point de vente
-        t("stock"),         # Gestion du stock
-        t("impression"),    # Impression
-        t("caisse"),        # Caisse
-        t("credits"),       # Crédits
-        t("factures"),      # Factures
-        t("commandes")      # Commandes fournisseurs
+        t("pos"),
+        t("stock"),
+        t("impression"),
+        t("caisse"),
+        t("credits"),
+        t("factures"),
+        t("commandes")
     ]
-    menu = st.selectbox(
-        "Sélectionnez une section:",
-        menu_options,
-        key="main_menu_select"
-    )
+    menu = st.selectbox(t("menu_main"), menu_options)
     
-    st.markdown("---")
+    st.divider()
     
-    # ========== SYNCHRONISATION EN DIRECT (LIVE SYNC) ==========
-    st.markdown(f"### {t('live_sync_label')}")
-    
-    # Bouton pour activer/désactiver la synchronisation
-    if st.button(
-        "🔄 Activer/Désactiver",
-        use_container_width=True,
-        key="live_sync_toggle"
-    ):
+    # زر المزامنة المباشرة
+    if st.button(t("live_sync_label")):
         st.session_state.live_sync_active = not st.session_state.live_sync_active
-    
-    # Affichage du statut de la synchronisation
     if st.session_state.live_sync_active:
         st.success(t("live_sync_active_msg"))
-        # Attendre 5 secondes puis rafraîchir la page
         time.sleep(5)
         st.rerun()
-    else:
-        st.info("⏸️ Synchronisation en pause")
     
-    st.markdown("---")
-    
-    # ========== STATISTIQUES RAPIDES ==========
+    st.divider()
     st.markdown(f"### {t('quick_stats')}")
-    
     try:
-        # Récupération des données pour les statistiques
         nb_produits = len(get_df("stock"))
         nb_ventes = len(get_df("ventes"))
         nb_commandes = len(get_df("commandes"))
-        
-        # Affichage des métriques
-        col_s1, col_s2, col_s3 = st.columns(3)
-        with col_s1:
-            st.metric(
-                label=t("products_count"),
-                value=nb_produits,
-                delta=None
-            )
-        with col_s2:
-            st.metric(
-                label=t("sales_count"),
-                value=nb_ventes,
-                delta=None
-            )
-        with col_s3:
-            st.metric(
-                label=t("orders_count"),
-                value=nb_commandes,
-                delta=None
-            )
-    except Exception as e:
-        st.warning("Statistiques temporairement indisponibles")
+        st.metric(t("products_count"), nb_produits)
+        st.metric(t("sales_count"), nb_ventes)
+        st.metric(t("orders_count"), nb_commandes)
+    except:
+        pass
     
-    st.markdown("---")
-    
-    # ========== INFORMATIONS DU MAGASIN ==========
+    st.divider()
     st.markdown("### ℹ️ OUZOUD SERVICES")
-    st.markdown("📞 **Tél:** 07.81.02.82.43")
-    st.markdown("📧 **Email:** maaridprint@gmail.com")
-    st.markdown(f"🕐 **Date:** {datetime.now().strftime('%d/%m/%Y %H:%M')}")
-    
-    st.markdown("---")
-    
-    # ========== BOUTON DE DÉCONNEXION ==========
-    if st.button("🚪 Déconnexion", use_container_width=True):
-        st.session_state.authenticated = False
-        st.rerun()
+    st.markdown("📞 07.81.02.82.43")
+    st.markdown("📧 maaridprint@gmail.com")
+    st.markdown(f"🕐 {datetime.now().strftime('%d/%m/%Y %H:%M')}")
 
-# ==================== POINT DE VENTE (POS) ====================
-# Section principale pour la gestion des ventes
-
+# ==================== POINT DE VENTE ====================
 if menu == t("pos"):
     st.header(t("pos"))
-    st.markdown("---")
     
-    # ========== MODE VENTE AUTOMATIQUE ==========
-    # Checkbox pour activer/désactiver le mode auto
     st.session_state.auto_sale_mode = st.checkbox(
         t("auto_sale_mode"),
-        value=st.session_state.auto_sale_mode,
-        key="auto_sale_checkbox"
+        value=st.session_state.auto_sale_mode
     )
     
-    # ====================================================================
-    # MODE AUTO SALE : SCAN = VENTE DIRECTE
-    # ====================================================================
     if st.session_state.auto_sale_mode:
-        st.markdown("---")
-        st.success("⚡ **Mode Auto activé**: Scannez un produit = Vente directe + Facture 80mm imprimée automatiquement")
-        st.info("💡 Placez le curseur dans le champ ci-dessous et scannez vos produits avec la douchette")
+        st.success("⚡ Mode Auto: Scannez un produit = Vente directe + Facture 80mm imprimée automatiquement")
+        st.info("Placez le curseur dans le champ ci-dessous et scannez vos produits")
         
-        # Afficher le scanner automatique
         auto_sale_scanner()
         
-        # Champ de saisie pour le code-barres scanné (caché visuellement)
         code_auto = st.text_input(
-            "Code-barres scanné",
+            "Code-barres",
             key="auto_scan_input",
             label_visibility="collapsed",
             placeholder="📸 En attente du scan... Scannez ici!"
         )
         
-        # Si un code a été scanné
         if code_auto:
-            # Recherche du produit dans la base de données
             product = get_product_info(code_auto)
             
             if product:
-                # Vérification du stock disponible
                 if float(product['Quantité']) >= 1:
-                    # Calcul du total
                     total = float(product['Prix'])
-                    
-                    # Enregistrement de la vente dans la table "ventes"
                     supabase.table("ventes").insert({
                         "Code": code_auto,
                         "Quantité": 1.0,
@@ -1418,12 +1158,10 @@ if menu == t("pos"):
                         "Nom": product.get('Nom', code_auto)
                     }).execute()
                     
-                    # Mise à jour du stock (décrémenter de 1)
                     supabase.table("stock").update({
                         "Quantité": float(product['Quantité']) - 1
                     }).eq("id", product['id']).execute()
                     
-                    # Génération de la facture 80mm
                     cart_data = [{
                         "Code": code_auto,
                         "Nom": product.get('Nom', code_auto),
@@ -1433,121 +1171,59 @@ if menu == t("pos"):
                     }]
                     generate_pdf_80mm(cart_data)
                     
-                    # Jouer le son de succès
                     play_success_sound()
                     
-                    # Message de confirmation
-                    st.success(
-                        f"✅ **{product.get('Nom', code_auto)}** - "
-                        f"**{total:.2f} DH** | "
-                        f"{t('invoice_printed')}"
-                    )
-                    
-                    # Animation de célébration
+                    st.success(f"✅ {product.get('Nom', code_auto)} - {total:.2f} DH | {t('invoice_printed')}")
                     st.balloons()
                     
-                    # Pause pour voir le message puis rafraîchir
                     time.sleep(1.5)
                     st.rerun()
                     
                 else:
-                    # Stock insuffisant
-                    st.error(
-                        f"❌ Stock épuisé pour **{product.get('Nom', code_auto)}**! "
-                        f"Quantité disponible: {product['Quantité']}"
-                    )
+                    st.error(f"❌ Stock épuisé pour {product.get('Nom', code_auto)}! Quantité disponible: {product['Quantité']}")
             else:
-                # Produit non trouvé
                 if code_auto:
                     st.error(t("product_not_found"))
     
-    # ====================================================================
-    # MODE NORMAL : VENTE STANDARD
-    # ====================================================================
     else:
-        st.markdown("---")
-        
-        # Scanner optionnel
-        use_scanner = st.checkbox(
-            t("activate_scanner"),
-            key="normal_scanner_checkbox"
-        )
-        
+        use_scanner = st.checkbox(t("activate_scanner"))
         if use_scanner:
             fast_barcode_scanner_with_qty(t("barcode"), t("quantity"))
         
-        st.markdown("---")
-        
-        # Sélection du type de vente
         mode = st.radio(
             t("sale_type"),
-            [
-                t("normal_sale"),
-                t("scan_qr"),
-                t("free_sale"),
-                t("cart")
-            ],
-            horizontal=True,
-            key="sale_type_radio"
+            [t("normal_sale"), t("scan_qr"), t("free_sale"), t("cart")]
         )
         
-        st.markdown("---")
-        
-        # ========== VENTE NORMALE ==========
         if mode == t("normal_sale"):
-            st.subheader("📝 Vente Standard")
-            
-            # Champs de saisie : code-barres et quantité
             col1, col2 = st.columns(2)
             with col1:
-                code = st.text_input(
-                    t("barcode"),
-                    key="vente_normale_code",
-                    placeholder="Scanner ou saisir le code-barres..."
-                )
+                code = st.text_input(t("barcode"), key="vente_normale_code")
             with col2:
-                qty = st.number_input(
-                    t("quantity"),
-                    min_value=0.0,
-                    step=0.1,
-                    value=1.0,
-                    key="vente_normale_qty"
-                )
+                qty = st.number_input(t("quantity"), min_value=0.0, step=0.1, key="vente_normale_qty")
             
-            # Si le code est vide, proposer une sélection par nom
             if not code:
                 df_stock_sale = get_df("stock")
                 if not df_stock_sale.empty and 'Nom' in df_stock_sale.columns:
                     selected_by_name = st.selectbox(
                         t("or_choose_name"),
                         [""] + df_stock_sale['Nom'].tolist(),
-                        key="select_by_name_normal"
+                        key="select_by_name"
                     )
                     if selected_by_name:
                         code = selected_by_name
             
-            # Bouton de confirmation de vente
-            if st.button(
-                t("confirm_sale"),
-                type="primary",
-                use_container_width=True,
-                key="confirm_normal_sale"
-            ):
+            if st.button(t("confirm_sale")):
                 if code and qty > 0:
-                    # Recherche du produit
                     product = get_product_info(code)
-                    
                     if product:
                         prix = float(product.get('Prix', 0))
                         q_old = float(product.get('Quantité', 0))
                         doc_id = product.get('id')
                         nom = product.get('Nom', code)
                         
-                        # Vérification du stock
                         if q_old >= qty:
                             total = prix * qty
-                            
-                            # Enregistrement de la vente
                             supabase.table("ventes").insert({
                                 "Code": code,
                                 "Quantité": qty,
@@ -1556,24 +1232,9 @@ if menu == t("pos"):
                                 "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
                                 "Nom": nom
                             }).execute()
-                            
-                            # Mise à jour du stock
-                            supabase.table("stock").update({
-                                "Quantité": q_old - qty
-                            }).eq("id", doc_id).execute()
-                            
-                            # Son de succès
+                            supabase.table("stock").update({"Quantité": q_old - qty}).eq("id", doc_id).execute()
                             play_success_sound()
-                            
-                            # Message de confirmation
-                            st.success(
-                                f"{t('sale_success')} "
-                                f"**{nom}** - "
-                                f"**{total:.2f} DH**"
-                            )
-                            
-                            # Rafraîchir après 1 seconde
-                            time.sleep(1)
+                            st.success(f"{t('sale_success')} {nom} - {total:.2f} DH")
                             st.rerun()
                         else:
                             st.error(f"{t('low_stock_warning')} {q_old}")
@@ -1582,44 +1243,19 @@ if menu == t("pos"):
                 else:
                     st.error(t("fill_all_fields"))
         
-        # ========== VENTE PAR SCAN QR ==========
         elif mode == t("scan_qr"):
-            st.subheader("📷 Vente par Scan QR")
-            st.info("Scannez le code-barres et la quantité sera automatiquement mise à 1")
-            
-            # Champs pour le scan QR
+            st.subheader(t("scan_qr"))
             col1, col2 = st.columns(2)
             with col1:
-                code_qr = st.text_input(
-                    f"{t('barcode')} (auto)",
-                    key="qr_code_input",
-                    placeholder="Scannez ici..."
-                )
+                code_qr = st.text_input(f"{t('barcode')} (auto)", key="qr_code")
             with col2:
-                qty_qr = st.number_input(
-                    t("quantity"),
-                    min_value=0.0,
-                    step=0.1,
-                    value=1.0,
-                    key="qr_qty_input"
-                )
+                qty_qr = st.number_input(t("quantity"), min_value=0.0, step=0.1, value=1.0, key="qr_qty")
             
-            # Afficher le scanner QR
-            fast_barcode_scanner_with_qty(
-                f"{t('barcode')} (auto)",
-                t("quantity")
-            )
+            fast_barcode_scanner_with_qty(f"{t('barcode')} (auto)", t("quantity"))
             
-            # Bouton de confirmation
-            if st.button(
-                t("confirm_sale"),
-                type="primary",
-                use_container_width=True,
-                key="confirm_qr_sale"
-            ):
+            if st.button(t("confirm_sale"), key="qr_sale"):
                 if code_qr and qty_qr > 0:
                     product = get_product_info(code_qr)
-                    
                     if product:
                         prix = float(product.get('Prix', 0))
                         q_old = float(product.get('Quantité', 0))
@@ -1628,7 +1264,6 @@ if menu == t("pos"):
                         
                         if q_old >= qty_qr:
                             total = prix * qty_qr
-                            
                             supabase.table("ventes").insert({
                                 "Code": code_qr,
                                 "Quantité": qty_qr,
@@ -1637,64 +1272,26 @@ if menu == t("pos"):
                                 "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
                                 "Nom": nom
                             }).execute()
-                            
-                            supabase.table("stock").update({
-                                "Quantité": q_old - qty_qr
-                            }).eq("id", doc_id).execute()
-                            
+                            supabase.table("stock").update({"Quantité": q_old - qty_qr}).eq("id", doc_id).execute()
                             play_success_sound()
-                            st.success(
-                                f"{t('sale_success')} "
-                                f"**{nom}** - "
-                                f"{qty_qr} × {prix} = **{total:.2f} DH**"
-                            )
-                            time.sleep(1)
+                            st.success(f"{t('sale_success')} {nom} - {qty_qr} x {prix} = {total:.2f} DH")
                             st.rerun()
                         else:
                             st.error(f"{t('low_stock_warning')} {q_old}")
                     else:
                         st.error(t("product_not_found"))
-                else:
-                    st.error(t("fill_all_fields"))
         
-        # ========== VENTE LIBRE ==========
         elif mode == t("free_sale"):
-            st.subheader("🆓 Vente Libre (sans code-barres)")
-            st.info("Saisissez manuellement le nom et le prix du produit")
-            
-            # Champs pour la vente libre
             col1, col2 = st.columns(2)
             with col1:
-                name = st.text_input(
-                    t("product_name"),
-                    key="free_sale_name",
-                    placeholder="Nom du produit..."
-                )
+                name = st.text_input(t("product_name"))
             with col2:
-                price = st.number_input(
-                    t("price"),
-                    min_value=0.0,
-                    value=0.0,
-                    key="free_sale_price"
-                )
+                price = st.number_input(t("price"), min_value=0.0)
+            qty_libre = st.number_input(t("quantity"), min_value=0.0, step=0.1, value=1.0)
             
-            qty_libre = st.number_input(
-                t("quantity"),
-                min_value=0.0,
-                step=0.1,
-                value=1.0,
-                key="free_sale_qty"
-            )
-            
-            if st.button(
-                t("confirm_sale"),
-                type="primary",
-                use_container_width=True,
-                key="confirm_free_sale"
-            ):
+            if st.button(t("confirm_sale")):
                 if name and price > 0:
                     total_libre = float(price) * qty_libre
-                    
                     supabase.table("ventes").insert({
                         "Code": name,
                         "Quantité": qty_libre,
@@ -1703,122 +1300,40 @@ if menu == t("pos"):
                         "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
                         "Nom": name
                     }).execute()
-                    
                     play_success_sound()
-                    st.success(
-                        f"{t('sale_success')} "
-                        f"**{name}** - "
-                        f"{qty_libre} × {price} = **{total_libre:.2f} DH**"
-                    )
-                    time.sleep(1)
+                    st.success(f"{t('sale_success')} {name} - {qty_libre} x {price} = {total_libre:.2f} DH")
                     st.rerun()
-                else:
-                    st.error(t("fill_all_fields"))
         
-        # ========== PANIER (SUITE DANS LE PROCHAIN FICHIER) ==========
         elif mode == t("cart"):
-            st.subheader("🛒 Panier d'achat")
-            st.info("Ajoutez plusieurs produits puis validez le panier")
-            
-            # La suite du code Panier sera dans le prochain fichier
-            pass
-    
-    # ========== AFFICHAGE DES DERNIÈRES VENTES ==========
-    st.markdown("---")
-    st.subheader(t("recent_sales"))
-    
-    df_ventes = get_df("ventes")
-    if not df_ventes.empty:
-        # Afficher les 10 dernières ventes
-        st.dataframe(
-            df_ventes.tail(10),
-            use_container_width=True,
-            hide_index=True
-        )
-        
-        # Afficher le total des ventes
-        total_ventes = df_ventes['Total'].sum() if 'Total' in df_ventes.columns else 0
-        st.metric(
-            t("total_sales"),
-            f"{total_ventes:.2f} DH"
-        )
-    else:
-        st.info(t("no_data"))
-    
-    # Boutons d'export/import pour les ventes
-    export_import_buttons("ventes", df_ventes)
-        # ========== PANIER (SUITE) ==========
-        elif mode == t("cart"):
-            st.subheader("🛒 Panier d'achat")
-            
-            # ========== CHOIX DU MODE DE PANIER ==========
             cart_mode = st.radio(
                 t("cart_mode_label"),
-                [t("cart_manual"), t("cart_auto")],
-                horizontal=True,
-                key="cart_mode_radio"
+                [t("cart_manual"), t("cart_auto")]
             )
             
-            st.markdown("---")
-            
-            # ====================================================================
-            # PANIER MANUEL : Ajout produit par produit
-            # ====================================================================
             if cart_mode == t("cart_manual"):
                 col1, col2 = st.columns([1, 1])
-                
-                # Colonne de gauche : Ajout de produits
                 with col1:
                     st.subheader(t("add_to_cart"))
+                    code = st.text_input(t("barcode"), key="panier_code")
+                    qty = st.number_input(f"{t('quantity')}:", min_value=0.0, step=0.1, key="panier_qty")
                     
-                    # Champ code-barres
-                    code = st.text_input(
-                        t("barcode"),
-                        key="panier_manual_code",
-                        placeholder="Scanner ou saisir le code..."
-                    )
-                    
-                    # Champ quantité
-                    qty = st.number_input(
-                        f"{t('quantity')}:",
-                        min_value=0.0,
-                        step=0.1,
-                        value=1.0,
-                        key="panier_manual_qty"
-                    )
-                    
-                    # Recherche du produit si un code est saisi
                     product = get_product_info(code) if code else None
                     prix_u = float(product['Prix']) if product else 0
                     nom_produit = product.get('Nom', code) if product else ""
                     
-                    # Affichage des informations du produit trouvé
                     if prix_u > 0:
-                        st.info(
-                            f"**{t('product_name')}:** {nom_produit}\n\n"
-                            f"**{t('price')}:** {prix_u:.2f} DH"
-                        )
+                        st.info(f"{t('product_name')}: {nom_produit} - {t('price')}: {prix_u:.2f} DH")
                     
-                    # Bouton d'ajout au panier
-                    if st.button(
-                        t("add_to_cart"),
-                        type="primary",
-                        use_container_width=True,
-                        key="manual_add_to_cart_btn"
-                    ):
+                    if st.button(t("add_to_cart")):
                         if code and qty > 0 and prix_u > 0:
-                            # Vérifier si le produit existe déjà dans le panier
                             found = False
                             for item in st.session_state.cart:
                                 if item['Code'] == code:
-                                    # Mise à jour de la quantité
                                     item['Quantité'] += qty
                                     item['Total'] = item['Quantité'] * item['Prix']
                                     found = True
                                     break
-                            
                             if not found:
-                                # Ajout du nouveau produit
                                 st.session_state.cart.append({
                                     "Code": code,
                                     "Quantité": qty,
@@ -1826,126 +1341,64 @@ if menu == t("pos"):
                                     "Total": prix_u * qty,
                                     "Nom": nom_produit
                                 })
-                            
-                            st.success(f"✅ {nom_produit} × {qty} ajouté au panier!")
-                            time.sleep(0.5)
+                            st.success(f"{t('add_to_cart')}: {nom_produit} x {qty}")
                             st.rerun()
-                        else:
-                            st.error(t("fill_all_fields"))
                 
-                # Colonne de droite : Affichage du panier
                 with col2:
                     st.subheader(t("cart"))
-                    
                     if st.session_state.cart:
-                        # Calcul du total
                         total_panier = sum(item['Total'] for item in st.session_state.cart)
+                        st.table(pd.DataFrame(st.session_state.cart))
+                        st.metric(t("total"), f"{total_panier:.2f} DH")
                         
-                        # Affichage du contenu du panier
-                        df_panier = pd.DataFrame(st.session_state.cart)
-                        st.dataframe(
-                            df_panier[['Nom', 'Quantité', 'Prix', 'Total']],
-                            use_container_width=True,
-                            hide_index=True
-                        )
-                        
-                        # Affichage du total
-                        st.metric(
-                            t("total"),
-                            f"{total_panier:.2f} DH"
-                        )
-                        
-                        st.markdown("---")
-                        
-                        # ========== BOUTON : ENREGISTRER SANS FACTURE ==========
-                        if st.button(
-                            t("validate_cart"),
-                            use_container_width=True,
-                            key="manual_validate_cart_btn"
-                        ):
+                        if st.button(t("finish_cart"), type="primary", use_container_width=True):
                             for item in st.session_state.cart:
-                                # Mise à jour du stock
                                 product = get_product_info(item['Code'])
                                 if product:
                                     supabase.table("stock").update({
                                         "Quantité": float(product['Quantité']) - item['Quantité']
                                     }).eq("id", product['id']).execute()
-                                
-                                # Enregistrement de la vente
                                 supabase.table("ventes").insert({
                                     **item,
                                     "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
                                 }).execute()
                             
-                            # Vider le panier
-                            st.session_state.cart = []
-                            
-                            # Son de succès
-                            play_success_sound()
-                            
-                            st.success(t("sale_success"))
-                            time.sleep(1)
-                            st.rerun()
-                        
-                        # ========== BOUTON : ENREGISTRER AVEC FACTURE ==========
-                        if st.button(
-                            t("finish_cart"),
-                            type="primary",
-                            use_container_width=True,
-                            key="manual_finish_cart_btn"
-                        ):
-                            for item in st.session_state.cart:
-                                # Mise à jour du stock
-                                product = get_product_info(item['Code'])
-                                if product:
-                                    supabase.table("stock").update({
-                                        "Quantité": float(product['Quantité']) - item['Quantité']
-                                    }).eq("id", product['id']).execute()
-                                
-                                # Enregistrement de la vente
-                                supabase.table("ventes").insert({
-                                    **item,
-                                    "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
-                                }).execute()
-                            
-                            # Générer la facture 80mm
                             generate_pdf_80mm(st.session_state.cart)
-                            
-                            # Sauvegarder le dernier panier pour affichage ultérieur
                             st.session_state.last_cart = st.session_state.cart.copy()
-                            
-                            # Vider le panier
                             st.session_state.cart = []
-                            
-                            # Son de succès
                             play_success_sound()
-                            
                             st.success(f"✅ {t('invoice_printed')}")
-                            st.balloons()
-                            time.sleep(1.5)
                             st.rerun()
                         
-                        # ========== BOUTON : VIDER LE PANIER ==========
-                        if st.button(
-                            t("clear_cart"),
-                            use_container_width=True,
-                            key="manual_clear_cart_btn"
-                        ):
-                            st.session_state.cart = []
-                            st.rerun()
+                        col_btn1, col_btn2 = st.columns(2)
+                        with col_btn1:
+                            if st.button(t("validate_cart"), use_container_width=True):
+                                for item in st.session_state.cart:
+                                    product = get_product_info(item['Code'])
+                                    if product:
+                                        supabase.table("stock").update({
+                                            "Quantité": float(product['Quantité']) - item['Quantité']
+                                        }).eq("id", product['id']).execute()
+                                    supabase.table("ventes").insert({
+                                        **item,
+                                        "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
+                                    }).execute()
+                                st.session_state.cart = []
+                                play_success_sound()
+                                st.success(t("sale_success"))
+                                st.rerun()
+                        
+                        with col_btn2:
+                            if st.button(t("clear_cart"), use_container_width=True):
+                                st.session_state.cart = []
+                                st.rerun()
                     else:
                         st.info(t("no_data"))
             
-            # ====================================================================
-            # PANIER AUTOMATIQUE : Scanner continu
-            # ====================================================================
             else:
                 st.success(t("cart_auto_info"))
-                
-                # Afficher le scanner automatique pour le panier
                 auto_cart_scanner()
                 
-                # Champ caché pour recevoir les codes scannés
                 code_auto_cart = st.text_input(
                     "Code-barres",
                     key="auto_cart_scan_input",
@@ -1953,24 +1406,18 @@ if menu == t("pos"):
                     placeholder="📸 Scannez vos produits ici..."
                 )
                 
-                # Si un code est scanné, l'ajouter automatiquement au panier
                 if code_auto_cart:
                     product = get_product_info(code_auto_cart)
-                    
                     if product:
                         if float(product['Quantité']) >= 1:
-                            # Vérifier si le produit existe déjà dans le panier
                             found = False
                             for item in st.session_state.cart:
                                 if item['Code'] == code_auto_cart:
-                                    # Incrémenter la quantité
                                     item['Quantité'] += 1
                                     item['Total'] = item['Quantité'] * item['Prix']
                                     found = True
                                     break
-                            
                             if not found:
-                                # Ajouter le nouveau produit
                                 prix_u = float(product['Prix'])
                                 nom_produit = product.get('Nom', code_auto_cart)
                                 st.session_state.cart.append({
@@ -1980,299 +1427,142 @@ if menu == t("pos"):
                                     "Total": prix_u,
                                     "Nom": nom_produit
                                 })
-                            
-                            # Son de succès
                             play_success_sound()
-                            
-                            # Message de confirmation
-                            st.success(
-                                f"✅ **{product.get('Nom', code_auto_cart)}** "
-                                f"- {float(product['Prix']):.2f} DH ajouté au panier!"
-                            )
-                            
-                            # Rafraîchir pour vider le champ scanner
-                            time.sleep(0.8)
+                            st.success(f"✅ {product.get('Nom', code_auto_cart)} - {float(product['Prix']):.2f} DH ajouté!")
                             st.rerun()
                         else:
-                            st.error(
-                                f"❌ Stock insuffisant pour "
-                                f"**{product.get('Nom', code_auto_cart)}**! "
-                                f"Disponible: {product['Quantité']}"
-                            )
+                            st.error(f"❌ Stock insuffisant pour {product.get('Nom', code_auto_cart)}")
                     else:
                         st.error(t("product_not_found"))
                 
-                st.markdown("---")
-                
-                # ========== AFFICHAGE DU PANIER AUTOMATIQUE ==========
+                st.divider()
                 st.subheader(f"🛒 {t('cart')} ({len(st.session_state.cart)} {t('cart_products_count')})")
                 
                 if st.session_state.cart:
                     total_panier = sum(item['Total'] for item in st.session_state.cart)
-                    
-                    # Affichage du contenu
                     df_cart_display = pd.DataFrame(st.session_state.cart)
-                    st.dataframe(
-                        df_cart_display[['Nom', 'Quantité', 'Prix', 'Total']],
-                        use_container_width=True,
-                        hide_index=True
-                    )
+                    st.dataframe(df_cart_display[['Nom', 'Quantité', 'Prix', 'Total']], use_container_width=True)
+                    st.metric(t("total"), f"{total_panier:.2f} DH")
                     
-                    # Affichage du total
-                    st.metric(
-                        t("total"),
-                        f"{total_panier:.2f} DH"
-                    )
-                    
-                    st.markdown("---")
-                    
-                    # ========== BOUTON : ENREGISTRER AVEC FACTURE ==========
-                    if st.button(
-                        "🧾 Enregistrer et Imprimer la Facture",
-                        type="primary",
-                        use_container_width=True,
-                        key="auto_finish_cart_btn"
-                    ):
+                    if st.button("🧾 Enregistrer et Imprimer la Facture", type="primary", use_container_width=True, key="auto_finish_cart"):
                         for item in st.session_state.cart:
-                            # Mise à jour du stock
                             product = get_product_info(item['Code'])
                             if product:
                                 supabase.table("stock").update({
                                     "Quantité": float(product['Quantité']) - item['Quantité']
                                 }).eq("id", product['id']).execute()
-                            
-                            # Enregistrement de la vente
                             supabase.table("ventes").insert({
                                 **item,
                                 "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
                             }).execute()
                         
-                        # Générer la facture 80mm
                         generate_pdf_80mm(st.session_state.cart)
-                        
-                        # Sauvegarder le dernier panier
                         st.session_state.last_cart = st.session_state.cart.copy()
-                        
-                        # Vider le panier
                         st.session_state.cart = []
-                        
-                        # Son de succès
                         play_success_sound()
-                        
                         st.success(f"✅ {t('invoice_printed')}")
                         st.balloons()
                         time.sleep(1.5)
                         st.rerun()
                     
-                    # ========== BOUTON : VIDER LE PANIER ==========
-                    if st.button(
-                        "🗑️ Vider le panier",
-                        use_container_width=True,
-                        key="auto_clear_cart_btn"
-                    ):
+                    if st.button("🗑️ Vider le panier", use_container_width=True, key="auto_clear_cart"):
                         st.session_state.cart = []
                         st.rerun()
                 else:
                     st.info(t("cart_empty"))
+    
+    # عرض المبيعات الأخيرة
+    st.divider()
+    st.subheader(t("recent_sales"))
+    df_ventes = get_df("ventes")
+    if not df_ventes.empty:
+        st.dataframe(df_ventes.tail(10))
+        total_ventes = df_ventes['Total'].sum() if 'Total' in df_ventes.columns else 0
+        st.metric(t("total_sales"), f"{total_ventes:.2f} DH")
+    export_import_buttons("ventes", df_ventes)
 
-# ==================== GESTION DU STOCK ====================
+# ==================== STOCK ====================
 elif menu == t("stock"):
     st.header(t("stock"))
-    st.markdown("---")
     
-    # ========== BARRE DE RECHERCHE ==========
+    # خانة البحث
     st.subheader(t("search_stock"))
     search_term = st.text_input(
         t("search_placeholder"),
-        key="stock_search_input",
-        placeholder="🔍 Tapez le nom ou le code-barres du produit..."
+        key="stock_search",
+        placeholder="اكتب اسم المنتج أو الباركود للبحث..."
     )
     
-    # Récupération des données du stock
     df_stock = get_df("stock")
     
-    # Filtrage selon la recherche
     if search_term and not df_stock.empty:
-        # Recherche dans le nom
-        mask_nom = df_stock['Nom'].str.contains(
-            search_term,
-            case=False,
-            na=False
-        )
-        
-        # Recherche dans le code-barres
-        if 'Code-barres' in df_stock.columns:
-            mask_code = df_stock['Code-barres'].str.contains(
-                search_term,
-                case=False,
-                na=False
-            )
-        else:
-            mask_code = pd.Series([False] * len(df_stock))
-        
-        # Application des filtres
+        mask_nom = df_stock['Nom'].str.contains(search_term, case=False, na=False)
+        mask_code = df_stock['Code-barres'].str.contains(search_term, case=False, na=False) if 'Code-barres' in df_stock.columns else pd.Series([False] * len(df_stock))
         df_stock = df_stock[mask_nom | mask_code]
         
         if df_stock.empty:
             st.info(t("no_results"))
         else:
-            st.success(f"✅ {t('search_results')} **{len(df_stock)}** produit(s) trouvé(s)")
+            st.success(f"{t('search_results')} {len(df_stock)} produit(s)")
     
-    st.markdown("---")
-    
-    # ========== AJOUT D'UN NOUVEAU PRODUIT ==========
-    with st.expander(t("add_product"), expanded=False):
-        st.markdown("### 📝 Ajouter un nouveau produit au stock")
-        
-        # Option pour activer le scanner code-barres
-        use_add_scanner = st.checkbox(
-            t("stock_scanner_add"),
-            key="add_stock_scanner_checkbox"
-        )
-        
+    # إضافة منتج جديد مع ماسح باركود
+    with st.expander(t("add_product"), expanded=True):
+        use_add_scanner = st.checkbox(t("stock_scanner_add"), key="add_scanner_checkbox")
         if use_add_scanner:
-            st.info("📸 Scannez le code-barres - il sera automatiquement inséré dans le champ ci-dessous")
-            stock_barcode_scanner("stock_barcode_input")
+            stock_barcode_scanner("stock_barcode")
         
-        # Formulaire d'ajout
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            name = st.text_input(
-                t("product_name"),
-                key="stock_name_input",
-                placeholder="Nom du produit..."
-            )
+            name = st.text_input(t("product_name"), key="stock_name")
         with col2:
-            price = st.number_input(
-                t("price"),
-                min_value=0.0,
-                value=0.0,
-                key="stock_price_input"
-            )
+            price = st.number_input(t("price"), min_value=0.0, key="stock_price")
         with col3:
-            qty = st.number_input(
-                t("quantity"),
-                min_value=0.0,
-                step=0.1,
-                value=0.0,
-                key="stock_qty_input"
-            )
+            qty = st.number_input(t("quantity"), min_value=0.0, step=0.1, key="stock_qty")
         with col4:
-            barcode = st.text_input(
-                t("barcode_optional"),
-                key="stock_barcode_input",
-                placeholder="Code-barres (optionnel)..."
-            )
+            barcode = st.text_input(t("barcode_optional"), key="stock_barcode")
         
-        # Bouton d'ajout
-        if st.button(
-            t("add_button"),
-            type="primary",
-            use_container_width=True,
-            key="stock_add_btn"
-        ):
+        if st.button(t("add_button"), key="stock_add_btn"):
             if name:
-                # Préparation des données
                 product_data = {
                     "Nom": name,
                     "Prix": float(price),
                     "Quantité": float(qty),
                     "Code-barres": barcode if barcode else ""
                 }
-                
                 try:
-                    # Insertion dans Supabase
                     supabase.table("stock").insert(product_data).execute()
-                    st.success(f"✅ **{name}** {t('product_added')}")
-                    play_success_sound()
-                    time.sleep(1)
+                    st.success(t("product_added"))
                     st.rerun()
                 except Exception as e:
                     st.error(f"{t('error_generic')}: {str(e)}")
             else:
                 st.error(t("fill_all_fields"))
     
-    st.markdown("---")
-    
-    # ========== AFFICHAGE DU STOCK ==========
     st.subheader(t("current_stock"))
-    
     if not df_stock.empty:
-        # Préparation de l'affichage
         df_display = df_stock.copy()
         if 'Code-barres' in df_display.columns:
-            # Remplacer les codes-barres vides par un tiret
             df_display['Code-barres'] = df_display['Code-barres'].replace('', '—')
-        
-        # Affichage du tableau
-        st.dataframe(
-            df_display,
-            use_container_width=True,
-            hide_index=True
-        )
-        
-        # Statistiques rapides
-        col_st1, col_st2, col_st3 = st.columns(3)
-        with col_st1:
-            st.metric("📦 Total produits", len(df_stock))
-        with col_st2:
-            total_qty = df_stock['Quantité'].sum() if 'Quantité' in df_stock.columns else 0
-            st.metric("📊 Quantité totale", f"{total_qty:.0f}")
-        with col_st3:
-            avg_price = df_stock['Prix'].mean() if 'Prix' in df_stock.columns else 0
-            st.metric("💵 Prix moyen", f"{avg_price:.2f} DH")
+        st.dataframe(df_display, use_container_width=True)
     else:
         st.info(t("no_data"))
     
-    # Boutons d'export/import
     export_import_buttons("stock", df_stock)
     
-    st.markdown("---")
-    # ========== ALERTES STOCK BAS ==========
     st.subheader(t("stock_alert"))
-    
-    # Récupération des produits à stock bas
     low_stock = check_stock_levels()
-    
     if not low_stock.empty:
-        # Alerte visuelle
-        st.warning(
-            f"⚠️ **{len(low_stock)}** {t('low_stock_products')}"
-        )
-        
-        # Affichage des produits concernés
-        st.dataframe(
-            low_stock[['Nom', 'Quantité', 'Prix']],
-            use_container_width=True,
-            hide_index=True
-        )
-        
-        # Suggestion de commande
-        st.info(
-            "💡 **Suggestion:** Pensez à commander ces produits "
-            "auprès de vos fournisseurs dans la section 'Commandes'"
-        )
+        st.warning(f"⚠️ {len(low_stock)} {t('low_stock_products')}")
+        st.dataframe(low_stock[['Nom', 'Quantité', 'Prix']], use_container_width=True)
     else:
         st.success(t("stock_ok"))
     
-    st.markdown("---")
-    
-    # ========== MISE À JOUR D'UN PRODUIT ==========
     if not df_stock.empty:
-        with st.expander(t("update_product"), expanded=False):
-            st.markdown("### ✏️ Modifier un produit existant")
-            
-            # Option pour activer le scanner code-barres
-            use_update_scanner = st.checkbox(
-                t("stock_scanner_update"),
-                key="update_stock_scanner_checkbox"
-            )
-            
+        with st.expander(t("update_product")):
+            use_update_scanner = st.checkbox(t("stock_scanner_update"), key="update_scanner_checkbox")
             if use_update_scanner:
-                st.info("📸 Scannez le code-barres - il sera automatiquement inséré dans le champ ci-dessous")
-                stock_barcode_scanner("stock_update_barcode_input")
+                stock_barcode_scanner("stock_update_barcode")
             
-            # Sélection du produit à modifier
             selected_product = st.selectbox(
                 t("select_product"),
                 df_stock['Nom'].tolist(),
@@ -2280,14 +1570,9 @@ elif menu == t("stock"):
             )
             
             if selected_product:
-                # Récupération des données actuelles
                 product_data = df_stock[df_stock['Nom'] == selected_product].iloc[0]
                 current_barcode = product_data.get('Code-barres', '')
                 
-                st.markdown(f"**Produit sélectionné:** {selected_product}")
-                st.markdown(f"**ID:** {product_data.get('id', 'N/A')}")
-                
-                # Champs de modification
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     new_qty = st.number_input(
@@ -2295,101 +1580,52 @@ elif menu == t("stock"):
                         min_value=0.0,
                         step=0.1,
                         value=float(product_data.get('Quantité', 0)),
-                        key="stock_update_qty_input"
+                        key="stock_update_qty"
                     )
                 with col2:
                     new_price = st.number_input(
                         t("new_price"),
                         min_value=0.0,
                         value=float(product_data.get('Prix', 0)),
-                        key="stock_update_price_input"
+                        key="stock_update_price"
                     )
                 with col3:
                     new_barcode = st.text_input(
                         t("barcode_optional"),
-                        value=str(current_barcode) if current_barcode and current_barcode != '' else "",
-                        key="stock_update_barcode_input",
-                        placeholder="Code-barres (optionnel)..."
+                        value=str(current_barcode) if current_barcode else "",
+                        key="stock_update_barcode"
                     )
                 
-                # Bouton de mise à jour
-                if st.button(
-                    t("update_button"),
-                    type="primary",
-                    use_container_width=True,
-                    key="stock_update_btn"
-                ):
-                    # Préparation des données
+                if st.button(t("update_button"), key="stock_update_btn"):
                     update_data = {
                         'Quantité': new_qty,
                         'Prix': new_price,
                         'Code-barres': new_barcode if new_barcode else ""
                     }
-                    
                     try:
-                        # Mise à jour dans Supabase
-                        supabase.table("stock").update(update_data).eq(
-                            "id", product_data['id']
-                        ).execute()
-                        
-                        st.success(f"✅ **{selected_product}** {t('product_updated')}")
-                        play_success_sound()
-                        time.sleep(1)
+                        supabase.table("stock").update(update_data).eq("id", product_data['id']).execute()
+                        st.success(t("product_updated"))
                         st.rerun()
                     except Exception as e:
                         st.error(f"{t('error_generic')}: {str(e)}")
-    
-    st.markdown("---")
-    
-    # ========== SECTION RECHERCHE AVANCÉE (DÉJÀ EN HAUT, ON REMET UN RACCOURCI) ==========
-    st.caption(f"📦 **{len(df_stock)}** produits dans le stock | Dernière mise à jour: {datetime.now().strftime('%H:%M:%S')}")
 
 # ==================== IMPRESSION ====================
 elif menu == t("impression"):
     st.header(t("impression"))
-    st.markdown("---")
-    
-    # ========== FORMULAIRE D'IMPRESSION ==========
-    st.subheader("🖨️ Nouvelle impression")
     
     col1, col2 = st.columns(2)
     with col1:
-        p = st.number_input(
-            t("price_per_page"),
-            min_value=0.0,
-            value=0.50,
-            step=0.10,
-            key="print_price_input",
-            help="Prix unitaire par page en DH"
-        )
+        p = st.number_input(t("price_per_page"), min_value=0.0, key="print_price")
     with col2:
-        n = st.number_input(
-            t("number_of_pages"),
-            min_value=0.0,
-            step=0.1,
-            value=1.0,
-            key="print_nb_input",
-            help="Nombre de pages à imprimer"
-        )
+        n = st.number_input(t("number_of_pages"), min_value=0.0, step=0.1, key="print_nb")
     
-    # Calcul et affichage du total
     total_imp = p * n
     if total_imp > 0:
-        st.metric(
-            t("total"),
-            f"{total_imp:.2f} DH"
-        )
+        st.metric(t("total"), f"{total_imp:.2f} DH")
     
-    # Bouton d'enregistrement
-    if st.button(
-        t("save_print"),
-        type="primary",
-        use_container_width=True,
-        key="print_save_btn"
-    ):
+    if st.button(t("save_print"), key="print_save_btn"):
         if p > 0 and n > 0:
             try:
-                # Enregistrement dans Supabase
                 supabase.table("impressions").insert({
                     "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
                     "Prix_Page": float(p),
@@ -2397,425 +1633,190 @@ elif menu == t("impression"):
                     "Total": float(p) * float(n)
                 }).execute()
                 
-                # Génération du reçu PDF
                 generate_impression_pdf(p, n)
-                
                 st.success(t("sale_success"))
                 
-                # Bouton de téléchargement du reçu
                 if os.path.exists("facture_impression.pdf"):
                     with open("facture_impression.pdf", "rb") as f:
                         st.download_button(
                             t("download_print_invoice"),
                             f,
                             "facture_impression.pdf",
-                            mime="application/pdf",
-                            key="download_print_btn"
+                            mime="application/pdf"
                         )
-                
-                # Son de succès
-                play_success_sound()
-                
-                time.sleep(1)
-                st.rerun()
             except Exception as e:
                 st.error(f"{t('error_generic')}: {str(e)}")
-        else:
-            st.error(t("fill_all_fields"))
     
-    st.markdown("---")
-    
-    # ========== HISTORIQUE DES IMPRESSIONS ==========
+    st.divider()
     st.subheader(t("print_history"))
-    
     df_imp = get_df("impressions")
     if not df_imp.empty:
-        # Affichage du tableau
-        st.dataframe(
-            df_imp,
-            use_container_width=True,
-            hide_index=True
-        )
-        
-        # Statistiques
-        col_i1, col_i2, col_i3 = st.columns(3)
-        with col_i1:
-            total_impressions = df_imp['Total'].sum() if 'Total' in df_imp.columns else 0
-            st.metric(
-                t("total_printing"),
-                f"{total_impressions:.2f} DH"
-            )
-        with col_i2:
-            nb_impressions = len(df_imp)
-            st.metric("📄 Nombre d'impressions", nb_impressions)
-        with col_i3:
-            total_pages = df_imp['Nombre'].sum() if 'Nombre' in df_imp.columns else 0
-            st.metric("📑 Total pages", f"{total_pages:.0f}")
+        st.dataframe(df_imp, use_container_width=True)
+        total_impressions = df_imp['Total'].sum() if 'Total' in df_imp.columns else 0
+        st.metric(t("total_printing"), f"{total_impressions:.2f} DH")
     else:
         st.info(t("no_data"))
     
-    # Boutons d'export/import
     export_import_buttons("impressions", df_imp)
 
 # ==================== CAISSE ====================
 elif menu == t("caisse"):
     st.header(t("caisse"))
-    st.markdown("---")
     
-    # ========== RÉCUPÉRATION DES DONNÉES FINANCIÈRES ==========
     df_ventes_caisse = get_df("ventes")
     df_impressions_caisse = get_df("impressions")
     df_credits_caisse = get_df("credits")
     
-    # Calcul des totaux
-    total_ventes = (
-        df_ventes_caisse['Total'].sum()
-        if not df_ventes_caisse.empty and 'Total' in df_ventes_caisse.columns
-        else 0
-    )
-    total_impressions = (
-        df_impressions_caisse['Total'].sum()
-        if not df_impressions_caisse.empty and 'Total' in df_impressions_caisse.columns
-        else 0
-    )
-    total_credits = (
-        df_credits_caisse['Montant'].sum()
-        if not df_credits_caisse.empty and 'Montant' in df_credits_caisse.columns
-        else 0
-    )
-    
-    # ========== AFFICHAGE DES MÉTRIQUES PRINCIPALES ==========
-    st.subheader("📊 Résumé financier")
+    total_ventes = df_ventes_caisse['Total'].sum() if not df_ventes_caisse.empty and 'Total' in df_ventes_caisse.columns else 0
+    total_impressions = df_impressions_caisse['Total'].sum() if not df_impressions_caisse.empty and 'Total' in df_impressions_caisse.columns else 0
+    total_credits = df_credits_caisse['Montant'].sum() if not df_credits_caisse.empty and 'Montant' in df_credits_caisse.columns else 0
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric(
-            t("total_sales"),
-            f"{total_ventes:,.2f} DH",
-            delta=None
-        )
+        st.metric(t("total_sales"), f"{total_ventes:,.2f} DH")
     with col2:
-        st.metric(
-            t("total_printing"),
-            f"{total_impressions:,.2f} DH",
-            delta=None
-        )
+        st.metric(t("total_printing"), f"{total_impressions:,.2f} DH")
     with col3:
-        st.metric(
-            t("total_credits"),
-            f"{total_credits:,.2f} DH",
-            delta=None,
-            delta_color="inverse"
-        )
+        st.metric(t("total_credits"), f"{total_credits:,.2f} DH")
     
-    st.markdown("---")
+    st.divider()
     
-    # ========== TOTAL GÉNÉRAL ==========
     total_general = total_ventes + total_impressions
+    st.metric(t("grand_total"), f"{total_general:,.2f} DH")
     
-    # Carte du total général (mise en évidence)
-    st.markdown(
-        f"""
-        <div style="
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            color: white;
-            margin: 10px 0;
-        ">
-            <h2 style="margin:0; color: white;">{t('grand_total')}</h2>
-            <h1 style="margin:10px 0; font-size: 48px; color: white;">{total_general:,.2f} DH</h1>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    st.divider()
     
-    st.markdown("---")
-    
-    # ========== RÉINITIALISATION DE LA CAISSE ==========
     st.subheader(t("reset_caisse"))
     st.warning(t("reset_warning"))
     
-    if st.button(
-        t("reset_button"),
-        type="primary",
-        use_container_width=True,
-        key="caisse_reset_btn"
-    ):
+    if st.button(t("reset_button"), type="primary"):
         st.session_state.caisse_reset_confirmed = True
     
-    # Confirmation de réinitialisation
     if st.session_state.caisse_reset_confirmed:
         st.error(t("confirm_reset"))
-        
         col_confirm, col_cancel = st.columns(2)
         with col_confirm:
-            if st.button(
-                t("yes_reset"),
-                use_container_width=True,
-                key="caisse_confirm_yes"
-            ):
+            if st.button(t("yes_reset")):
                 try:
-                    # Réinitialiser la caisse
                     total_jour = reset_caisse()
-                    
-                    st.success(
-                        f"✅ {t('reset_success')} **{total_jour:.2f} DH**"
-                    )
-                    
-                    # Réinitialiser l'état
+                    st.success(f"{t('reset_success')} {total_jour:.2f} DH")
                     st.session_state.caisse_reset_confirmed = False
-                    
-                    # Animation
                     st.balloons()
-                    
                     time.sleep(2)
                     st.rerun()
                 except Exception as e:
                     st.error(f"{t('error_generic')}: {str(e)}")
-                    st.session_state.caisse_reset_confirmed = False
-        
         with col_cancel:
-            if st.button(
-                t("cancel"),
-                use_container_width=True,
-                key="caisse_confirm_no"
-            ):
+            if st.button(t("cancel")):
                 st.session_state.caisse_reset_confirmed = False
                 st.rerun()
     
-    st.markdown("---")
-    
-    # ========== HISTORIQUE DES JOURS PRÉCÉDENTS ==========
+    st.divider()
     st.subheader(t("history"))
-    
     df_historique = get_df("historique_caisse")
     if not df_historique.empty:
-        st.dataframe(
-            df_historique,
-            use_container_width=True,
-            hide_index=True
-        )
-        
-        # Total de l'historique
-        total_historique = (
-            df_historique['Total_Jour'].sum()
-            if 'Total_Jour' in df_historique.columns
-            else 0
-        )
-        
-        col_h1, col_h2 = st.columns(2)
-        with col_h1:
-            st.metric(
-                t("grand_total"),
-                f"{total_historique:,.2f} DH"
-            )
-        with col_h2:
-            nb_jours = len(df_historique)
-            st.metric("📅 Jours enregistrés", nb_jours)
+        st.dataframe(df_historique, use_container_width=True)
+        total_historique = df_historique['Total_Jour'].sum() if 'Total_Jour' in df_historique.columns else 0
+        st.metric(t("grand_total"), f"{total_historique:,.2f} DH")
     else:
         st.info(t("no_data"))
     
-    # Boutons d'export/import
     export_import_buttons("historique_caisse", df_historique)
     
-    st.markdown("---")
-    
-    # ========== DERNIÈRES VENTES ==========
     st.subheader(t("recent_sales"))
-    
     if not df_ventes_caisse.empty:
-        st.dataframe(
-            df_ventes_caisse.tail(20),
-            use_container_width=True,
-            hide_index=True
-        )
+        st.dataframe(df_ventes_caisse.tail(20), use_container_width=True)
     else:
         st.info(t("no_data"))
+
 # ==================== CREDITS ====================
 elif menu == t("credits"):
     st.header(t("credits"))
-    st.markdown("---")
     
-    # ========== AJOUT D'UN NOUVEAU CRÉDIT ==========
     with st.expander(t("add_credit"), expanded=True):
-        st.markdown("### ➕ Nouveau crédit client")
-        
         col1, col2 = st.columns(2)
         with col1:
-            client = st.text_input(
-                t("client_name"),
-                key="credit_client_input",
-                placeholder="Nom du client..."
-            )
+            client = st.text_input(t("client_name"), key="credit_client")
         with col2:
-            montant = st.number_input(
-                t("amount"),
-                min_value=0.0,
-                value=0.0,
-                step=10.0,
-                key="credit_amount_input"
-            )
+            montant = st.number_input(t("amount"), min_value=0.0, key="credit_amount")
         
-        if st.button(
-            t("add_credit_button"),
-            type="primary",
-            use_container_width=True,
-            key="credit_add_btn"
-        ):
+        if st.button(t("add_credit_button"), key="credit_add_btn"):
             if client and montant > 0:
                 try:
-                    # Insertion du crédit
                     supabase.table("credits").insert({
                         "Client": client,
                         "Montant": float(montant),
                         "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
                     }).execute()
-                    
-                    st.success(f"✅ **{client}** - Crédit de **{montant:.2f} DH** ajouté!")
-                    play_success_sound()
-                    time.sleep(1)
+                    st.success(f"✅ {client} - {montant:.2f} DH")
                     st.rerun()
                 except Exception as e:
                     st.error(f"{t('error_generic')}: {str(e)}")
             else:
                 st.error(t("fill_all_fields"))
     
-    st.markdown("---")
+    st.divider()
     
-    # ========== LISTE DES CRÉDITS ==========
     st.subheader(t("credit_list"))
-    
     df_credits = get_df("credits")
     
     if not df_credits.empty:
-        # Affichage du tableau des crédits
-        st.dataframe(
-            df_credits,
-            use_container_width=True,
-            hide_index=True
-        )
+        st.dataframe(df_credits, use_container_width=True)
+        total_credits = df_credits['Montant'].sum() if 'Montant' in df_credits.columns else 0
+        st.metric(t("total_credits"), f"{total_credits:,.2f} DH")
         
-        # Total des crédits
-        total_credits = (
-            df_credits['Montant'].sum()
-            if 'Montant' in df_credits.columns
-            else 0
-        )
-        
-        # Métriques des crédits
-        col_cr1, col_cr2 = st.columns(2)
-        with col_cr1:
-            st.metric(
-                t("total_credits"),
-                f"{total_credits:,.2f} DH",
-                delta=None,
-                delta_color="inverse"
-            )
-        with col_cr2:
-            nb_clients = len(df_credits['Client'].unique()) if 'Client' in df_credits.columns else 0
-            st.metric("👥 Clients endettés", nb_clients)
-        
-        # Boutons d'export/import
         export_import_buttons("credits", df_credits)
         
-        st.markdown("---")
+        st.divider()
         
-        # ========== RÉDUCTION D'UN CRÉDIT (PAIEMENT PARTIEL) ==========
         st.subheader(t("reduce_credit"))
         st.info(t("reduce_credit_info"))
         
         col_credit1, col_credit2 = st.columns(2)
         with col_credit1:
             if 'id' in df_credits.columns:
-                # Création de la liste des crédits pour la sélection
                 credit_options = df_credits.apply(
-                    lambda x: f"{x['Client']} — {x['Montant']:.2f} DH (ID: {x['id']})",
+                    lambda x: f"{x['Client']} - {x['Montant']:.2f} DH (ID: {x['id']})",
                     axis=1
                 ).tolist()
                 
                 credit_a_reduire = st.selectbox(
                     t("select_credit"),
                     credit_options,
-                    key="credit_select_reduce"
+                    key="credit_select"
                 )
         with col_credit2:
             montant_reduction = st.number_input(
                 t("payment_amount"),
                 min_value=0.0,
                 step=0.5,
-                value=0.0,
-                key="credit_reduction_input"
+                key="credit_reduction"
             )
         
-        # Bouton de paiement
-        if st.button(
-            t("pay_button"),
-            type="primary",
-            use_container_width=True,
-            key="credit_pay_btn"
-        ):
+        if st.button(t("pay_button"), type="primary", key="credit_pay_btn"):
             if credit_a_reduire and montant_reduction > 0:
                 try:
-                    # Extraction de l'ID du crédit
                     credit_id = int(credit_a_reduire.split("ID: ")[1].replace(")", ""))
+                    credit_data = supabase.table("credits").select("*").eq("id", credit_id).execute().data[0]
                     
-                    # Récupération des données du crédit
-                    credit_data = supabase.table("credits").select("*").eq(
-                        "id", credit_id
-                    ).execute().data[0]
-                    
-                    # Vérification du montant
                     if montant_reduction > float(credit_data['Montant']):
-                        st.error(
-                            f"❌ Le montant payé ({montant_reduction:.2f} DH) "
-                            f"dépasse le crédit ({credit_data['Montant']:.2f} DH)!"
-                        )
+                        st.error(f"❌ {t('payment_amount')} ({montant_reduction:.2f}) > {t('amount')} ({credit_data['Montant']:.2f})!")
                     else:
-                        # Réduction du crédit
                         nouveau = reduce_credit(credit_id, montant_reduction)
-                        
                         if nouveau == 0:
                             st.success(f"✅ Crédit entièrement remboursé!")
-                            # Supprimer le crédit
                             supabase.table("credits").delete().eq("id", credit_id).execute()
                         else:
-                            st.success(
-                                f"✅ Paiement de **{montant_reduction:.2f} DH** enregistré!\n\n"
-                                f"Reste à payer: **{nouveau:.2f} DH**"
-                            )
-                        
-                        play_success_sound()
-                        time.sleep(1.5)
+                            st.success(f"✅ Payé: {montant_reduction:.2f} DH | Reste: {nouveau:.2f} DH")
                         st.rerun()
                 except Exception as e:
                     st.error(f"{t('error_generic')}: {str(e)}")
-            else:
-                st.error(t("fill_all_fields"))
         
-        st.markdown("---")
-        
-        # ========== HISTORIQUE DES PAIEMENTS ==========
+        st.divider()
         st.subheader(t("payment_history"))
-        
         df_paiements = get_df("paiements_credits")
         if not df_paiements.empty:
-            st.dataframe(
-                df_paiements,
-                use_container_width=True,
-                hide_index=True
-            )
-            
-            # Total des paiements
-            total_paiements = (
-                df_paiements['Montant_Paye'].sum()
-                if 'Montant_Paye' in df_paiements.columns
-                else 0
-            )
-            st.metric("💵 Total payé", f"{total_paiements:.2f} DH")
-            
-            # Boutons d'export/import
+            st.dataframe(df_paiements, use_container_width=True)
             export_import_buttons("paiements_credits", df_paiements)
         else:
             st.info(t("no_data"))
@@ -2825,189 +1826,94 @@ elif menu == t("credits"):
 # ==================== FACTURES ====================
 elif menu == t("factures"):
     st.header(t("factures"))
-    st.markdown("---")
     
-    # ========== DERNIÈRE VENTE (DERNIER PANIER) ==========
     if st.session_state.last_cart:
         st.subheader(t("last_sale"))
-        
-        # Affichage du dernier panier
-        df_last = pd.DataFrame(st.session_state.last_cart)
-        st.dataframe(
-            df_last[['Nom', 'Quantité', 'Prix', 'Total']],
-            use_container_width=True,
-            hide_index=True
-        )
-        
-        # Total du dernier panier
+        st.table(pd.DataFrame(st.session_state.last_cart))
         total_last = sum(item['Total'] for item in st.session_state.last_cart)
-        st.metric(
-            t("total"),
-            f"{total_last:.2f} DH"
-        )
+        st.metric(t("total"), f"{total_last:.2f} DH")
         
-        # Bouton pour réimprimer la dernière facture
-        if st.button(
-            t("print_invoice"),
-            type="primary",
-            use_container_width=True,
-            key="facture_reprint_btn"
-        ):
+        if st.button(t("print_invoice"), key="facture_print_btn"):
             generate_pdf_80mm(st.session_state.last_cart)
-            st.success("✅ Facture générée avec succès!")
-            play_success_sound()
-    else:
-        st.info("Aucune vente récente à afficher")
+            st.success(t("sale_success"))
     
-    st.markdown("---")
-    
-    # ========== TÉLÉCHARGEMENT DES FACTURES ==========
+    st.divider()
     st.subheader("📥 Télécharger les factures")
     
-    # Vérification de l'existence des fichiers PDF
-    factures_disponibles = []
-    
     if os.path.exists("facture_80mm.pdf"):
-        factures_disponibles.append(("facture_80mm.pdf", t("download_sale_invoice"), "Facture de vente 80mm"))
+        with open("facture_80mm.pdf", "rb") as f:
+            st.download_button(
+                t("download_sale_invoice"),
+                f,
+                "facture_80mm.pdf",
+                mime="application/pdf"
+            )
     
     if os.path.exists("facture_impression.pdf"):
-        factures_disponibles.append(("facture_impression.pdf", t("download_print_invoice"), "Reçu d'impression"))
+        with open("facture_impression.pdf", "rb") as f:
+            st.download_button(
+                t("download_print_invoice"),
+                f,
+                "facture_impression.pdf",
+                mime="application/pdf"
+            )
     
     if os.path.exists("bon_commande.pdf"):
-        factures_disponibles.append(("bon_commande.pdf", t("download_order"), "Bon de commande fournisseur"))
+        with open("bon_commande.pdf", "rb") as f:
+            st.download_button(
+                t("download_order"),
+                f,
+                "bon_commande.pdf",
+                mime="application/pdf"
+            )
     
-    if factures_disponibles:
-        # Affichage des boutons de téléchargement
-        for fichier, label, description in factures_disponibles:
-            with open(fichier, "rb") as f:
-                st.download_button(
-                    f"{label} ({description})",
-                    f,
-                    fichier,
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-    else:
-        st.info("Aucune facture disponible pour le moment")
-    
-    st.markdown("---")
-    
-    # ========== TOUTES LES VENTES ==========
+    st.divider()
     st.subheader(t("all_sales"))
-    
     df_all_ventes = get_df("ventes")
     if not df_all_ventes.empty:
-        st.dataframe(
-            df_all_ventes,
-            use_container_width=True,
-            hide_index=True
-        )
-        
-        # Statistiques globales
-        col_v1, col_v2, col_v3 = st.columns(3)
-        with col_v1:
-            nb_total_ventes = len(df_all_ventes)
-            st.metric("🛒 Total ventes", nb_total_ventes)
-        with col_v2:
-            ca_total = df_all_ventes['Total'].sum() if 'Total' in df_all_ventes.columns else 0
-            st.metric("💰 Chiffre d'affaires", f"{ca_total:.2f} DH")
-        with col_v3:
-            panier_moyen = ca_total / nb_total_ventes if nb_total_ventes > 0 else 0
-            st.metric("📊 Panier moyen", f"{panier_moyen:.2f} DH")
+        st.dataframe(df_all_ventes, use_container_width=True)
     else:
         st.info(t("no_data"))
 
-# ==================== COMMANDES FOURNISSEURS ====================
+# ==================== COMMANDES ====================
 elif menu == t("commandes"):
     st.header(t("commandes"))
-    st.markdown("---")
     
-    # ========== CRÉATION D'UNE NOUVELLE COMMANDE ==========
     col1, col2 = st.columns([1, 1])
-    
     with col1:
         st.subheader(t("new_order"))
-        st.markdown("Ajoutez des produits à commander chez le fournisseur")
-        
-        # Formulaire d'ajout de produit à la commande
-        nom_produit = st.text_input(
-            t("product_name"),
-            key="cmd_nom_input",
-            placeholder="Nom du produit à commander..."
-        )
-        
+        nom_produit = st.text_input(t("product_name"), key="cmd_nom")
         col_a, col_b = st.columns(2)
         with col_a:
-            qte_commande = st.number_input(
-                t("requested_qty"),
-                min_value=0.0,
-                step=0.1,
-                value=1.0,
-                key="cmd_qte_input"
-            )
+            qte_commande = st.number_input(t("requested_qty"), min_value=0.0, step=0.1, key="cmd_qte")
         with col_b:
-            prix_unitaire = st.number_input(
-                t("unit_price_est"),
-                min_value=0.0,
-                value=0.0,
-                step=0.5,
-                key="cmd_prix_input"
-            )
+            prix_unitaire = st.number_input(t("unit_price_est"), min_value=0.0, key="cmd_prix")
         
-        # Bouton d'ajout à la commande
-        if st.button(
-            t("add_to_order"),
-            type="primary",
-            use_container_width=True,
-            key="cmd_add_btn"
-        ):
+        if st.button(t("add_to_order")):
             if nom_produit and qte_commande > 0:
-                # Ajout à la liste temporaire
                 st.session_state.commande_cart.append({
                     "Nom": nom_produit,
                     "Qté": qte_commande,
                     "Prix_U": prix_unitaire,
                     "Total": qte_commande * prix_unitaire
                 })
-                
-                st.success(f"✅ **{nom_produit}** ajouté à la commande!")
-                time.sleep(0.5)
+                st.success(f"{t('add_to_order')}: {nom_produit}")
                 st.rerun()
             else:
                 st.error(t("fill_all_fields"))
     
     with col2:
         st.subheader(t("current_order"))
-        
         if st.session_state.commande_cart:
-            # Affichage de la commande en cours
             df_cmd = pd.DataFrame(st.session_state.commande_cart)
-            st.dataframe(
-                df_cmd,
-                use_container_width=True,
-                hide_index=True
-            )
-            
-            # Total estimé
+            st.table(df_cmd)
             total_commande = sum(item['Total'] for item in st.session_state.commande_cart)
-            st.metric(
-                t("estimated_total"),
-                f"{total_commande:.2f} DH"
-            )
+            st.metric(t("estimated_total"), f"{total_commande:.2f} DH")
             
-            st.markdown("---")
-            
-            # Boutons d'action
             col_btn1, col_btn2, col_btn3 = st.columns(3)
-            
             with col_btn1:
-                if st.button(
-                    t("save_order"),
-                    use_container_width=True,
-                    key="cmd_save_btn"
-                ):
+                if st.button(t("save_order")):
                     try:
-                        # Enregistrement de chaque produit dans la commande
                         for item in st.session_state.commande_cart:
                             supabase.table("commandes").insert({
                                 "Nom": item['Nom'],
@@ -3017,532 +1923,59 @@ elif menu == t("commandes"):
                                 "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
                                 "Statut": "En attente"
                             }).execute()
-                        
                         st.success(t("order_saved"))
-                        
-                        # Vider la commande temporaire
                         st.session_state.commande_cart = []
-                        
-                        play_success_sound()
-                        time.sleep(1)
                         st.rerun()
                     except Exception as e:
                         st.error(f"{t('error_generic')}: {str(e)}")
             
             with col_btn2:
-                if st.button(
-                    t("print_order"),
-                    use_container_width=True,
-                    key="cmd_print_btn"
-                ):
-                    # Génération du bon de commande PDF
+                if st.button(t("print_order")):
                     generate_commande_pdf(st.session_state.commande_cart)
-                    
-                    st.success("✅ Bon de commande généré!")
-                    
-                    # Bouton de téléchargement
+                    st.success(t("sale_success"))
                     if os.path.exists("bon_commande.pdf"):
                         with open("bon_commande.pdf", "rb") as f:
-                            st.download_button(
-                                t("download_order"),
-                                f,
-                                "bon_commande.pdf",
-                                mime="application/pdf",
-                                key="download_cmd_btn"
-                            )
-                    
-                    play_success_sound()
+                            st.download_button(t("download_order"), f, "bon_commande.pdf")
             
             with col_btn3:
-                if st.button(
-                    t("clear_order"),
-                    use_container_width=True,
-                    key="cmd_clear_btn"
-                ):
+                if st.button(t("clear_order")):
                     st.session_state.commande_cart = []
                     st.rerun()
         else:
             st.info(t("no_pending_orders"))
     
-    st.markdown("---")
-    
-    # ========== COMMANDES PRÉCÉDENTES ==========
+    st.divider()
     st.subheader(t("previous_orders"))
-    
     df_commandes = get_df("commandes")
     if not df_commandes.empty:
-        # Affichage des commandes
-        st.dataframe(
-            df_commandes,
-            use_container_width=True,
-            hide_index=True
-        )
-        
-        # Boutons d'export/import
+        st.dataframe(df_commandes, use_container_width=True)
         export_import_buttons("commandes", df_commandes)
         
-        st.markdown("---")
-        
-        # ========== CONFIRMATION DE RÉCEPTION ==========
         st.subheader(t("confirm_reception"))
-        st.info("✅ Confirmez la réception d'une commande pour mettre à jour le stock automatiquement")
-        
-        # Filtrer les commandes en attente
-        if 'Statut' in df_commandes.columns:
+        if 'id' in df_commandes.columns and 'Statut' in df_commandes.columns:
             commandes_en_attente = df_commandes[df_commandes['Statut'] == 'En attente']
-            
             if not commandes_en_attente.empty:
-                # Sélection de la commande à confirmer
                 cmd_to_confirm = st.selectbox(
                     t("select_order_confirm"),
-                    commandes_en_attente.apply(
-                        lambda x: f"ID: {x['id']} — {x['Nom']} ({x['Qté']} unités)",
-                        axis=1
-                    ).tolist(),
-                    key="cmd_confirm_select"
+                    commandes_en_attente.apply(lambda x: f"ID: {x['id']} - {x['Nom']} ({x['Qté']} unités)", axis=1).tolist()
                 )
-                
-                # Bouton de confirmation
-                if st.button(
-                    t("confirm_button"),
-                    type="primary",
-                    use_container_width=True,
-                    key="cmd_confirm_btn"
-                ):
+                if st.button(t("confirm_button")):
                     if cmd_to_confirm:
                         try:
-                            # Extraction de l'ID
-                            cmd_id = int(cmd_to_confirm.split("ID: ")[1].split(" —")[0])
-                            
-                            # Confirmation et mise à jour du stock
+                            cmd_id = int(cmd_to_confirm.split("ID: ")[1].split(" -")[0])
                             confirm_purchase(cmd_id)
-                            
                             st.success(t("order_received"))
-                            play_success_sound()
-                            time.sleep(1)
                             st.rerun()
                         except Exception as e:
                             st.error(f"{t('error_generic')}: {str(e)}")
             else:
                 st.info(t("no_pending_orders"))
-    else:
-        st.info(t("no_data"))
-# ==================== PIED DE PAGE (FOOTER) ====================
-# Cette section masque le footer Streamlit par défaut
-# et ajoute un style personnalisé
 
+# ==================== FOOTER ====================
 hide_streamlit_style = """
     <style>
-        /* Masquer le menu Streamlit par défaut */
-        #MainMenu {
-            visibility: hidden;
-        }
-        
-        /* Masquer le footer Streamlit */
-        footer {
-            visibility: hidden;
-        }
-        
-        /* Masquer le header Streamlit */
-        header {
-            visibility: hidden;
-        }
-        
-        /* Style personnalisé pour les boutons */
-        .stButton > button {
-            border-radius: 10px;
-            transition: all 0.3s ease;
-        }
-        
-        .stButton > button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        
-        /* Style pour les métriques */
-        .stMetric {
-            background: rgba(255,255,255,0.05);
-            border-radius: 10px;
-            padding: 10px;
-        }
-        
-        /* Style pour les expanders */
-        .streamlit-expanderHeader {
-            font-weight: bold;
-            font-size: 16px;
-            border-radius: 10px;
-        }
-        
-        /* Style pour les dataframes */
-        .stDataFrame {
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        
-        /* Style pour les messages de succès */
-        .stSuccess {
-            border-radius: 10px;
-            animation: fadeIn 0.5s;
-        }
-        
-        /* Style pour les messages d'erreur */
-        .stError {
-            border-radius: 10px;
-            animation: shake 0.5s;
-        }
-        
-        /* Style pour les messages d'avertissement */
-        .stWarning {
-            border-radius: 10px;
-        }
-        
-        /* Style pour les messages d'information */
-        .stInfo {
-            border-radius: 10px;
-        }
-        
-        /* Animation de fondu */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* Animation de secousse */
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-        
-        /* Style pour la barre latérale */
-        .css-1d391kg {
-            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
-        }
-        
-        /* Style pour les titres */
-        h1, h2, h3 {
-            font-weight: bold;
-        }
-        
-        /* Style pour les radio buttons */
-        .stRadio > div {
-            display: flex;
-            gap: 10px;
-        }
-        
-        /* Style pour les checkboxes */
-        .stCheckbox {
-            padding: 10px;
-            border-radius: 10px;
-            background: rgba(255,255,255,0.03);
-        }
-        
-        /* Style pour les selectboxes */
-        .stSelectbox > div > div {
-            border-radius: 10px;
-        }
-        
-        /* Style pour les number inputs */
-        .stNumberInput > div > div {
-            border-radius: 10px;
-        }
-        
-        /* Style pour les text inputs */
-        .stTextInput > div > div {
-            border-radius: 10px;
-        }
-        
-        /* Style pour la barre de progression */
-        .stProgress > div > div {
-            border-radius: 10px;
-        }
-        
-        /* Style pour les onglets */
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 10px;
-        }
-        
-        .stTabs [data-baseweb="tab"] {
-            border-radius: 10px;
-            padding: 10px 20px;
-        }
-        
-        /* Style responsive pour mobile */
-        @media (max-width: 768px) {
-            .stMetric {
-                font-size: 14px;
-            }
-            
-            h1 {
-                font-size: 24px;
-            }
-            
-            h2 {
-                font-size: 20px;
-            }
-            
-            h3 {
-                font-size: 16px;
-            }
-        }
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
     </style>
 """
-
-# Application du style personnalisé
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-
-# ==================== FIN DE L'APPLICATION ====================
-# Message de copyright dans la console (non visible dans l'interface)
-print("=" * 60)
-print("OUZOUD SERVICES - Application de Gestion")
-print("Développé avec Streamlit + Supabase")
-print(f"Démarrage: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
-print("=" * 60)
-
-# ==================== INSTRUCTIONS D'INSTALLATION ====================
-# Pour exécuter cette application:
-#
-# 1. Installer les dépendances:
-#    pip install streamlit pandas supabase fpdf pytz openpyxl
-#
-# 2. Configurer les secrets Supabase dans .streamlit/secrets.toml:
-#    [supabase]
-#    supabase_url = "https://votre-projet.supabase.co"
-#    supabase_key = "votre-clé-service-role"
-#
-# 3. Créer les tables dans Supabase (SQL Editor):
-#    - stock (id, Nom, Prix, Quantité, Code-barres)
-#    - ventes (id, Code, Quantité, Prix, Total, Date, Nom)
-#    - impressions (id, Date, Prix_Page, Nombre, Total)
-#    - credits (id, Client, Montant, Date)
-#    - paiements_credits (id, Credit_ID, Client, Montant_Paye, Reste, Date)
-#    - commandes (id, Nom, Qté, Prix_U, Total, Date, Statut)
-#    - historique_caisse (id, Date, Total_Ventes, Total_Impressions, Total_Jour, Heure_Fermeture)
-#
-# 4. Lancer l'application:
-#    streamlit run app.py
-#
-# 5. Accéder à l'application:
-#    http://localhost:8501
-#
-# 6. Mot de passe par défaut: ouzoud2026
-
-# ==================== FONCTIONS SUPPLÉMENTAIRES (OPTIONNELLES) ====================
-# Ces fonctions peuvent être ajoutées pour des fonctionnalités futures
-
-def calculate_daily_profit():
-    """
-    Calcule le profit quotidien (ventes + impressions)
-    Returns:
-        Tuple (total_ventes, total_impressions, total_general)
-    """
-    today = datetime.now().strftime('%d/%m/%Y')
-    df_v = get_df("ventes")
-    df_i = get_df("impressions")
-    
-    # Filtrer pour aujourd'hui
-    ventes_today = df_v[df_v['Date'].str.contains(today, na=False)] if not df_v.empty and 'Date' in df_v.columns else pd.DataFrame()
-    impressions_today = df_i[df_i['Date'].str.contains(today, na=False)] if not df_i.empty and 'Date' in df_i.columns else pd.DataFrame()
-    
-    total_v = ventes_today['Total'].sum() if not ventes_today.empty and 'Total' in ventes_today.columns else 0
-    total_i = impressions_today['Total'].sum() if not impressions_today.empty and 'Total' in impressions_today.columns else 0
-    
-    return total_v, total_i, total_v + total_i
-
-def get_top_products(limit=5):
-    """
-    Retourne les produits les plus vendus
-    Args:
-        limit: Nombre de produits à retourner
-    Returns:
-        DataFrame des produits les plus vendus
-    """
-    df_v = get_df("ventes")
-    if not df_v.empty and 'Nom' in df_v.columns and 'Quantité' in df_v.columns:
-        top = df_v.groupby('Nom')['Quantité'].sum().sort_values(ascending=False).head(limit)
-        return top
-    return pd.DataFrame()
-
-def get_low_stock_alerts():
-    """
-    Retourne les alertes de stock bas formatées
-    Returns:
-        Liste des alertes
-    """
-    low = check_stock_levels()
-    alerts = []
-    for _, row in low.iterrows():
-        alerts.append({
-            'produit': row.get('Nom', 'Inconnu'),
-            'quantite': row.get('Quantité', 0),
-            'message': f"⚠️ {row.get('Nom', 'Inconnu')} - {row.get('Quantité', 0)} unités restantes"
-        })
-    return alerts
-
-def send_notification(message, type="info"):
-    """
-    Affiche une notification stylisée
-    Args:
-        message: Texte du message
-        type: Type de notification (info, success, warning, error)
-    """
-    icons = {
-        'info': 'ℹ️',
-        'success': '✅',
-        'warning': '⚠️',
-        'error': '❌'
-    }
-    
-    colors = {
-        'info': '#2196F3',
-        'success': '#4CAF50',
-        'warning': '#FF9800',
-        'error': '#F44336'
-    }
-    
-    icon = icons.get(type, 'ℹ️')
-    color = colors.get(type, '#2196F3')
-    
-    st.markdown(
-        f"""
-        <div style="
-            background: {color}22;
-            border-left: 4px solid {color};
-            border-radius: 10px;
-            padding: 15px;
-            margin: 10px 0;
-            animation: fadeIn 0.5s;
-        ">
-            <span style="font-size: 20px;">{icon}</span>
-            <span style="margin-left: 10px;">{message}</span>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-def auto_backup():
-    """
-    Crée une sauvegarde automatique de toutes les tables
-    Returns:
-        Bytes du fichier Excel
-    """
-    tables = [
-        "stock", "ventes", "impressions", "credits",
-        "paiements_credits", "commandes", "historique_caisse"
-    ]
-    
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        for table in tables:
-            df = get_df(table)
-            if not df.empty:
-                df.to_excel(writer, sheet_name=table, index=False)
-    
-    output.seek(0)
-    return output.getvalue()
-
-# ==================== JOURNAL D'ERREURS (LOGGING) ====================
-import logging
-
-# Configuration du logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('app.log'),
-        logging.StreamHandler()
-    ]
-)
-
-logger = logging.getLogger(__name__)
-
-# Fonction pour logger les erreurs
-def log_error(error_message, function_name=""):
-    """
-    Enregistre une erreur dans le journal
-    Args:
-        error_message: Message d'erreur
-        function_name: Nom de la fonction où l'erreur s'est produite
-    """
-    logger.error(f"[{function_name}] {error_message}")
-
-# Fonction pour logger les actions
-def log_action(action_message, function_name=""):
-    """
-    Enregistre une action dans le journal
-    Args:
-        action_message: Message d'action
-        function_name: Nom de la fonction
-    """
-    logger.info(f"[{function_name}] {action_message}")
-
-# ==================== VÉRIFICATION DE L'INTÉGRITÉ DES DONNÉES ====================
-def verify_data_integrity():
-    """
-    Vérifie l'intégrité des données entre les tables
-    Returns:
-        Dictionnaire des problèmes détectés
-    """
-    issues = {}
-    
-    # Vérifier que les produits vendus existent dans le stock
-    df_ventes = get_df("ventes")
-    df_stock = get_df("stock")
-    
-    if not df_ventes.empty and not df_stock.empty:
-        produits_vendus = df_ventes['Nom'].unique() if 'Nom' in df_ventes.columns else []
-        produits_stock = df_stock['Nom'].unique() if 'Nom' in df_stock.columns else []
-        
-        # Produits vendus mais pas dans le stock (vente libre)
-        missing = set(produits_vendus) - set(produits_stock)
-        if missing:
-            issues['produits_orphelins'] = list(missing)
-    
-    # Vérifier les crédits sans paiements
-    df_credits = get_df("credits")
-    df_paiements = get_df("paiements_credits")
-    
-    if not df_credits.empty and not df_paiements.empty:
-        credits_ids = df_credits['id'].unique() if 'id' in df_credits.columns else []
-        paiements_credit_ids = df_paiements['Credit_ID'].unique() if 'Credit_ID' in df_paiements.columns else []
-        
-        # Crédits sans aucun paiement
-        no_payments = set(credits_ids) - set(paiements_credit_ids)
-        # Ce n'est pas un problème, juste une information
-        issues['credits_sans_paiement'] = len(no_payments)
-    
-    return issues
-
-# ==================== NETTOYAGE AUTOMATIQUE ====================
-def cleanup_old_data(days=90):
-    """
-    Nettoie les données anciennes (optionnel)
-    Args:
-        days: Nombre de jours avant suppression
-    """
-    # Cette fonction est désactivée par défaut
-    # Décommenter pour activer le nettoyage automatique
-    pass
-    """
-    date_limite = (datetime.now() - timedelta(days=days)).strftime('%d/%m/%Y')
-    
-    # Nettoyer les anciennes ventes
-    supabase.table("ventes").delete().lt("Date", date_limite).execute()
-    
-    # Nettoyer les anciennes impressions
-    supabase.table("impressions").delete().lt("Date", date_limite).execute()
-    
-    logger.info(f"Nettoyage des données antérieures à {date_limite}")
-    """
-
-# ==================== MESSAGE DE FIN ====================
-# Ce code s'exécute uniquement au démarrage de l'application
-if __name__ == "__main__":
-    st.sidebar.success("✅ Application prête!")
-    logger.info("Application OUZOUD SERVICES démarrée avec succès")
-
-# ==================== FIN DU CODE ====================
-# Merci d'avoir utilisé cette application!
-# Pour toute question ou amélioration, contactez:
-# Email: maaridprint@gmail.com
-# Tél: 07.81.02.82.43
