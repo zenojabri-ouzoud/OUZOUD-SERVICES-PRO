@@ -1,6 +1,6 @@
-import streamlit as st
+Import streamlit as st
 import pandas as pd
-from supabase import create_client, client
+from supabase import create_client, Client
 import os
 from fpdf import FPDF
 from datetime import datetime, timedelta
