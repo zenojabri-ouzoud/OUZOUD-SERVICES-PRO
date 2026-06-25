@@ -18,9 +18,11 @@ if not firebase_admin._apps:
     cred = credentials.Certificate(config)
     firebase_admin.initialize_app(cred)
 
-# الإضافة لضمان الاتصال الصحيح بالمشروع و بقاعدة البيانات (default)
+# الإضافة لضمان الاتصال الصحيح بالمشروع و تحديد مسار قاعدة البيانات
 os.environ["GOOGLE_CLOUD_PROJECT"] = "ouzoud-services"
-db = firestore.client(database_id="(default)")
+db = firestore.client()
+# هاد السطر هو اللي غادي يحبس الـ 404 نهائياً
+db._client.database = "projects/ouzoud-services/databases/(default)"
 
 # --- دالة التصدير للإكسيل ---
 def to_excel(df):
