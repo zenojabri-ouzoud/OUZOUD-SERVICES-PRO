@@ -18,14 +18,13 @@ if not firebase_admin._apps:
     cred = credentials.Certificate(config)
     firebase_admin.initialize_app(cred)
 
-# الإضافة الجديدة لضمان الاتصال الصحيح بالمشروع (هادي اللي كتحل مشكل الـ 404)
+# الإضافة لضمان الاتصال الصحيح بالمشروع و بقاعدة البيانات (default)
 os.environ["GOOGLE_CLOUD_PROJECT"] = "ouzoud-services"
-db = firestore.client()
+db = firestore.client(database="(default)")
 
 # --- دالة التصدير للإكسيل ---
 def to_excel(df):
     output = io.BytesIO()
-    # تم التصحيح هنا: استعملنا openpyxl عوض openxml4py
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Sheet1')
     return output.getvalue()
@@ -36,7 +35,7 @@ def import_excel(uploaded_file, collection_name):
     for _, row in df.iterrows():
         db.collection(collection_name).add(row.to_dict())
 
-# --- دالة حذف Collection (للتنظيف) ---
+# --- دالة حذف Collection ---
 def delete_collection(collection_name, batch_size=50):
     coll_ref = db.collection(collection_name)
     docs = coll_ref.limit(batch_size).stream()
@@ -48,7 +47,7 @@ def delete_collection(collection_name, batch_size=50):
         return delete_collection(collection_name, batch_size)
     return deleted
 
-# --- دالة فاتورة خاصة بالطباعة ---
+# --- دالة فاتورة الطباعة ---
 def generate_impression_pdf(prix_page, nombre):
     pdf = FPDF(orientation='P', unit='mm', format=(80, 250))
     pdf.add_page()
@@ -65,7 +64,7 @@ def generate_impression_pdf(prix_page, nombre):
     pdf.output(file_path)
     return file_path
 
-# --- دالة لجلب البيانات ---
+# --- دالة جلب البيانات ---
 def get_df(collection_name):
     try:
         docs = list(db.collection(collection_name).stream())
@@ -129,13 +128,13 @@ def generate_pdf(cart_data):
     for item in cart_data:
         code_input = str(item.get('Code', ''))
         nom_produit = code_input
-        qty = str(item.get('Quantité', 0))
+        qty = float(item.get('Quantité', 0))
         prix = float(item.get('Prix', 0))
         total = float(item.get('Total', 0))
         total_general += total
         
         pdf.cell(30, 6, txt=nom_produit[:15], border=1)
-        pdf.cell(8, 6, txt=qty, border=1, align='C')
+        pdf.cell(8, 6, txt=str(qty), border=1, align='C')
         pdf.cell(10, 6, txt=f"{prix:.0f}", border=1, align='C')
         pdf.cell(12, 6, txt=f"{total:.0f}", border=1, align='C')
         pdf.ln(6)
@@ -179,15 +178,15 @@ if menu == "Point de Vente":
     
     if mode == "Vente Normale":
         code = st.text_input("Code-barres")
-        qty = st.number_input("Quantité", min_value=1)
+        qty = st.number_input("Quantité", min_value=0.0, step=0.1)
         if st.button("✅ Enregistrer la Vente"):
             stocks = db.collection("stock").where("Code-barres", "==", code).stream()
             prix = 0
             doc_id = None
             q_old = 0
             for s in stocks:
-                prix = s.to_dict().get('Prix', 0)
-                q_old = s.to_dict().get('Quantité', 0)
+                prix = float(s.to_dict().get('Prix', 0))
+                q_old = float(s.to_dict().get('Quantité', 0))
                 doc_id = s.id
             if doc_id:
                 total = prix * qty
@@ -203,17 +202,17 @@ if menu == "Point de Vente":
         name = st.text_input("Nom du produit")
         price = st.number_input("Prix")
         if st.button("✅ Enregistrer la Vente"):
-            db.collection("ventes").add({"Code": name, "Quantité": 1, "Prix": price, "Total": price, "Date": datetime.now().strftime('%d/%m/%Y %H:%M')})
+            db.collection("ventes").add({"Code": name, "Quantité": 1.0, "Prix": float(price), "Total": float(price), "Date": datetime.now().strftime('%d/%m/%Y %H:%M')})
             st.success("تم تسجيل البيع بنجاح!")
         
     elif mode == "Panier":
         col1, col2 = st.columns([1, 1])
         with col1:
             code = st.text_input("Code-barres")
-            qty = st.number_input("Quantité:", min_value=1, step=1)
+            qty = st.number_input("Quantité:", min_value=0.0, step=0.1)
             stocks = db.collection("stock").where("Code-barres", "==", code).stream()
             prix_u = 0
-            for s in stocks: prix_u = s.to_dict().get('Prix', 0)
+            for s in stocks: prix_u = float(s.to_dict().get('Prix', 0))
             if st.button("✅ Ajouter au Panier"):
                 st.session_state.cart.append({"Code": code, "Quantité": qty, "Prix": prix_u, "Total": prix_u * qty})
                 st.rerun()
@@ -261,11 +260,11 @@ elif menu == "Gestion Stock":
     col1, col2, col3, col4 = st.columns(4)
     with col1: name = st.text_input("Nom")
     with col2: price = st.number_input("Prix")
-    with col3: qty = st.number_input("Qté")
+    with col3: qty = st.number_input("Qté", min_value=0.0, step=0.1)
     with col4: barcode = st.text_input("Code-barres")
     
     if st.button("Ajouter"):
-        db.collection("stock").add({"Nom": name, "Prix": price, "Quantité": qty, "Code-barres": barcode})
+        db.collection("stock").add({"Nom": name, "Prix": float(price), "Quantité": float(qty), "Code-barres": barcode})
         st.success(f"تم إضافة: {name} بنجاح!")
         st.rerun()
             
@@ -287,15 +286,15 @@ elif menu == "Gestion Stock":
         upd_id = st.text_input("ID للتعديل:")
         new_price = st.number_input("ثمن جديد:")
         if st.button("🔄 تحديث الثمن"):
-            db.collection("stock").document(upd_id).update({"Prix": new_price})
+            db.collection("stock").document(upd_id).update({"Prix": float(new_price)})
             st.rerun()
 
 elif menu == "Impression":
     st.header("🖨️ Service d'Impression")
     p = st.number_input("Prix/Page", min_value=0.0)
-    n = st.number_input("Nombre", min_value=1)
+    n = st.number_input("Nombre", min_value=0.0, step=0.1)
     if st.button("Enregistrer et Imprimer"):
-        db.collection("impressions").add({"Date": datetime.now().strftime('%d/%m/%Y %H:%M'), "Prix_Page": p, "Nombre": n, "Total": p*n})
+        db.collection("impressions").add({"Date": datetime.now().strftime('%d/%m/%Y %H:%M'), "Prix_Page": float(p), "Nombre": float(n), "Total": float(p)*float(n)})
         pdf_path = generate_impression_pdf(p, n)
         with open(pdf_path, "rb") as pdf_file:
             st.download_button("📥 تحميل فاتورة الطباعة (PDF)", pdf_file, "facture_impression.pdf", "application/pdf")
@@ -319,8 +318,8 @@ elif menu == "Caisse":
     st.header("💰 Caisse - الحصيلة الكاملة")
     df_sales = get_df("ventes")
     df_imp = get_df("impressions")
-    total_sales = df_sales['Total'].sum() if not df_sales.empty else 0
-    total_imp = df_imp['Total'].sum() if not df_imp.empty else 0
+    total_sales = float(df_sales['Total'].sum()) if not df_sales.empty else 0
+    total_imp = float(df_imp['Total'].sum()) if not df_imp.empty else 0
     st.metric("Total Général (Produits + Impressions)", f"{total_sales + total_imp:,.2f} DH")
     st.subheader("🛒 مبيعات المنتجات")
     st.dataframe(df_sales)
@@ -335,18 +334,12 @@ elif menu == "Caisse":
 elif menu == "Credits":
     st.header("💳 Gestion des Crédits")
     client = st.text_input("Nom du Client")
-    montant = st.number_input("Montant (DH)")
+    montant = st.number_input("Montant (DH)", min_value=0.0, step=0.1)
     if st.button("Enregistrer Crédit"):
-        db.collection("credits").add({"Client": client, "Montant": montant})
+        db.collection("credits").add({"Client": client, "Montant": float(montant)})
         st.rerun()
     
     st.divider()
-    st.subheader("🛠️ أدوات التنظيف")
-    if st.button("🗑️ حذف Collection القديمة (ccredits)"):
-        count = delete_collection("ccredits")
-        st.success(f"تم حذف {count} عنصر من ccredits بنجاح!")
-        st.rerun()
-        
     st.subheader("📋 قائمة الديون")
     df_cred = get_df("credits")
     st.dataframe(df_cred, use_container_width=True)
