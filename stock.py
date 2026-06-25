@@ -19,7 +19,13 @@ if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 
 # الاتصال بالـ Database
+# تحديد الـ Client بوضوح للربط مع قاعدة بيانات (default)
 db = firestore.client()
+# تأكد من أن هذا المسار صحيح برمجياً
+db = firestore.Client.from_service_account_info(
+    info=config, 
+    project="ouzoud-services", 
+    database="(default)"
 
 # --- دالة التصدير للإكسيل ---
 def to_excel(df):
