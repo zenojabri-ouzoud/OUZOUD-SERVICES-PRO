@@ -1,13 +1,16 @@
-import streamlit as st
+Import streamlit as st
 import pandas as pd
-from supabase import create_client, client
+from supabase import create_client, Client
 import os
 from fpdf import FPDF
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 import streamlit.components.v1 as components
 import io
 import json
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # --- إعداد Supabase ---
 supabase: Client = create_client(
@@ -79,6 +82,11 @@ translations = {
         "ar": "📋 طلبيات الموردين",
         "fr": "📋 Commandes Fournisseur",
         "en": "📋 Supplier Orders"
+    },
+    "reports": {
+        "ar": "📊 التقارير والإحصائيات",
+        "fr": "📊 Rapports et Statistiques",
+        "en": "📊 Reports and Statistics"
     },
     "activate_scanner": {
         "ar": "📸 تفعيل الماسح الضوئي السريع",
@@ -549,6 +557,101 @@ translations = {
         "ar": "🌐 اللغة",
         "fr": "🌐 Langue",
         "en": "🌐 Language"
+    },
+    "daily_report": {
+        "ar": "تقرير يومي",
+        "fr": "Rapport Quotidien",
+        "en": "Daily Report"
+    },
+    "weekly_report": {
+        "ar": "تقرير أسبوعي",
+        "fr": "Rapport Hebdomadaire",
+        "en": "Weekly Report"
+    },
+    "monthly_report": {
+        "ar": "تقرير شهري",
+        "fr": "Rapport Mensuel",
+        "en": "Monthly Report"
+    },
+    "custom_period": {
+        "ar": "فترة مخصصة",
+        "fr": "Période Personnalisée",
+        "en": "Custom Period"
+    },
+    "start_date": {
+        "ar": "من تاريخ",
+        "fr": "Date de début",
+        "en": "Start Date"
+    },
+    "end_date": {
+        "ar": "إلى تاريخ",
+        "fr": "Date de fin",
+        "en": "End Date"
+    },
+    "generate_report": {
+        "ar": "📊 توليد التقرير",
+        "fr": "📊 Générer le Rapport",
+        "en": "📊 Generate Report"
+    },
+    "sales_evolution": {
+        "ar": "تطور المبيعات",
+        "fr": "Évolution des Ventes",
+        "en": "Sales Evolution"
+    },
+    "top_products": {
+        "ar": "المنتجات الأكثر مبيعاً",
+        "fr": "Produits les Plus Vendus",
+        "en": "Top Selling Products"
+    },
+    "revenue_analysis": {
+        "ar": "تحليل الإيرادات",
+        "fr": "Analyse des Revenus",
+        "en": "Revenue Analysis"
+    },
+    "profit_margin": {
+        "ar": "هامش الربح",
+        "fr": "Marge Bénéficiaire",
+        "en": "Profit Margin"
+    },
+    "comparison_periods": {
+        "ar": "مقارنة الفترات",
+        "fr": "Comparaison des Périodes",
+        "en": "Period Comparison"
+    },
+    "period1": {
+        "ar": "الفترة الأولى",
+        "fr": "Période 1",
+        "en": "Period 1"
+    },
+    "period2": {
+        "ar": "الفترة الثانية",
+        "fr": "Période 2",
+        "en": "Period 2"
+    },
+    "compare": {
+        "ar": "📊 مقارنة",
+        "fr": "📊 Comparer",
+        "en": "📊 Compare"
+    },
+    "no_data": {
+        "ar": "لا توجد بيانات للفترة المحددة",
+        "fr": "Aucune donnée pour la période sélectionnée",
+        "en": "No data for the selected period"
+    },
+    "best_day": {
+        "ar": "أفضل يوم",
+        "fr": "Meilleur Jour",
+        "en": "Best Day"
+    },
+    "worst_day": {
+        "ar": "أقل يوم",
+        "fr": "Jour le Plus Bas",
+        "en": "Worst Day"
+    },
+    "average_daily": {
+        "ar": "المتوسط اليومي",
+        "fr": "Moyenne Quotidienne",
+        "en": "Daily Average"
     }
 }
 
@@ -723,6 +826,131 @@ def reduce_credit(credit_id, montant_reduction):
     }).execute()
     return nouveau_montant
 
+# --- دوال التقارير ---
+def filter_data_by_date(df, date_column, start_date, end_date):
+    """تصفية البيانات حسب الفترة الزمنية"""
+    if df.empty or date_column not in df.columns:
+        return pd.DataFrame()
+    
+    df[date_column] = pd.to_datetime(df[date_column], format='%d/%m/%Y %H:%M', errors='coerce')
+    mask = (df[date_column].dt.date >= start_date) & (df[date_column].dt.date <= end_date)
+    return df[mask]
+
+def generate_daily_report(date):
+    """تقرير يومي مفصل"""
+    df_ventes = get_df("ventes")
+    df_impressions = get_df("impressions")
+    df_paiements = get_df("paiements_credits")
+    
+    # تصفية حسب التاريخ
+    ventes_jour = filter_data_by_date(df_ventes, 'Date', date, date)
+    impressions_jour = filter_data_by_date(df_impressions, 'Date', date, date)
+    paiements_jour = filter_data_by_date(df_paiements, 'Date', date, date)
+    
+    total_ventes = ventes_jour['Total'].sum() if not ventes_jour.empty and 'Total' in ventes_jour.columns else 0
+    total_impressions = impressions_jour['Total'].sum() if not impressions_jour.empty and 'Total' in impressions_jour.columns else 0
+    total_paiements = paiements_jour['Montant_Paye'].sum() if not paiements_jour.empty and 'Montant_Paye' in paiements_jour.columns else 0
+    nombre_ventes = len(ventes_jour)
+    
+    return {
+        "date": date,
+        "total_ventes": total_ventes,
+        "total_impressions": total_impressions,
+        "total_paiements": total_paiements,
+        "total_general": total_ventes + total_impressions,
+        "nombre_ventes": nombre_ventes,
+        "ventes_df": ventes_jour,
+        "impressions_df": impressions_jour
+    }
+
+def generate_period_comparison(start1, end1, start2, end2):
+    """مقارنة فترتين زمنيتين"""
+    df_ventes = get_df("ventes")
+    df_impressions = get_df("impressions")
+    
+    # الفترة الأولى
+    ventes_p1 = filter_data_by_date(df_ventes, 'Date', start1, end1)
+    impressions_p1 = filter_data_by_date(df_impressions, 'Date', start1, end1)
+    total_p1 = (ventes_p1['Total'].sum() if not ventes_p1.empty and 'Total' in ventes_p1.columns else 0) + \
+               (impressions_p1['Total'].sum() if not impressions_p1.empty and 'Total' in impressions_p1.columns else 0)
+    
+    # الفترة الثانية
+    ventes_p2 = filter_data_by_date(df_ventes, 'Date', start2, end2)
+    impressions_p2 = filter_data_by_date(df_impressions, 'Date', start2, end2)
+    total_p2 = (ventes_p2['Total'].sum() if not ventes_p2.empty and 'Total' in ventes_p2.columns else 0) + \
+               (impressions_p2['Total'].sum() if not impressions_p2.empty and 'Total' in impressions_p2.columns else 0)
+    
+    # حساب الفرق
+    difference = total_p2 - total_p1
+    pourcentage = ((total_p2 - total_p1) / total_p1 * 100) if total_p1 > 0 else 0
+    
+    return {
+        "period1_total": total_p1,
+        "period2_total": total_p2,
+        "difference": difference,
+        "pourcentage": pourcentage,
+        "ventes_p1": ventes_p1,
+        "ventes_p2": ventes_p2
+    }
+
+def get_top_products(df_ventes, top_n=10):
+    """المنتجات الأكثر مبيعاً"""
+    if df_ventes.empty or 'Code' not in df_ventes.columns:
+        return pd.DataFrame()
+    
+    product_sales = df_ventes.groupby('Code').agg({
+        'Quantité': 'sum',
+        'Total': 'sum'
+    }).reset_index()
+    product_sales = product_sales.sort_values('Total', ascending=False).head(top_n)
+    return product_sales
+
+def generate_sales_evolution_chart(df_ventes, date_column='Date'):
+    """رسم بياني لتطور المبيعات"""
+    if df_ventes.empty:
+        return None
+    
+    df_ventes[date_column] = pd.to_datetime(df_ventes[date_column], format='%d/%m/%Y %H:%M', errors='coerce')
+    daily_sales = df_ventes.groupby(df_ventes[date_column].dt.date)['Total'].sum().reset_index()
+    daily_sales.columns = ['Date', 'Total']
+    
+    fig = px.line(
+        daily_sales, 
+        x='Date', 
+        y='Total',
+        title=t('sales_evolution'),
+        labels={'Date': 'Date', 'Total': 'Total (DH)'}
+    )
+    fig.update_layout(height=400)
+    return fig
+
+def generate_top_products_chart(top_products_df):
+    """رسم بياني للمنتجات الأكثر مبيعاً"""
+    if top_products_df.empty:
+        return None
+    
+    fig = px.bar(
+        top_products_df,
+        x='Code',
+        y='Total',
+        title=t('top_products'),
+        labels={'Code': t('product_name'), 'Total': 'Total (DH)'},
+        color='Total',
+        color_continuous_scale='viridis'
+    )
+    fig.update_layout(height=400)
+    return fig
+
+def generate_revenue_pie_chart(ventes_total, impressions_total):
+    """مخطط دائري للإيرادات"""
+    fig = go.Figure(data=[go.Pie(
+        labels=[t('total_sales'), t('total_printing')],
+        values=[ventes_total, impressions_total],
+        hole=.3
+    )])
+    fig.update_layout(title=t('revenue_analysis'), height=400)
+    return fig
+
 st.set_page_config(layout="wide", page_title="OUZOUD SERVICES")
 
 def fast_barcode_scanner_with_qty(input_label, qty_label):
@@ -818,7 +1046,6 @@ if "caisse_reset_confirmed" not in st.session_state: st.session_state.caisse_res
 if not st.session_state.authenticated:
     st.title(t("login_title"))
     
-    # اختيار اللغة في صفحة الدخول
     lang_col1, lang_col2, lang_col3 = st.columns(3)
     with lang_col1:
         if st.button("🇲🇦 العربية"):
@@ -846,7 +1073,6 @@ if not st.session_state.authenticated:
 with st.sidebar:
     st.title("OUZOUD SERVICES")
     
-    # اختيار اللغة
     st.markdown(f"### {t('lang_select')}")
     lang_col1, lang_col2, lang_col3 = st.columns(3)
     with lang_col1:
@@ -871,7 +1097,8 @@ with st.sidebar:
         t("caisse"),
         t("credits"),
         t("factures"),
-        t("commandes")
+        t("commandes"),
+        t("reports")
     ]
     menu = st.selectbox(t("menu_main"), menu_options)
     
@@ -1180,7 +1407,6 @@ elif menu == t("caisse"):
     total_general = total_ventes + total_impressions
     st.metric(t("grand_total"), f"{total_general:,.2f} DH")
     
-    # زر تصفير الخزينة
     st.divider()
     st.subheader(t("reset_caisse"))
     st.warning(t("reset_warning"))
@@ -1244,7 +1470,6 @@ elif menu == t("credits"):
         total_credits = df_credits['Montant'].sum() if 'Montant' in df_credits.columns else 0
         st.metric(t("total_credits"), f"{total_credits:,.2f} DH")
         
-        # تقليل الكريدي
         st.divider()
         st.subheader(t("reduce_credit"))
         st.info(t("reduce_credit_info"))
@@ -1401,6 +1626,153 @@ elif menu == t("commandes"):
                         st.rerun()
             else:
                 st.info(t("no_pending_orders"))
+
+elif menu == t("reports"):
+    st.header(t("reports"))
+    
+    tab1, tab2, tab3 = st.tabs([
+        t("sales_evolution"),
+        t("comparison_periods"),
+        t("revenue_analysis")
+    ])
+    
+    with tab1:
+        st.subheader(t("sales_evolution"))
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            date_debut = st.date_input(
+                t("start_date"),
+                value=datetime.now() - timedelta(days=30)
+            )
+        with col2:
+            date_fin = st.date_input(
+                t("end_date"),
+                value=datetime.now()
+            )
+        
+        if st.button(t("generate_report"), key="gen_evolution"):
+            df_ventes_all = get_df("ventes")
+            ventes_filtrees = filter_data_by_date(df_ventes_all, 'Date', date_debut, date_fin)
+            
+            if not ventes_filtrees.empty:
+                # رسم بياني لتطور المبيعات
+                fig = generate_sales_evolution_chart(ventes_filtrees)
+                if fig:
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                # إحصائيات
+                col_m1, col_m2, col_m3 = st.columns(3)
+                with col_m1:
+                    best_day = ventes_filtrees.groupby(
+                        pd.to_datetime(ventes_filtrees['Date'], format='%d/%m/%Y %H:%M', errors='coerce').dt.date
+                    )['Total'].sum().max()
+                    st.metric(t("best_day"), f"{best_day:.2f} DH" if best_day else "0 DH")
+                
+                with col_m2:
+                    total_period = ventes_filtrees['Total'].sum()
+                    jours = (date_fin - date_debut).days + 1
+                    st.metric(t("average_daily"), f"{(total_period/jours):.2f} DH" if jours > 0 else "0 DH")
+                
+                with col_m3:
+                    nb_transactions = len(ventes_filtrees)
+                    st.metric("Nombre de transactions", nb_transactions)
+                
+                # المنتجات الأكثر مبيعاً
+                st.subheader(t("top_products"))
+                top_products = get_top_products(ventes_filtrees)
+                if not top_products.empty:
+                    fig_top = generate_top_products_chart(top_products)
+                    if fig_top:
+                        st.plotly_chart(fig_top, use_container_width=True)
+                    st.dataframe(top_products)
+            else:
+                st.warning(t("no_data"))
+    
+    with tab2:
+        st.subheader(t("comparison_periods"))
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f"**{t('period1')}**")
+            start1 = st.date_input(
+                t("start_date"),
+                value=datetime.now() - timedelta(days=60),
+                key="start1"
+            )
+            end1 = st.date_input(
+                t("end_date"),
+                value=datetime.now() - timedelta(days=31),
+                key="end1"
+            )
+        
+        with col2:
+            st.markdown(f"**{t('period2')}**")
+            start2 = st.date_input(
+                t("start_date"),
+                value=datetime.now() - timedelta(days=30),
+                key="start2"
+            )
+            end2 = st.date_input(
+                t("end_date"),
+                value=datetime.now(),
+                key="end2"
+            )
+        
+        if st.button(t("compare"), key="compare_periods"):
+            result = generate_period_comparison(start1, end1, start2, end2)
+            
+            col_r1, col_r2, col_r3 = st.columns(3)
+            with col_r1:
+                st.metric(
+                    f"{t('period1')} ({start1} → {end1})",
+                    f"{result['period1_total']:.2f} DH"
+                )
+            with col_r2:
+                st.metric(
+                    f"{t('period2')} ({start2} → {end2})",
+                    f"{result['period2_total']:.2f} DH",
+                    delta=f"{result['difference']:.2f} DH"
+                )
+            with col_r3:
+                couleur = "normal" if result['pourcentage'] >= 0 else "inverse"
+                st.metric(
+                    "Évolution",
+                    f"{result['pourcentage']:.1f}%",
+                    delta=f"{result['pourcentage']:.1f}%"
+                )
+            
+            # مقارنة بيانية
+            fig_comp = go.Figure(data=[
+                go.Bar(name=t('period1'), x=['Total'], y=[result['period1_total']]),
+                go.Bar(name=t('period2'), x=['Total'], y=[result['period2_total']])
+            ])
+            fig_comp.update_layout(title=t('comparison_periods'), height=400)
+            st.plotly_chart(fig_comp, use_container_width=True)
+    
+    with tab3:
+        st.subheader(t("revenue_analysis"))
+        
+        df_ventes_all = get_df("ventes")
+        df_impressions_all = get_df("impressions")
+        
+        total_ventes_global = df_ventes_all['Total'].sum() if not df_ventes_all.empty and 'Total' in df_ventes_all.columns else 0
+        total_impressions_global = df_impressions_all['Total'].sum() if not df_impressions_all.empty and 'Total' in df_impressions_all.columns else 0
+        
+        # مخطط دائري
+        fig_pie = generate_revenue_pie_chart(total_ventes_global, total_impressions_global)
+        st.plotly_chart(fig_pie, use_container_width=True)
+        
+        col_a1, col_a2 = st.columns(2)
+        with col_a1:
+            st.metric(t("total_sales"), f"{total_ventes_global:.2f} DH")
+            pourcentage_ventes = (total_ventes_global / (total_ventes_global + total_impressions_global) * 100) if (total_ventes_global + total_impressions_global) > 0 else 0
+            st.caption(f"{pourcentage_ventes:.1f}% du chiffre d'affaires")
+        
+        with col_a2:
+            st.metric(t("total_printing"), f"{total_impressions_global:.2f} DH")
+            pourcentage_impressions = (total_impressions_global / (total_ventes_global + total_impressions_global) * 100) if (total_ventes_global + total_impressions_global) > 0 else 0
+            st.caption(f"{pourcentage_impressions:.1f}% du chiffre d'affaires")
 
 # إخفاء footer Streamlit
 hide_streamlit_style = """
