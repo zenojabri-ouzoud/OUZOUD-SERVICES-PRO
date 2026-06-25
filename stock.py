@@ -25,6 +25,7 @@ db = firestore.client()
 # --- دالة التصدير للإكسيل ---
 def to_excel(df):
     output = io.BytesIO()
+    # تم التصحيح هنا: استعملنا openpyxl عوض openxml4py
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Sheet1')
     return output.getvalue()
@@ -339,13 +340,6 @@ elif menu == "Credits":
         db.collection("credits").add({"Client": client, "Montant": montant})
         st.rerun()
     
-    st.divider()
-    st.subheader("🛠️ أدوات التنظيف")
-    if st.button("🗑️ حذف Collection القديمة (ccredits)"):
-        count = delete_collection("ccredits")
-        st.success(f"تم حذف {count} عنصر من ccredits بنجاح!")
-        st.rerun()
-        
     st.subheader("📋 قائمة الديون")
     df_cred = get_df("credits")
     st.dataframe(df_cred, use_container_width=True)
