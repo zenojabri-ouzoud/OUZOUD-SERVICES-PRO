@@ -18,7 +18,7 @@ if not firebase_admin._apps:
     cred = credentials.Certificate(config)
     firebase_admin.initialize_app(cred)
 
-db = firestore.client(database_id="(default)")
+db = firestore.client()
 
 # --- دالة التصدير للإكسيل ---
 def to_excel(df):
