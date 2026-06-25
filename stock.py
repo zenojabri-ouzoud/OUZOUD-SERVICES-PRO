@@ -18,7 +18,7 @@ if not firebase_admin._apps:
     cred = credentials.Certificate(config)
     firebase_admin.initialize_app(cred)
 
-# الإضافة الجديدة لضمان الاتصال الصحيح بالمشروع
+# الإضافة الجديدة لضمان الاتصال الصحيح بالمشروع (هادي اللي كتحل مشكل الـ 404)
 os.environ["GOOGLE_CLOUD_PROJECT"] = "ouzoud-services"
 db = firestore.client()
 
@@ -340,6 +340,13 @@ elif menu == "Credits":
         db.collection("credits").add({"Client": client, "Montant": montant})
         st.rerun()
     
+    st.divider()
+    st.subheader("🛠️ أدوات التنظيف")
+    if st.button("🗑️ حذف Collection القديمة (ccredits)"):
+        count = delete_collection("ccredits")
+        st.success(f"تم حذف {count} عنصر من ccredits بنجاح!")
+        st.rerun()
+        
     st.subheader("📋 قائمة الديون")
     df_cred = get_df("credits")
     st.dataframe(df_cred, use_container_width=True)
