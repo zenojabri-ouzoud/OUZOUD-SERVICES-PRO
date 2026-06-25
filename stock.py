@@ -21,8 +21,8 @@ if not firebase_admin._apps:
 # الإضافة لضمان الاتصال الصحيح بالمشروع و تحديد مسار قاعدة البيانات
 os.environ["GOOGLE_CLOUD_PROJECT"] = "ouzoud-services"
 db = firestore.client()
-# هاد السطر هو اللي غادي يحبس الـ 404 نهائياً
-db._client.database = "projects/ouzoud-services/databases/(default)"
+# هذا هو السطر الصحيح والمختصر والمباشر
+db = firestore.Client(project="ouzoud-services", database="(default)")
 
 # --- دالة التصدير للإكسيل ---
 def to_excel(df):
