@@ -1082,7 +1082,7 @@ elif menu == t("stock"):
                 supabase.table("stock").insert({
                     "Nom": name, 
                     "Prix": float(price), 
-                    "Quantité": float(qty), 
+                    "Quantite": float(qty), 
                     "Code-barres": barcode
                 }).execute()
                 st.success(t("product_added"))
