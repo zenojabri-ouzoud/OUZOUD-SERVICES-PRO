@@ -18,11 +18,8 @@ if not firebase_admin._apps:
     cred = credentials.Certificate(config)
     firebase_admin.initialize_app(cred)
 
-# الإضافة لضمان الاتصال الصحيح بالمشروع و تحديد مسار قاعدة البيانات
-os.environ["GOOGLE_CLOUD_PROJECT"] = "ouzoud-services"
+# الاتصال بالـ Database
 db = firestore.client()
-# هذا هو السطر الصحيح والمختصر والمباشر
-db = firestore.Client(project="ouzoud-services", database="(default)")
 
 # --- دالة التصدير للإكسيل ---
 def to_excel(df):
