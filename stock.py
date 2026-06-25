@@ -20,7 +20,7 @@ if not firebase_admin._apps:
 
 # الإضافة لضمان الاتصال الصحيح بالمشروع و بقاعدة البيانات (default)
 os.environ["GOOGLE_CLOUD_PROJECT"] = "ouzoud-services"
-db = firestore.client(database="(default)")
+db = firestore.client(database_id="(default)")
 
 # --- دالة التصدير للإكسيل ---
 def to_excel(df):
