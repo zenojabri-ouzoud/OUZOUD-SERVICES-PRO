@@ -50,6 +50,11 @@ translations = {
         "fr": "Menu Principal",
         "en": "Main Menu"
     },
+    "dashboard": {
+        "ar": "📊 لوحة التحكم",
+        "fr": "📊 Tableau de Bord",
+        "en": "📊 Dashboard"
+    },
     "pos": {
         "ar": "🛒 نقطة البيع",
         "fr": "🛒 Point de Vente",
@@ -705,6 +710,31 @@ translations = {
         "fr": "Aucun service précédent",
         "en": "No previous services"
     },
+    "add_service": {
+        "ar": "➕ إضافة خدمة جديدة",
+        "fr": "➕ Ajouter un service",
+        "en": "➕ Add New Service"
+    },
+    "service_name_input": {
+        "ar": "اسم الخدمة",
+        "fr": "Nom du service",
+        "en": "Service Name"
+    },
+    "service_price_input_label": {
+        "ar": "السعر (DH)",
+        "fr": "Prix (DH)",
+        "en": "Price (DH)"
+    },
+    "save_service": {
+        "ar": "💾 حفظ الخدمة",
+        "fr": "💾 Sauvegarder le service",
+        "en": "💾 Save Service"
+    },
+    "service_list": {
+        "ar": "📋 قائمة الخدمات",
+        "fr": "📋 Liste des services",
+        "en": "📋 Service List"
+    },
 }
 
 def t(key):
@@ -845,83 +875,34 @@ def reduce_credit(credit_id, montant_reduction):
     }).execute()
     return nouveau_montant
 
-def generate_impression_pdf(prix_page, nombre):
-    pdf = FPDF(orientation='P', unit='mm', format=(80, 250))
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(60, 10, txt="RECU IMPRESSION", ln=True, align='C')
-    pdf.set_font("Arial", size=10)
-    pdf.cell(60, 5, txt=f"Date: {datetime.now().strftime('%d/%m/%Y')}", ln=True, align='L')
-    pdf.ln(5)
-    pdf.cell(60, 7, txt=f"Prix par page: {prix_page} DH", ln=True)
-    pdf.cell(60, 7, txt=f"Nombre de pages: {nombre}", ln=True)
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(60, 10, txt=f"TOTAL: {prix_page * nombre} DH", ln=True, align='R')
-    file_path = "facture_impression.pdf"
-    pdf.output(file_path)
-    return file_path
-
-def generate_commande_pdf(commandes_data):
-    pdf = FPDF(orientation='P', unit='mm', format=(80, 250))
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(60, 10, txt="BON DE COMMANDE", ln=True, align='C')
-    pdf.cell(60, 5, txt="--------------------------------", ln=True, align='C')
-    rabat_tz = pytz.timezone("Africa/Casablanca")
-    now = datetime.now(rabat_tz)
-    pdf.set_font("Arial", size=9)
-    pdf.cell(60, 5, txt=f"Date: {now.strftime('%d/%m/%Y')}", ln=True, align='L')
-    pdf.cell(60, 5, txt=f"Heure: {now.strftime('%H:%M:%S')}", ln=True, align='L')
-    pdf.ln(5)
-    pdf.set_font("Arial", 'B', 9)
-    pdf.cell(35, 7, txt="Produit", border=1, align='C')
-    pdf.cell(10, 7, txt="Qte", border=1, align='C')
-    pdf.cell(15, 7, txt="Prix U", border=1, align='C')
-    pdf.ln(7)
-    pdf.set_font("Arial", size=9)
-    
-    total_general = 0
-    for item in commandes_data:
-        nom_produit = str(item.get('Nom', ''))
-        qty = float(item.get('Qté', 0))
-        prix_u = float(item.get('Prix_U', 0))
-        total = qty * prix_u
-        total_general += total
-        
-        pdf.cell(35, 6, txt=nom_produit[:20], border=1)
-        pdf.cell(10, 6, txt=str(qty), border=1, align='C')
-        pdf.cell(15, 6, txt=f"{prix_u:.2f}", border=1, align='C')
-        pdf.ln(6)
-    
-    pdf.set_font("Arial", 'B', 11)
-    pdf.cell(60, 8, txt=f"TOTAL: {total_general:.2f} DH", ln=True, align='R')
-    pdf.ln(10)
-    pdf.set_font("Arial", size=9)
-    pdf.cell(60, 5, txt="OUZOUD SERVICES", ln=True, align='C')
-    pdf.cell(60, 5, txt="Tel: 07.81.02.82.43", ln=True, align='C')
-    pdf.ln(5)
-    file_path = "bon_commande.pdf"
-    pdf.output(file_path)
-    return file_path
-
-def generate_pdf_80mm(cart_data):
-    """طباعة فاتورة 80mm حرارية - يظهر فيها اسم المنتج بدل الباركود"""
+# ==================== دالة الفاتورة الموحدة 80mm ====================
+def generate_facture_80mm(cart_data, titre="FACTURE"):
+    """
+    فاتورة موحدة 80mm لجميع العمليات (بيع، طباعة، خدمات، طلبيات)
+    نفس التصميم بالضبط لجميع الفواتير
+    """
     pdf = FPDF('P', 'mm', (80, 297))
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=5)
     
+    # ========== الرأس ==========
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(70, 8, "OUZOUD SERVICES", ln=True, align='C')
+    pdf.set_font("Arial", 'B', 10)
+    pdf.cell(70, 6, titre, ln=True, align='C')
     pdf.set_font("Arial", size=8)
     pdf.cell(70, 4, "Tel: 07.81.02.82.43", ln=True, align='C')
     pdf.cell(70, 4, "maaridprint@gmail.com", ln=True, align='C')
     pdf.cell(70, 4, "-" * 40, ln=True, align='C')
     
+    # ========== التاريخ والوقت ==========
     now = datetime.now(pytz.timezone("Africa/Casablanca"))
     pdf.set_font("Arial", size=8)
-    pdf.cell(70, 4, f"Date: {now.strftime('%d/%m/%Y %H:%M')}", ln=True, align='L')
+    pdf.cell(70, 4, f"Date: {now.strftime('%d/%m/%Y')}", ln=True, align='L')
+    pdf.cell(70, 4, f"Heure: {now.strftime('%H:%M:%S')}", ln=True, align='L')
     pdf.cell(70, 4, "-" * 40, ln=True, align='C')
     
+    # ========== جدول المنتجات ==========
     pdf.set_font("Arial", 'B', 8)
     pdf.cell(35, 5, "Produit", 1, 0, 'C')
     pdf.cell(10, 5, "Qte", 1, 0, 'C')
@@ -932,7 +913,6 @@ def generate_pdf_80mm(cart_data):
     pdf.set_font("Arial", size=7)
     tg = 0
     for item in cart_data:
-        # استخدام اسم المنتج في الفاتورة بدل الباركود
         nom = str(item.get('Nom', item.get('Code', '')))[:18]
         q = float(item.get('Quantité', 0))
         p = float(item.get('Prix', 0))
@@ -944,11 +924,13 @@ def generate_pdf_80mm(cart_data):
         pdf.cell(13, 4, f"{tot:.2f}", 1, 0, 'C')
         pdf.ln(4)
     
+    # ========== المجموع الكلي ==========
     pdf.set_font("Arial", 'B', 10)
     pdf.cell(70, 6, "-" * 40, ln=True, align='C')
     pdf.cell(70, 6, f"TOTAL: {tg:.2f} DH", ln=True, align='R')
     pdf.cell(70, 4, "-" * 40, ln=True, align='C')
     
+    # ========== التذييل ==========
     pdf.set_font("Arial", 'I', 7)
     pdf.cell(70, 4, "Merci pour votre visite!", ln=True, align='C')
     pdf.cell(70, 4, "A bientot!", ln=True, align='C')
@@ -957,8 +939,43 @@ def generate_pdf_80mm(cart_data):
     pdf.output(file_path)
     return file_path
 
+
+# ==================== الدوال المعدلة لاستخدام الفاتورة الموحدة ====================
+
+def generate_pdf_80mm(cart_data):
+    """فاتورة البيع والخدمات"""
+    return generate_facture_80mm(cart_data, "FACTURE DE VENTE")
+
+
+def generate_impression_pdf(prix_page, nombre):
+    """فاتورة الطباعة - تستخدم نفس التصميم الموحد"""
+    cart_data = [{
+        "Nom": "Impression",
+        "Quantité": nombre,
+        "Prix": prix_page,
+        "Total": prix_page * nombre,
+        "Code": "IMPRESSION"
+    }]
+    return generate_facture_80mm(cart_data, "FACTURE IMPRESSION")
+
+
+def generate_commande_pdf(commandes_data):
+    """فاتورة الطلبية - تستخدم نفس التصميم الموحد"""
+    cart_data = []
+    for item in commandes_data:
+        cart_data.append({
+            "Nom": item.get('Nom', ''),
+            "Quantité": float(item.get('Qté', 0)),
+            "Prix": float(item.get('Prix_U', 0)),
+            "Total": float(item.get('Qté', 0)) * float(item.get('Prix_U', 0)),
+            "Code": item.get('Nom', '')
+        })
+    return generate_facture_80mm(cart_data, "BON DE COMMANDE")
+
+
 def generate_pdf(cart_data):
-    return generate_pdf_80mm(cart_data)
+    """دالة عامة للفاتورة"""
+    return generate_facture_80mm(cart_data, "FACTURE")
 
 def play_success_sound():
     sound_html = """
@@ -1143,6 +1160,7 @@ with st.sidebar:
     st.divider()
     
     menu_options = [
+        t("dashboard"),
         t("pos"),
         t("stock"),
         t("impression"),
@@ -1183,6 +1201,38 @@ with st.sidebar:
     st.markdown(f"🕐 {datetime.now().strftime('%d/%m/%Y %H:%M')}")
 
 # ==================== القائمة الرئيسية ====================
+
+if menu == t("dashboard"):
+    st.header(t("dashboard"))
+    
+    # إحصائيات سريعة
+    df_v = get_df("ventes")
+    df_s = get_df("stock")
+    df_i = get_df("impressions")
+    
+    today = datetime.now().strftime('%d/%m/%Y')
+    df_v_today = df_v[df_v['Date'].str.contains(today, na=False)] if not df_v.empty and 'Date' in df_v.columns else pd.DataFrame()
+    total_today = df_v_today['Total'].sum() if not df_v_today.empty and 'Total' in df_v_today.columns else 0
+    total_print = df_i['Total'].sum() if not df_i.empty and 'Total' in df_i.columns else 0
+    low_stock = len(check_stock_levels())
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("💰 مبيعات اليوم", f"{total_today:.0f} DH")
+    with col2:
+        st.metric("🖨️ طباعة", f"{total_print:.0f} DH")
+    with col3:
+        st.metric("📦 المنتجات", len(df_s))
+    with col4:
+        st.metric("⚠️ مخزون منخفض", low_stock)
+    
+    st.divider()
+    
+    st.subheader("🕐 آخر المبيعات")
+    if not df_v.empty:
+        st.dataframe(df_v.tail(5), use_container_width=True)
+    else:
+        st.info(t("no_data"))
 
 if menu == t("pos"):
     st.header(t("pos"))
@@ -1232,7 +1282,7 @@ if menu == t("pos"):
                         "Prix": float(product['Prix']),
                         "Total": total
                     }]
-                    generate_pdf_80mm(cart_data)
+                    generate_facture_80mm(cart_data, "FACTURE DE VENTE")
                     
                     play_success_sound()
                     
@@ -1430,7 +1480,7 @@ if menu == t("pos"):
                                     "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
                                 }).execute()
                             
-                            generate_pdf_80mm(st.session_state.cart)
+                            generate_facture_80mm(st.session_state.cart, "FACTURE DE VENTE")
                             st.session_state.last_cart = st.session_state.cart.copy()
                             st.session_state.cart = []
                             play_success_sound()
@@ -1525,7 +1575,7 @@ if menu == t("pos"):
                                 "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
                             }).execute()
                         
-                        generate_pdf_80mm(st.session_state.cart)
+                        generate_facture_80mm(st.session_state.cart, "FACTURE DE VENTE")
                         st.session_state.last_cart = st.session_state.cart.copy()
                         st.session_state.cart = []
                         play_success_sound()
@@ -1886,7 +1936,7 @@ elif menu == t("factures"):
         st.metric(t("total"), f"{total_last:.2f} DH")
         
         if st.button(t("print_invoice"), key="facture_print_btn"):
-            generate_pdf_80mm(st.session_state.last_cart)
+            generate_facture_80mm(st.session_state.last_cart, "FACTURE DE VENTE")
             st.success(t("sale_success"))
     
     st.divider()
@@ -2012,40 +2062,114 @@ elif menu == t("services"):
     st.header(t("services"))
     st.markdown("---")
     
-    # قائمة الخدمات الإلكترونية
-    services_list = {
-        "📄 نسخ ورق (Photocopie)": {"price": 0.50, "unit": "page", "icon": "📄"},
-        "🖨️ طباعة ورق (Impression)": {"price": 1.00, "unit": "page", "icon": "🖨️"},
-        "📧 إرسال بريد إلكتروني": {"price": 5.00, "unit": "email", "icon": "📧"},
-        "📱 شحن رصيد": {"price": 10.00, "unit": "recharge", "icon": "📱"},
-        "💳 دفع فاتورة": {"price": 5.00, "unit": "facture", "icon": "💳"},
-        "📄 طلب وثيقة إدارية": {"price": 20.00, "unit": "document", "icon": "📄"},
-        "📸 تصوير مستندات": {"price": 2.00, "unit": "photo", "icon": "📸"},
-        "📋 تعبئة استمارة": {"price": 15.00, "unit": "form", "icon": "📋"},
-        "✉️ إرسال رسالة": {"price": 3.00, "unit": "message", "icon": "✉️"},
-        "📞 خدمة هاتفية": {"price": 2.00, "unit": "call", "icon": "📞"},
-        "🖊️ كتابة خطاب": {"price": 25.00, "unit": "letter", "icon": "🖊️"},
-        "📑 تصوير وثائق": {"price": 1.00, "unit": "page", "icon": "📑"},
-    }
+    # ========== إضافة خدمة جديدة ==========
+    with st.expander(t("add_service"), expanded=True):
+        st.markdown("### ➕ إضافة خدمة جديدة")
+        col_add1, col_add2, col_add3 = st.columns([3, 2, 2])
+        with col_add1:
+            new_service_name = st.text_input(
+                t("service_name_input"),
+                key="new_service_name",
+                placeholder="أدخل اسم الخدمة..."
+            )
+        with col_add2:
+            new_service_price = st.number_input(
+                t("service_price_input_label"),
+                min_value=0.0,
+                value=0.0,
+                step=0.5,
+                key="new_service_price"
+            )
+        with col_add3:
+            if st.button(t("save_service"), use_container_width=True, key="save_service_btn"):
+                if new_service_name and new_service_price > 0:
+                    try:
+                        supabase.table("services_electroniques").insert({
+                            "Nom": new_service_name,
+                            "Prix": float(new_service_price)
+                        }).execute()
+                        st.success(f"✅ تمت إضافة: {new_service_name} - {new_service_price:.2f} DH")
+                        play_success_sound()
+                        time.sleep(0.5)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"{t('error_generic')}: {str(e)}")
+                else:
+                    st.error(t("fill_all_fields"))
+    
+    st.markdown("---")
+    
+    # جلب الخدمات من قاعدة البيانات
+    df_services_db = get_df("services_electroniques")
     
     # عرض الخدمات في شبكة
     st.subheader(t("service_select"))
     
-    cols = st.columns(3)
-    selected_service = None
+    if not df_services_db.empty:
+        cols = st.columns(3)
+        selected_service = None
+        
+        for i, (_, row) in enumerate(df_services_db.iterrows()):
+            service_name = row['Nom']
+            service_price = row['Prix']
+            
+            # اختيار أيقونة حسب الاسم
+            if "copie" in service_name.lower() or "نسخ" in service_name:
+                icon = "📄"
+                unit = "page"
+            elif "impression" in service_name.lower() or "طباعة" in service_name:
+                icon = "🖨️"
+                unit = "page"
+            elif "email" in service_name.lower() or "بريد" in service_name:
+                icon = "📧"
+                unit = "email"
+            elif "recharge" in service_name.lower() or "شحن" in service_name:
+                icon = "📱"
+                unit = "recharge"
+            elif "facture" in service_name.lower() or "فاتورة" in service_name:
+                icon = "💳"
+                unit = "facture"
+            elif "document" in service_name.lower() or "وثيقة" in service_name:
+                icon = "📄"
+                unit = "document"
+            elif "photo" in service_name.lower() or "تصوير" in service_name:
+                icon = "📸"
+                unit = "photo"
+            elif "form" in service_name.lower() or "استمارة" in service_name:
+                icon = "📋"
+                unit = "form"
+            elif "message" in service_name.lower() or "رسالة" in service_name:
+                icon = "✉️"
+                unit = "message"
+            elif "call" in service_name.lower() or "هاتف" in service_name:
+                icon = "📞"
+                unit = "call"
+            elif "letter" in service_name.lower() or "خطاب" in service_name:
+                icon = "🖊️"
+                unit = "letter"
+            else:
+                icon = "🔧"
+                unit = "service"
+            
+            col = cols[i % 3]
+            with col:
+                if st.button(
+                    f"{icon} {service_name}\n{service_price:.2f} DH / {unit}",
+                    use_container_width=True,
+                    key=f"service_db_{i}"
+                ):
+                    selected_service = service_name
+                    st.session_state.selected_service = service_name
+                    st.session_state.selected_service_price = service_price
+                    st.session_state.selected_service_unit = unit
+        
+        # عرض قائمة الخدمات
+        with st.expander(t("service_list"), expanded=False):
+            st.dataframe(df_services_db, use_container_width=True, hide_index=True)
+            export_import_buttons("services_electroniques", df_services_db)
     
-    for i, (service_name, service_info) in enumerate(services_list.items()):
-        col = cols[i % 3]
-        with col:
-            if st.button(
-                f"{service_info['icon']} {service_name}\n{service_info['price']:.2f} DH / {service_info['unit']}",
-                use_container_width=True,
-                key=f"service_{i}"
-            ):
-                selected_service = service_name
-                st.session_state.selected_service = service_name
-                st.session_state.selected_service_price = service_info['price']
-                st.session_state.selected_service_unit = service_info['unit']
+    else:
+        st.info("لا توجد خدمات. أضف خدمات جديدة من الأعلى.")
     
     st.markdown("---")
     
@@ -2103,7 +2227,7 @@ elif menu == t("services"):
             }).execute()
             
             # طباعة الفاتورة
-            generate_pdf_80mm(service_cart)
+            generate_facture_80mm(service_cart, "FACTURE SERVICE")
             
             # صوت النجاح
             play_success_sound()
@@ -2128,9 +2252,9 @@ elif menu == t("services"):
     # سجل الخدمات السابقة
     st.subheader(t("service_history"))
     df_services = get_df("ventes")
-    if not df_services.empty:
-        # عرض فقط الخدمات (التي تبدأ بأيقونة)
-        services_df = df_services[df_services['Nom'].isin(services_list.keys())]
+    if not df_services.empty and not df_services_db.empty:
+        services_names = df_services_db['Nom'].tolist()
+        services_df = df_services[df_services['Nom'].isin(services_names)]
         if not services_df.empty:
             st.dataframe(services_df.tail(10), use_container_width=True)
             total_services = services_df['Total'].sum() if 'Total' in services_df.columns else 0
