@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from supabase import create_client, Client
+from supabase import create_client, client
 import os
 from fpdf import FPDF
 from datetime import datetime
