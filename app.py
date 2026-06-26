@@ -95,6 +95,16 @@ translations = {
         "fr": "🔧 Services Électroniques",
         "en": "🔧 Electronic Services"
     },
+    "outils": {
+        "ar": "🔗 أدوات سريعة",
+        "fr": "🔗 Outils Rapides",
+        "en": "🔗 Quick Tools"
+    },
+    "google_search": {
+        "ar": "🔍 بحث Google",
+        "fr": "🔍 Recherche Google",
+        "en": "🔍 Google Search"
+    },
     "activate_scanner": {
         "ar": "📸 تفعيل الماسح الضوئي السريع",
         "fr": "📸 Activer le scanner rapide",
@@ -455,6 +465,11 @@ translations = {
         "fr": "Aucun crédit pour le moment",
         "en": "No credits currently"
     },
+    "delete_credit": {
+        "ar": "🗑️ حذف الدين نهائياً",
+        "fr": "🗑️ Supprimer le crédit",
+        "en": "🗑️ Delete Credit Permanently"
+    },
     "last_sale": {
         "ar": "🛒 آخر عملية بيع",
         "fr": "🛒 Dernière Vente",
@@ -734,6 +749,41 @@ translations = {
         "ar": "📋 قائمة الخدمات",
         "fr": "📋 Liste des services",
         "en": "📋 Service List"
+    },
+    "whatsapp_label": {
+        "ar": "📞 واتساب",
+        "fr": "📞 WhatsApp",
+        "en": "📞 WhatsApp"
+    },
+    "whatsapp_number": {
+        "ar": "رقم الهاتف (مع رمز البلد):",
+        "fr": "Numéro de téléphone (avec code pays):",
+        "en": "Phone Number (with country code):"
+    },
+    "whatsapp_message": {
+        "ar": "الرسالة:",
+        "fr": "Message:",
+        "en": "Message:"
+    },
+    "whatsapp_open": {
+        "ar": "💬 فتح WhatsApp",
+        "fr": "💬 Ouvrir WhatsApp",
+        "en": "💬 Open WhatsApp"
+    },
+    "office_label": {
+        "ar": "📂 تطبيقات Microsoft Office",
+        "fr": "📂 Applications Microsoft Office",
+        "en": "📂 Microsoft Office Apps"
+    },
+    "google_embedded": {
+        "ar": "🌐 Google مدمج",
+        "fr": "🌐 Google intégré",
+        "en": "🌐 Embedded Google"
+    },
+    "show_google": {
+        "ar": "إظهار Google مدمج",
+        "fr": "Afficher Google intégré",
+        "en": "Show Embedded Google"
     },
 }
 
@@ -1168,7 +1218,8 @@ with st.sidebar:
         t("credits"),
         t("factures"),
         t("commandes"),
-        t("services")
+        t("services"),
+        t("outils")
     ]
     menu = st.selectbox(t("menu_main"), menu_options)
     
@@ -1839,6 +1890,7 @@ elif menu == t("caisse"):
 elif menu == t("credits"):
     st.header(t("credits"))
     
+    # ========== زر إضافة دين جديد (فوق) ==========
     with st.expander(t("add_credit"), expanded=True):
         col1, col2 = st.columns(2)
         with col1:
@@ -1855,6 +1907,7 @@ elif menu == t("credits"):
                         "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
                     }).execute()
                     st.success(f"✅ {client} - {montant:.2f} DH")
+                    play_success_sound()
                     st.rerun()
                 except Exception as e:
                     st.error(f"{t('error_generic')}: {str(e)}")
@@ -1872,6 +1925,8 @@ elif menu == t("credits"):
         export_import_buttons("credits", df_credits)
         
         st.divider()
+        
+        # ========== تقليل الدين ==========
         st.subheader(t("reduce_credit"))
         st.info(t("reduce_credit_info"))
         
@@ -1896,24 +1951,53 @@ elif menu == t("credits"):
                 key="credit_reduction"
             )
         
-        if st.button(t("pay_button"), type="primary", key="credit_pay_btn"):
-            if credit_a_reduire and montant_reduction > 0:
-                try:
-                    credit_id = int(credit_a_reduire.split("ID: ")[1].replace(")", ""))
-                    credit_data = supabase.table("credits").select("*").eq("id", credit_id).execute().data[0]
-                    
-                    if montant_reduction > float(credit_data['Montant']):
-                        st.error(f"❌ {t('payment_amount')} ({montant_reduction:.2f}) > {t('amount')} ({credit_data['Montant']:.2f})!")
-                    else:
-                        nouveau = reduce_credit(credit_id, montant_reduction)
-                        if nouveau == 0:
-                            st.success(f"✅ Crédit entièrement remboursé!")
-                            supabase.table("credits").delete().eq("id", credit_id).execute()
+        col_pay, col_delete = st.columns(2)
+        
+        # زر تسديد جزء من الدين
+        with col_pay:
+            if st.button(t("pay_button"), type="primary", use_container_width=True, key="credit_pay_btn"):
+                if credit_a_reduire and montant_reduction > 0:
+                    try:
+                        credit_id = int(credit_a_reduire.split("ID: ")[1].replace(")", ""))
+                        credit_data = supabase.table("credits").select("*").eq("id", credit_id).execute().data[0]
+                        
+                        if montant_reduction > float(credit_data['Montant']):
+                            st.error(f"❌ {t('payment_amount')} ({montant_reduction:.2f}) > {t('amount')} ({credit_data['Montant']:.2f})!")
                         else:
-                            st.success(f"✅ Payé: {montant_reduction:.2f} DH | Reste: {nouveau:.2f} DH")
-                        st.rerun()
-                except Exception as e:
-                    st.error(f"{t('error_generic')}: {str(e)}")
+                            nouveau = reduce_credit(credit_id, montant_reduction)
+                            if nouveau == 0:
+                                st.success(f"✅ Crédit entièrement remboursé!")
+                                supabase.table("credits").delete().eq("id", credit_id).execute()
+                            else:
+                                st.success(f"✅ Payé: {montant_reduction:.2f} DH | Reste: {nouveau:.2f} DH")
+                            play_success_sound()
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"{t('error_generic')}: {str(e)}")
+        
+        # زر حذف الدين نهائياً
+        with col_delete:
+            if st.button(t("delete_credit"), type="secondary", use_container_width=True, key="credit_delete_btn"):
+                if credit_a_reduire:
+                    try:
+                        credit_id = int(credit_a_reduire.split("ID: ")[1].replace(")", ""))
+                        credit_data = supabase.table("credits").select("*").eq("id", credit_id).execute().data[0]
+                        
+                        st.warning(f"⚠️ هل أنت متأكد من حذف دين **{credit_data['Client']}** بمبلغ **{credit_data['Montant']:.2f} DH**؟")
+                        
+                        col_confirm_del, col_cancel_del = st.columns(2)
+                        with col_confirm_del:
+                            if st.button("✅ نعم، احذف", key="confirm_delete_credit"):
+                                supabase.table("credits").delete().eq("id", credit_id).execute()
+                                st.success(f"✅ تم حذف الدين نهائياً")
+                                play_success_sound()
+                                time.sleep(0.5)
+                                st.rerun()
+                        with col_cancel_del:
+                            if st.button("❌ إلغاء", key="cancel_delete_credit"):
+                                st.rerun()
+                    except Exception as e:
+                        st.error(f"{t('error_generic')}: {str(e)}")
         
         st.divider()
         st.subheader(t("payment_history"))
@@ -2263,6 +2347,114 @@ elif menu == t("services"):
             st.info(t("service_no_history"))
     else:
         st.info(t("no_data"))
+
+# ==================== OUTILS RAPIDES ====================
+elif menu == t("outils"):
+    st.header(t("outils"))
+    st.markdown("---")
+    
+    # ========== تطبيقات Office ==========
+    st.subheader(t("office_label"))
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        if st.button("📄 Word", use_container_width=True):
+            components.html("""
+            <script>
+            window.open('https://www.office.com/launch/word', '_blank');
+            </script>
+            """)
+            st.success("✅ تم فتح Word")
+    
+    with col2:
+        if st.button("📊 Excel", use_container_width=True):
+            components.html("""
+            <script>
+            window.open('https://www.office.com/launch/excel', '_blank');
+            </script>
+            """)
+            st.success("✅ تم فتح Excel")
+    
+    with col3:
+        if st.button("📽️ PowerPoint", use_container_width=True):
+            components.html("""
+            <script>
+            window.open('https://www.office.com/launch/powerpoint', '_blank');
+            </script>
+            """)
+            st.success("✅ تم فتح PowerPoint")
+    
+    with col4:
+        if st.button("📧 Gmail", use_container_width=True):
+            components.html("""
+            <script>
+            window.open('https://mail.google.com', '_blank');
+            </script>
+            """)
+            st.success("✅ تم فتح Gmail")
+    
+    st.markdown("---")
+    
+    # ========== WhatsApp ==========
+    st.subheader(t("whatsapp_label"))
+    
+    col_w1, col_w2 = st.columns(2)
+    with col_w1:
+        whatsapp_number = st.text_input(
+            t("whatsapp_number"),
+            value="212781028243",
+            key="whatsapp_number_input"
+        )
+    with col_w2:
+        whatsapp_message = st.text_area(
+            t("whatsapp_message"),
+            value="السلام عليكم",
+            key="whatsapp_message_input"
+        )
+    
+    if st.button(t("whatsapp_open"), use_container_width=True, type="primary"):
+        whatsapp_url = f"https://wa.me/{whatsapp_number}?text={whatsapp_message}"
+        components.html(f"""
+        <script>
+        window.open('{whatsapp_url}', '_blank');
+        </script>
+        """)
+        st.success(f"✅ تم فتح WhatsApp للرقم {whatsapp_number}")
+    
+    st.markdown("---")
+    
+    # ========== بحث Google ==========
+    st.subheader(t("google_search"))
+    
+    google_query = st.text_input(
+        t("google_search"),
+        placeholder="اكتب كلمة البحث هنا...",
+        key="google_query_input"
+    )
+    
+    if google_query and st.button("🔍 بحث", use_container_width=True, type="primary"):
+        search_url = f"https://www.google.com/search?q={google_query}"
+        components.html(f"""
+        <script>
+        window.open('{search_url}', '_blank');
+        </script>
+        """)
+        st.success(f"✅ تم البحث عن: {google_query}")
+    
+    # ========== Google مدمج في الصفحة ==========
+    st.markdown("---")
+    st.subheader(t("google_embedded"))
+    
+    if st.checkbox(t("show_google")):
+        google_iframe = """
+        <iframe src="https://www.google.com/webhp?igu=1" 
+                width="100%" 
+                height="600px" 
+                style="border: 2px solid #ddd; border-radius: 10px;">
+        </iframe>
+        """
+        components.html(google_iframe, height=650)
 
 # إخفاء footer Streamlit
 hide_streamlit_style = """
