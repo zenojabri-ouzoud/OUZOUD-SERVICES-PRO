@@ -2414,46 +2414,47 @@ elif menu == t("outils"):
     st.header(t("outils"))
     st.markdown("---")
     
-    # ========== تطبيقات Office ==========
+    # ========== تطبيقات Office Online ==========
     st.subheader(t("office_label"))
+    st.info("🌐 فتح التطبيقات في المتصفح (Online)")
     
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        if st.button("📄 Word", use_container_width=True, key="open_word_btn"):
-            components.html("""
-            <script>
-            window.location.href = 'ms-word:ofe|u|';
-            </script>
-            """)
-            st.success("✅ تم فتح Word على الكمبيوتر")
+        st.markdown("""
+        <a href="https://www.office.com/launch/word" target="_blank">
+            <button style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd; background:#185abd; color:white; cursor:pointer; font-size:16px;">
+                📄 Word Online
+            </button>
+        </a>
+        """, unsafe_allow_html=True)
     
     with col2:
-        if st.button("📊 Excel", use_container_width=True, key="open_excel_btn"):
-            components.html("""
-            <script>
-            window.location.href = 'ms-excel:ofe|u|';
-            </script>
-            """)
-            st.success("✅ تم فتح Excel على الكمبيوتر")
+        st.markdown("""
+        <a href="https://www.office.com/launch/excel" target="_blank">
+            <button style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd; background:#107c41; color:white; cursor:pointer; font-size:16px;">
+                📊 Excel Online
+            </button>
+        </a>
+        """, unsafe_allow_html=True)
     
     with col3:
-        if st.button("📽️ PowerPoint", use_container_width=True, key="open_powerpoint_btn"):
-            components.html("""
-            <script>
-            window.location.href = 'ms-powerpoint:ofe|u|';
-            </script>
-            """)
-            st.success("✅ تم فتح PowerPoint على الكمبيوتر")
+        st.markdown("""
+        <a href="https://www.office.com/launch/powerpoint" target="_blank">
+            <button style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd; background:#b7472a; color:white; cursor:pointer; font-size:16px;">
+                📽️ PowerPoint Online
+            </button>
+        </a>
+        """, unsafe_allow_html=True)
     
     with col4:
-        if st.button("📧 Gmail", use_container_width=True, key="open_gmail_btn"):
-            components.html("""
-            <script>
-            window.open('https://mail.google.com', '_blank');
-            </script>
-            """)
-            st.success("✅ تم فتح Gmail في المتصفح")
+        st.markdown("""
+        <a href="https://mail.google.com" target="_blank">
+            <button style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd; background:#ea4335; color:white; cursor:pointer; font-size:16px;">
+                📧 Gmail
+            </button>
+        </a>
+        """, unsafe_allow_html=True)
     
     st.markdown("---")
     
