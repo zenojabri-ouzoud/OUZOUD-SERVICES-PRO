@@ -470,6 +470,11 @@ translations = {
         "fr": "🗑️ Supprimer le crédit",
         "en": "🗑️ Delete Credit Permanently"
     },
+    "add_to_credit": {
+        "ar": "🔼 إضافة للدين",
+        "fr": "🔼 Ajouter au crédit",
+        "en": "🔼 Add to Credit"
+    },
     "last_sale": {
         "ar": "🛒 آخر عملية بيع",
         "fr": "🛒 Dernière Vente",
@@ -921,7 +926,23 @@ def reduce_credit(credit_id, montant_reduction):
         "Client": credit_actuel['Client'],
         "Montant_Paye": float(montant_reduction),
         "Reste": nouveau_montant,
-        "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
+        "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
+        "Type": "Paiement"
+    }).execute()
+    return nouveau_montant
+
+def add_to_credit(credit_id, montant_addition):
+    """إضافة مبلغ للدين (زيادة الدين)"""
+    credit_actuel = supabase.table("credits").select("*").eq("id", int(credit_id)).execute().data[0]
+    nouveau_montant = float(credit_actuel['Montant']) + float(montant_addition)
+    supabase.table("credits").update({"Montant": nouveau_montant}).eq("id", int(credit_id)).execute()
+    supabase.table("paiements_credits").insert({
+        "Credit_ID": int(credit_id),
+        "Client": credit_actuel['Client'],
+        "Montant_Paye": float(montant_addition),
+        "Reste": nouveau_montant,
+        "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
+        "Type": "Addition"
     }).execute()
     return nouveau_montant
 
@@ -1915,8 +1936,29 @@ elif menu == t("credits"):
                 st.error(t("fill_all_fields"))
     
     st.divider()
-    st.subheader(t("credit_list"))
+    
+    # ========== بحث في الديون ==========
+    st.subheader("🔍 بحث عن دين")
+    search_credit = st.text_input(
+        "ابحث باسم العميل:",
+        placeholder="اكتب اسم العميل للبحث...",
+        key="credit_search_input"
+    )
+    
+    # جلب البيانات
     df_credits = get_df("credits")
+    
+    # تصفية حسب البحث
+    if search_credit and not df_credits.empty:
+        df_credits = df_credits[df_credits['Client'].str.contains(search_credit, case=False, na=False)]
+        if df_credits.empty:
+            st.info(f"لا توجد نتائج لـ '{search_credit}'")
+        else:
+            st.success(f"✅ تم العثور على {len(df_credits)} نتيجة")
+    
+    st.divider()
+    st.subheader(t("credit_list"))
+    
     if not df_credits.empty:
         st.dataframe(df_credits, use_container_width=True)
         total_credits = df_credits['Montant'].sum() if 'Montant' in df_credits.columns else 0
@@ -1926,9 +1968,8 @@ elif menu == t("credits"):
         
         st.divider()
         
-        # ========== تقليل الدين ==========
-        st.subheader(t("reduce_credit"))
-        st.info(t("reduce_credit_info"))
+        # ========== إدارة الدين ==========
+        st.subheader("💳 إدارة الدين")
         
         col_credit1, col_credit2 = st.columns(2)
         with col_credit1:
@@ -1944,40 +1985,58 @@ elif menu == t("credits"):
                     key="credit_select"
                 )
         with col_credit2:
-            montant_reduction = st.number_input(
-                t("payment_amount"),
+            montant_operation = st.number_input(
+                "المبلغ",
                 min_value=0.0,
                 step=0.5,
-                key="credit_reduction"
+                key="credit_operation_amount"
             )
         
-        col_pay, col_delete = st.columns(2)
+        # ========== 3 أزرار: إضافة / تسديد / حذف ==========
+        col_add, col_pay, col_delete = st.columns(3)
         
-        # زر تسديد جزء من الدين
+        # زر إضافة للدين (يزيد المبلغ)
+        with col_add:
+            if st.button(t("add_to_credit"), use_container_width=True, key="credit_add_btn"):
+                if credit_a_reduire and montant_operation > 0:
+                    try:
+                        credit_id = int(credit_a_reduire.split("ID: ")[1].replace(")", ""))
+                        nouveau = add_to_credit(credit_id, montant_operation)
+                        st.success(f"✅ تمت إضافة {montant_operation:.2f} DH | الدين الحالي: {nouveau:.2f} DH")
+                        play_success_sound()
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"{t('error_generic')}: {str(e)}")
+                else:
+                    st.error(t("fill_all_fields"))
+        
+        # زر تسديد (ينقص المبلغ)
         with col_pay:
-            if st.button(t("pay_button"), type="primary", use_container_width=True, key="credit_pay_btn"):
-                if credit_a_reduire and montant_reduction > 0:
+            if st.button(t("pay_button"), use_container_width=True, key="credit_pay_btn"):
+                if credit_a_reduire and montant_operation > 0:
                     try:
                         credit_id = int(credit_a_reduire.split("ID: ")[1].replace(")", ""))
                         credit_data = supabase.table("credits").select("*").eq("id", credit_id).execute().data[0]
                         
-                        if montant_reduction > float(credit_data['Montant']):
-                            st.error(f"❌ {t('payment_amount')} ({montant_reduction:.2f}) > {t('amount')} ({credit_data['Montant']:.2f})!")
+                        if montant_operation > float(credit_data['Montant']):
+                            st.error(f"❌ المبلغ ({montant_operation:.2f}) > الدين ({credit_data['Montant']:.2f})!")
                         else:
-                            nouveau = reduce_credit(credit_id, montant_reduction)
+                            nouveau = reduce_credit(credit_id, montant_operation)
                             if nouveau == 0:
                                 st.success(f"✅ Crédit entièrement remboursé!")
                                 supabase.table("credits").delete().eq("id", credit_id).execute()
                             else:
-                                st.success(f"✅ Payé: {montant_reduction:.2f} DH | Reste: {nouveau:.2f} DH")
+                                st.success(f"✅ Payé: {montant_operation:.2f} DH | Reste: {nouveau:.2f} DH")
                             play_success_sound()
                             st.rerun()
                     except Exception as e:
                         st.error(f"{t('error_generic')}: {str(e)}")
+                else:
+                    st.error(t("fill_all_fields"))
         
         # زر حذف الدين نهائياً
         with col_delete:
-            if st.button(t("delete_credit"), type="secondary", use_container_width=True, key="credit_delete_btn"):
+            if st.button(t("delete_credit"), use_container_width=True, key="credit_delete_btn"):
                 if credit_a_reduire:
                     try:
                         credit_id = int(credit_a_reduire.split("ID: ")[1].replace(")", ""))
@@ -1998,6 +2057,8 @@ elif menu == t("credits"):
                                 st.rerun()
                     except Exception as e:
                         st.error(f"{t('error_generic')}: {str(e)}")
+                else:
+                    st.error("⚠️ اختر ديناً أولاً")
         
         st.divider()
         st.subheader(t("payment_history"))
