@@ -1,22 +1,24 @@
 import streamlit as st
 import pandas as pd
-from supabase import create_client, client
+from supabase import create_client, Client
 import os
 from fpdf import FPDF
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
 import streamlit.components.v1 as components
 import io
 import json
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import time
 
 # --- إعداد Supabase ---
-supabase: Client = create_client(
-    st.secrets["supabase_url"],
-    st.secrets["supabase_key"]
-)
+try:
+    supabase: Client = create_client(
+        st.secrets["supabase_url"],
+        st.secrets["supabase_key"]
+    )
+except Exception as e:
+    st.error(f"❌ Erreur de connexion à Supabase: {e}")
+    st.stop()
 
 # --- نظام الترجمة (العربية، الفرنسية، الإنجليزية) ---
 if "lang" not in st.session_state:
@@ -83,15 +85,15 @@ translations = {
         "fr": "📋 Commandes Fournisseur",
         "en": "📋 Supplier Orders"
     },
-    "reports": {
-        "ar": "📊 التقارير والإحصائيات",
-        "fr": "📊 Rapports et Statistiques",
-        "en": "📊 Reports and Statistics"
-    },
     "activate_scanner": {
         "ar": "📸 تفعيل الماسح الضوئي السريع",
         "fr": "📸 Activer le scanner rapide",
         "en": "📸 Activate Fast Scanner"
+    },
+    "auto_sale_mode": {
+        "ar": "⚡ البيع التلقائي (سكانير = بيع مباشر + فاتورة 80mm)",
+        "fr": "⚡ Vente Auto (Scan = Vente Directe + Facture 80mm)",
+        "en": "⚡ Auto Sale (Scan = Direct Sale + 80mm Invoice)"
     },
     "sale_type": {
         "ar": "نوع البيع:",
@@ -118,10 +120,45 @@ translations = {
         "fr": "Panier",
         "en": "Cart"
     },
+    "cart_mode_label": {
+        "ar": "🚀 نوع السلة:",
+        "fr": "🚀 Type de panier:",
+        "en": "🚀 Cart type:"
+    },
+    "cart_manual": {
+        "ar": "✋ يدوي (إضافة منتج منتج)",
+        "fr": "✋ Manuel (Ajout produit par produit)",
+        "en": "✋ Manual (Add one by one)"
+    },
+    "cart_auto": {
+        "ar": "⚡ تلقائي (سكانير متواصل)",
+        "fr": "⚡ Auto (Scan continu)",
+        "en": "⚡ Auto (Continuous scan)"
+    },
+    "cart_auto_info": {
+        "ar": "⚡ الماسح التلقائي: امسح الباركود = يضاف للسلة تلقائياً | امسح باركود آخر = يضاف أيضاً | اضغط إنهاء = فاتورة",
+        "fr": "⚡ Scanner auto: Scannez = Ajouté au panier | Scannez autre = Ajouté aussi | Terminer = Facture",
+        "en": "⚡ Auto scanner: Scan = Added to cart | Scan another = Added too | Finish = Invoice"
+    },
+    "cart_empty": {
+        "ar": "السلة فارغة - امسح الباركود للإضافة",
+        "fr": "Panier vide - Scannez pour ajouter",
+        "en": "Empty cart - Scan to add"
+    },
+    "cart_products_count": {
+        "ar": "منتجات",
+        "fr": "produits",
+        "en": "products"
+    },
     "barcode": {
         "ar": "الباركود",
         "fr": "Code-barres",
         "en": "Barcode"
+    },
+    "barcode_optional": {
+        "ar": "الباركود (اختياري)",
+        "fr": "Code-barres (Optionnel)",
+        "en": "Barcode (Optional)"
     },
     "quantity": {
         "ar": "الكمية",
@@ -157,6 +194,11 @@ translations = {
         "ar": "🗑️ تفريغ السلة",
         "fr": "🗑️ Vider le Panier",
         "en": "🗑️ Clear Cart"
+    },
+    "finish_cart": {
+        "ar": "🧾 إنهاء وإصدار الفاتورة",
+        "fr": "🧾 Terminer et Imprimer la Facture",
+        "en": "🧾 Finish & Print Invoice"
     },
     "sale_success": {
         "ar": "✅ تم تسجيل البيع بنجاح!",
@@ -217,6 +259,31 @@ translations = {
         "ar": "اختر المنتج",
         "fr": "Choisir le produit",
         "en": "Select product"
+    },
+    "or_choose_name": {
+        "ar": "أو اختر بالاسم:",
+        "fr": "Ou choisir par nom:",
+        "en": "Or choose by name:"
+    },
+    "search_stock": {
+        "ar": "🔍 بحث في المخزون (بالاسم أو الباركود)",
+        "fr": "🔍 Rechercher dans le stock (par nom ou code-barres)",
+        "en": "🔍 Search Stock (by name or barcode)"
+    },
+    "search_placeholder": {
+        "ar": "اكتب اسم المنتج أو الباركود للبحث...",
+        "fr": "Tapez le nom du produit ou le code-barres pour rechercher...",
+        "en": "Type product name or barcode to search..."
+    },
+    "search_results": {
+        "ar": "نتائج البحث:",
+        "fr": "Résultats de recherche:",
+        "en": "Search results:"
+    },
+    "no_results": {
+        "ar": "لا توجد نتائج مطابقة",
+        "fr": "Aucun résultat trouvé",
+        "en": "No matching results"
     },
     "new_quantity": {
         "ar": "الكمية الجديدة",
@@ -528,25 +595,15 @@ translations = {
         "fr": "✅ Produit mis à jour avec succès!",
         "en": "✅ Product updated successfully!"
     },
-    "export_import": {
-        "ar": "📤 تصدير/استيراد",
-        "fr": "📤 Export/Import",
-        "en": "📤 Export/Import"
+    "export_excel": {
+        "ar": "📥 تصدير Excel",
+        "fr": "📥 Exporter Excel",
+        "en": "📥 Export Excel"
     },
-    "export_button": {
-        "ar": "📥 تصدير",
-        "fr": "📥 Exporter",
-        "en": "📥 Export"
-    },
-    "import_button": {
-        "ar": "📤 استيراد",
-        "fr": "📤 Importer",
-        "en": "📤 Import"
-    },
-    "confirm_import": {
-        "ar": "✅ تأكيد الاستيراد",
-        "fr": "✅ Confirmer l'Import",
-        "en": "✅ Confirm Import"
+    "import_excel": {
+        "ar": "📤 استيراد Excel",
+        "fr": "📤 Importer Excel",
+        "en": "📤 Import Excel"
     },
     "import_success": {
         "ar": "✅ تم الاستيراد بنجاح!",
@@ -558,131 +615,180 @@ translations = {
         "fr": "🌐 Langue",
         "en": "🌐 Language"
     },
-    "daily_report": {
-        "ar": "تقرير يومي",
-        "fr": "Rapport Quotidien",
-        "en": "Daily Report"
-    },
-    "weekly_report": {
-        "ar": "تقرير أسبوعي",
-        "fr": "Rapport Hebdomadaire",
-        "en": "Weekly Report"
-    },
-    "monthly_report": {
-        "ar": "تقرير شهري",
-        "fr": "Rapport Mensuel",
-        "en": "Monthly Report"
-    },
-    "custom_period": {
-        "ar": "فترة مخصصة",
-        "fr": "Période Personnalisée",
-        "en": "Custom Period"
-    },
-    "start_date": {
-        "ar": "من تاريخ",
-        "fr": "Date de début",
-        "en": "Start Date"
-    },
-    "end_date": {
-        "ar": "إلى تاريخ",
-        "fr": "Date de fin",
-        "en": "End Date"
-    },
-    "generate_report": {
-        "ar": "📊 توليد التقرير",
-        "fr": "📊 Générer le Rapport",
-        "en": "📊 Generate Report"
-    },
-    "sales_evolution": {
-        "ar": "تطور المبيعات",
-        "fr": "Évolution des Ventes",
-        "en": "Sales Evolution"
-    },
-    "top_products": {
-        "ar": "المنتجات الأكثر مبيعاً",
-        "fr": "Produits les Plus Vendus",
-        "en": "Top Selling Products"
-    },
-    "revenue_analysis": {
-        "ar": "تحليل الإيرادات",
-        "fr": "Analyse des Revenus",
-        "en": "Revenue Analysis"
-    },
-    "profit_margin": {
-        "ar": "هامش الربح",
-        "fr": "Marge Bénéficiaire",
-        "en": "Profit Margin"
-    },
-    "comparison_periods": {
-        "ar": "مقارنة الفترات",
-        "fr": "Comparaison des Périodes",
-        "en": "Period Comparison"
-    },
-    "period1": {
-        "ar": "الفترة الأولى",
-        "fr": "Période 1",
-        "en": "Period 1"
-    },
-    "period2": {
-        "ar": "الفترة الثانية",
-        "fr": "Période 2",
-        "en": "Period 2"
-    },
-    "compare": {
-        "ar": "📊 مقارنة",
-        "fr": "📊 Comparer",
-        "en": "📊 Compare"
-    },
     "no_data": {
-        "ar": "لا توجد بيانات للفترة المحددة",
-        "fr": "Aucune donnée pour la période sélectionnée",
-        "en": "No data for the selected period"
+        "ar": "لا توجد بيانات",
+        "fr": "Aucune donnée",
+        "en": "No data"
     },
-    "best_day": {
-        "ar": "أفضل يوم",
-        "fr": "Meilleur Jour",
-        "en": "Best Day"
+    "invoice_printed": {
+        "ar": "🧾 تمت طباعة الفاتورة تلقائياً",
+        "fr": "🧾 Facture imprimée automatiquement",
+        "en": "🧾 Invoice printed automatically"
     },
-    "worst_day": {
-        "ar": "أقل يوم",
-        "fr": "Jour le Plus Bas",
-        "en": "Worst Day"
+    "scan_success_sound": {
+        "ar": "✅ تم المسح بنجاح! 🔔",
+        "fr": "✅ Scan réussi! 🔔",
+        "en": "✅ Scan successful! 🔔"
     },
-    "average_daily": {
-        "ar": "المتوسط اليومي",
-        "fr": "Moyenne Quotidienne",
-        "en": "Daily Average"
-    }
+    "live_sync_label": {
+        "ar": "🔄 مزامنة مباشرة",
+        "fr": "🔄 Synchro Live",
+        "en": "🔄 Live Sync"
+    },
+    "live_sync_active_msg": {
+        "ar": "🔄 المزامنة المباشرة نشطة - تحديث كل 5 ثواني",
+        "fr": "🔄 Synchro Live active - Mise à jour toutes les 5 secondes",
+        "en": "🔄 Live Sync active - Updating every 5 seconds"
+    },
+    "stock_scanner_add": {
+        "ar": "📸 مسح الباركود للإضافة",
+        "fr": "📸 Scanner pour ajouter",
+        "en": "📸 Scan barcode to add"
+    },
+    "stock_scanner_update": {
+        "ar": "📸 مسح الباركود للتحديث",
+        "fr": "📸 Scanner pour modifier",
+        "en": "📸 Scan barcode to update"
+    },
 }
 
 def t(key):
     """ترجمة المفتاح إلى اللغة المختارة"""
     return translations.get(key, {}).get(st.session_state.lang, key)
 
-# --- الدوال ---
+# --- دوال Excel ---
 def to_excel(df):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Sheet1')
     return output.getvalue()
 
-def import_excel(uploaded_file, table_name):
-    df = pd.read_excel(uploaded_file)
-    for _, row in df.iterrows():
-        supabase.table(table_name).insert(row.to_dict()).execute()
-    return True
+def import_excel_data(uploaded_file, table_name):
+    try:
+        df = pd.read_excel(uploaded_file)
+        for _, row in df.iterrows():
+            data_dict = row.to_dict()
+            if 'id' in data_dict:
+                del data_dict['id']
+            supabase.table(table_name).insert(data_dict).execute()
+        return True
+    except Exception as e:
+        st.error(f"Erreur import: {str(e)}")
+        return False
 
-def delete_collection(table_name, batch_size=50):
-    response = supabase.table(table_name).select("id").limit(batch_size).execute()
-    deleted = 0
-    if response.data:
-        ids = [row['id'] for row in response.data]
-        for id_to_delete in ids:
-            supabase.table(table_name).delete().eq("id", id_to_delete).execute()
-            deleted += 1
-        if deleted >= batch_size:
-            return delete_collection(table_name, batch_size)
-    return deleted
+def export_import_buttons(table_name, data_df):
+    """أزرار تصدير واستيراد Excel"""
+    col_exp, col_imp = st.columns(2)
+    with col_exp:
+        if not data_df.empty:
+            st.download_button(
+                label=f"{t('export_excel')} ({len(data_df)} rows)",
+                data=to_excel(data_df),
+                file_name=f"{table_name}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+    with col_imp:
+        uploaded_file = st.file_uploader(
+            t('import_excel'),
+            type=["xlsx"],
+            key=f"import_{table_name}"
+        )
+        if uploaded_file is not None:
+            if st.button(f"✅ {t('import_excel')}", key=f"confirm_import_{table_name}"):
+                if import_excel_data(uploaded_file, table_name):
+                    st.success(t('import_success'))
+                    st.rerun()
+
+# --- الدوال الأساسية ---
+def get_df(table_name):
+    try:
+        response = supabase.table(table_name).select("*").execute()
+        if not response.data:
+            return pd.DataFrame()
+        return pd.DataFrame(response.data)
+    except Exception as e:
+        st.error(f"Erreur lecture {table_name}: {str(e)}")
+        return pd.DataFrame()
+
+def check_stock_levels():
+    df = get_df("stock")
+    if not df.empty and 'Quantité' in df.columns:
+        return df[df['Quantité'] < 5]
+    return pd.DataFrame()
+
+def get_product_info(code_or_name):
+    """البحث عن منتج بالباركود أو الاسم"""
+    if code_or_name:
+        stocks = supabase.table("stock").select("*").eq("Code-barres", code_or_name).execute()
+        if stocks.data:
+            return stocks.data[0]
+        stocks = supabase.table("stock").select("*").eq("Nom", code_or_name).execute()
+        if stocks.data:
+            return stocks.data[0]
+    return None
+
+def confirm_purchase(cmd_id):
+    try:
+        item = supabase.table("commandes").select("*").eq("id", int(cmd_id)).execute().data[0]
+        stk = supabase.table("stock").select("*").eq("Nom", item['Nom']).execute().data[0]
+        new_q = stk['Quantité'] + item['Qté']
+        supabase.table("stock").update({"Quantité": new_q}).eq("id", stk['id']).execute()
+        supabase.table("commandes").update({"Statut": "Recu"}).eq("id", int(cmd_id)).execute()
+    except Exception as e:
+        st.error(f"Erreur confirmation: {str(e)}")
+
+def reset_caisse():
+    """تصفير الخزينة وحفظ ملخص اليوم - ثم مسح جميع بيانات اليوم"""
+    date_aujourdhui = datetime.now().strftime('%d/%m/%Y')
+    df_ventes = get_df("ventes")
+    df_impressions = get_df("impressions")
+    total_ventes = df_ventes['Total'].sum() if not df_ventes.empty and 'Total' in df_ventes.columns else 0
+    total_impressions = df_impressions['Total'].sum() if not df_impressions.empty and 'Total' in df_impressions.columns else 0
+    total_jour = total_ventes + total_impressions
+    
+    # حفظ ملخص اليوم في التاريخ
+    supabase.table("historique_caisse").insert({
+        "Date": date_aujourdhui,
+        "Total_Ventes": float(total_ventes),
+        "Total_Impressions": float(total_impressions),
+        "Total_Jour": float(total_jour),
+        "Heure_Fermeture": datetime.now().strftime('%H:%M:%S')
+    }).execute()
+    
+    # مسح جميع بيانات اليوم
+    try:
+        supabase.table("ventes").delete().like("Date", f"{date_aujourdhui}%").execute()
+    except:
+        pass
+    try:
+        supabase.table("impressions").delete().like("Date", f"{date_aujourdhui}%").execute()
+    except:
+        pass
+    try:
+        supabase.table("credits").delete().like("Date", f"{date_aujourdhui}%").execute()
+    except:
+        pass
+    try:
+        supabase.table("paiements_credits").delete().like("Date", f"{date_aujourdhui}%").execute()
+    except:
+        pass
+    
+    return total_jour
+
+def reduce_credit(credit_id, montant_reduction):
+    credit_actuel = supabase.table("credits").select("*").eq("id", int(credit_id)).execute().data[0]
+    nouveau_montant = float(credit_actuel['Montant']) - float(montant_reduction)
+    if nouveau_montant < 0:
+        nouveau_montant = 0
+    supabase.table("credits").update({"Montant": nouveau_montant}).eq("id", int(credit_id)).execute()
+    supabase.table("paiements_credits").insert({
+        "Credit_ID": int(credit_id),
+        "Client": credit_actuel['Client'],
+        "Montant_Paye": float(montant_reduction),
+        "Reste": nouveau_montant,
+        "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
+    }).execute()
+    return nouveau_montant
 
 def generate_impression_pdf(prix_page, nombre):
     pdf = FPDF(orientation='P', unit='mm', format=(80, 250))
@@ -699,56 +805,6 @@ def generate_impression_pdf(prix_page, nombre):
     file_path = "facture_impression.pdf"
     pdf.output(file_path)
     return file_path
-
-def get_data_from_supabase(table_name):
-    try:
-        response = supabase.table(table_name).select("*").execute()
-        if not response.data:
-            return pd.DataFrame()
-        return pd.DataFrame(response.data)
-    except:
-        return pd.DataFrame()
-
-def get_df(table_name):
-    try:
-        response = supabase.table(table_name).select("*").execute()
-        if not response.data:
-            return pd.DataFrame()
-        data = []
-        for item in response.data:
-            data.append(item)
-        return pd.DataFrame(data)
-    except:
-        return pd.DataFrame()
-
-def check_stock_levels():
-    df = get_data_from_supabase("stock")
-    if not df.empty and 'Quantité' in df.columns:
-        return df[df['Quantité'] < 5]
-    return pd.DataFrame()
-
-def sidebar_export_import(table_name):
-    st.sidebar.markdown(f"### ⚙️ {t('export_import')} {table_name}")
-    data = get_data_from_supabase(table_name)
-    st.sidebar.download_button(
-        f"{t('export_button')} {table_name}", 
-        to_excel(data), 
-        f"{table_name}.xlsx"
-    )
-    uploaded_file = st.sidebar.file_uploader(
-        f"{t('import_button')} {table_name}", 
-        type=["xlsx"]
-    )
-    if uploaded_file is not None and st.sidebar.button(f"{t('confirm_import')} {table_name}"):
-        if import_excel(uploaded_file, table_name):
-            st.sidebar.success(t('import_success'))
-
-def confirm_purchase(cmd_id):
-    item = supabase.table("commandes").select("*").eq("id", int(cmd_id)).execute().data[0]
-    stk = supabase.table("stock").select("*").eq("Nom", item['Nom']).execute().data[0]
-    new_q = stk['Quantité'] + item['Qté']
-    supabase.table("stock").update({"Quantité": new_q}).eq("id", stk['id']).execute()
-    supabase.table("commandes").update({"Statut": "Recu"}).eq("id", int(cmd_id)).execute()
 
 def generate_commande_pdf(commandes_data):
     pdf = FPDF(orientation='P', unit='mm', format=(80, 250))
@@ -793,163 +849,69 @@ def generate_commande_pdf(commandes_data):
     pdf.output(file_path)
     return file_path
 
-def reset_caisse():
-    date_aujourdhui = datetime.now().strftime('%d/%m/%Y')
-    df_ventes = get_df("ventes")
-    df_impressions = get_df("impressions")
-    total_ventes = df_ventes['Total'].sum() if not df_ventes.empty and 'Total' in df_ventes.columns else 0
-    total_impressions = df_impressions['Total'].sum() if not df_impressions.empty and 'Total' in df_impressions.columns else 0
-    total_jour = total_ventes + total_impressions
+def generate_pdf_80mm(cart_data):
+    """طباعة فاتورة 80mm حرارية - يظهر فيها اسم المنتج بدل الباركود"""
+    pdf = FPDF('P', 'mm', (80, 297))
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=5)
     
-    supabase.table("historique_caisse").insert({
-        "Date": date_aujourdhui,
-        "Total_Ventes": float(total_ventes),
-        "Total_Impressions": float(total_impressions),
-        "Total_Jour": float(total_jour),
-        "Heure_Fermeture": datetime.now().strftime('%H:%M:%S')
-    }).execute()
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(70, 8, "OUZOUD SERVICES", ln=True, align='C')
+    pdf.set_font("Arial", size=8)
+    pdf.cell(70, 4, "Tel: 07.81.02.82.43", ln=True, align='C')
+    pdf.cell(70, 4, "maaridprint@gmail.com", ln=True, align='C')
+    pdf.cell(70, 4, "-" * 40, ln=True, align='C')
     
-    return total_jour
+    now = datetime.now(pytz.timezone("Africa/Casablanca"))
+    pdf.set_font("Arial", size=8)
+    pdf.cell(70, 4, f"Date: {now.strftime('%d/%m/%Y %H:%M')}", ln=True, align='L')
+    pdf.cell(70, 4, "-" * 40, ln=True, align='C')
+    
+    pdf.set_font("Arial", 'B', 8)
+    pdf.cell(35, 5, "Produit", 1, 0, 'C')
+    pdf.cell(10, 5, "Qte", 1, 0, 'C')
+    pdf.cell(12, 5, "Prix", 1, 0, 'C')
+    pdf.cell(13, 5, "Total", 1, 0, 'C')
+    pdf.ln(5)
+    
+    pdf.set_font("Arial", size=7)
+    tg = 0
+    for item in cart_data:
+        # استخدام اسم المنتج في الفاتورة بدل الباركود
+        nom = str(item.get('Nom', item.get('Code', '')))[:18]
+        q = float(item.get('Quantité', 0))
+        p = float(item.get('Prix', 0))
+        tot = q * p
+        tg += tot
+        pdf.cell(35, 4, nom, 1)
+        pdf.cell(10, 4, str(q), 1, 0, 'C')
+        pdf.cell(12, 4, f"{p:.2f}", 1, 0, 'C')
+        pdf.cell(13, 4, f"{tot:.2f}", 1, 0, 'C')
+        pdf.ln(4)
+    
+    pdf.set_font("Arial", 'B', 10)
+    pdf.cell(70, 6, "-" * 40, ln=True, align='C')
+    pdf.cell(70, 6, f"TOTAL: {tg:.2f} DH", ln=True, align='R')
+    pdf.cell(70, 4, "-" * 40, ln=True, align='C')
+    
+    pdf.set_font("Arial", 'I', 7)
+    pdf.cell(70, 4, "Merci pour votre visite!", ln=True, align='C')
+    pdf.cell(70, 4, "A bientot!", ln=True, align='C')
+    
+    file_path = "facture_80mm.pdf"
+    pdf.output(file_path)
+    return file_path
 
-def reduce_credit(credit_id, montant_reduction):
-    credit_actuel = supabase.table("credits").select("*").eq("id", int(credit_id)).execute().data[0]
-    nouveau_montant = float(credit_actuel['Montant']) - float(montant_reduction)
-    if nouveau_montant < 0:
-        nouveau_montant = 0
-    supabase.table("credits").update({"Montant": nouveau_montant}).eq("id", int(credit_id)).execute()
-    supabase.table("paiements_credits").insert({
-        "Credit_ID": int(credit_id),
-        "Client": credit_actuel['Client'],
-        "Montant_Paye": float(montant_reduction),
-        "Reste": nouveau_montant,
-        "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
-    }).execute()
-    return nouveau_montant
+def generate_pdf(cart_data):
+    return generate_pdf_80mm(cart_data)
 
-# --- دوال التقارير ---
-def filter_data_by_date(df, date_column, start_date, end_date):
-    """تصفية البيانات حسب الفترة الزمنية"""
-    if df.empty or date_column not in df.columns:
-        return pd.DataFrame()
-    
-    df[date_column] = pd.to_datetime(df[date_column], format='%d/%m/%Y %H:%M', errors='coerce')
-    mask = (df[date_column].dt.date >= start_date) & (df[date_column].dt.date <= end_date)
-    return df[mask]
-
-def generate_daily_report(date):
-    """تقرير يومي مفصل"""
-    df_ventes = get_df("ventes")
-    df_impressions = get_df("impressions")
-    df_paiements = get_df("paiements_credits")
-    
-    # تصفية حسب التاريخ
-    ventes_jour = filter_data_by_date(df_ventes, 'Date', date, date)
-    impressions_jour = filter_data_by_date(df_impressions, 'Date', date, date)
-    paiements_jour = filter_data_by_date(df_paiements, 'Date', date, date)
-    
-    total_ventes = ventes_jour['Total'].sum() if not ventes_jour.empty and 'Total' in ventes_jour.columns else 0
-    total_impressions = impressions_jour['Total'].sum() if not impressions_jour.empty and 'Total' in impressions_jour.columns else 0
-    total_paiements = paiements_jour['Montant_Paye'].sum() if not paiements_jour.empty and 'Montant_Paye' in paiements_jour.columns else 0
-    nombre_ventes = len(ventes_jour)
-    
-    return {
-        "date": date,
-        "total_ventes": total_ventes,
-        "total_impressions": total_impressions,
-        "total_paiements": total_paiements,
-        "total_general": total_ventes + total_impressions,
-        "nombre_ventes": nombre_ventes,
-        "ventes_df": ventes_jour,
-        "impressions_df": impressions_jour
-    }
-
-def generate_period_comparison(start1, end1, start2, end2):
-    """مقارنة فترتين زمنيتين"""
-    df_ventes = get_df("ventes")
-    df_impressions = get_df("impressions")
-    
-    # الفترة الأولى
-    ventes_p1 = filter_data_by_date(df_ventes, 'Date', start1, end1)
-    impressions_p1 = filter_data_by_date(df_impressions, 'Date', start1, end1)
-    total_p1 = (ventes_p1['Total'].sum() if not ventes_p1.empty and 'Total' in ventes_p1.columns else 0) + \
-               (impressions_p1['Total'].sum() if not impressions_p1.empty and 'Total' in impressions_p1.columns else 0)
-    
-    # الفترة الثانية
-    ventes_p2 = filter_data_by_date(df_ventes, 'Date', start2, end2)
-    impressions_p2 = filter_data_by_date(df_impressions, 'Date', start2, end2)
-    total_p2 = (ventes_p2['Total'].sum() if not ventes_p2.empty and 'Total' in ventes_p2.columns else 0) + \
-               (impressions_p2['Total'].sum() if not impressions_p2.empty and 'Total' in impressions_p2.columns else 0)
-    
-    # حساب الفرق
-    difference = total_p2 - total_p1
-    pourcentage = ((total_p2 - total_p1) / total_p1 * 100) if total_p1 > 0 else 0
-    
-    return {
-        "period1_total": total_p1,
-        "period2_total": total_p2,
-        "difference": difference,
-        "pourcentage": pourcentage,
-        "ventes_p1": ventes_p1,
-        "ventes_p2": ventes_p2
-    }
-
-def get_top_products(df_ventes, top_n=10):
-    """المنتجات الأكثر مبيعاً"""
-    if df_ventes.empty or 'Code' not in df_ventes.columns:
-        return pd.DataFrame()
-    
-    product_sales = df_ventes.groupby('Code').agg({
-        'Quantité': 'sum',
-        'Total': 'sum'
-    }).reset_index()
-    product_sales = product_sales.sort_values('Total', ascending=False).head(top_n)
-    return product_sales
-
-def generate_sales_evolution_chart(df_ventes, date_column='Date'):
-    """رسم بياني لتطور المبيعات"""
-    if df_ventes.empty:
-        return None
-    
-    df_ventes[date_column] = pd.to_datetime(df_ventes[date_column], format='%d/%m/%Y %H:%M', errors='coerce')
-    daily_sales = df_ventes.groupby(df_ventes[date_column].dt.date)['Total'].sum().reset_index()
-    daily_sales.columns = ['Date', 'Total']
-    
-    fig = px.line(
-        daily_sales, 
-        x='Date', 
-        y='Total',
-        title=t('sales_evolution'),
-        labels={'Date': 'Date', 'Total': 'Total (DH)'}
-    )
-    fig.update_layout(height=400)
-    return fig
-
-def generate_top_products_chart(top_products_df):
-    """رسم بياني للمنتجات الأكثر مبيعاً"""
-    if top_products_df.empty:
-        return None
-    
-    fig = px.bar(
-        top_products_df,
-        x='Code',
-        y='Total',
-        title=t('top_products'),
-        labels={'Code': t('product_name'), 'Total': 'Total (DH)'},
-        color='Total',
-        color_continuous_scale='viridis'
-    )
-    fig.update_layout(height=400)
-    return fig
-
-def generate_revenue_pie_chart(ventes_total, impressions_total):
-    """مخطط دائري للإيرادات"""
-    fig = go.Figure(data=[go.Pie(
-        labels=[t('total_sales'), t('total_printing')],
-        values=[ventes_total, impressions_total],
-        hole=.3
-    )])
-    fig.update_layout(title=t('revenue_analysis'), height=400)
-    return fig
+def play_success_sound():
+    sound_html = """
+    <audio autoplay>
+        <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=">
+    </audio>
+    """
+    components.html(sound_html, height=0)
 
 st.set_page_config(layout="wide", page_title="OUZOUD SERVICES")
 
@@ -987,53 +949,83 @@ def fast_barcode_scanner_with_qty(input_label, qty_label):
     """
     components.html(scanner_html, height=400)
 
-def generate_pdf(cart_data):
-    pdf = FPDF(orientation='P', unit='mm', format=(80, 250)) 
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(60, 10, txt="OUZOUD SERVICES", ln=True, align='C')
-    pdf.cell(60, 5, txt="--------------------------------", ln=True, align='C')
-    rabat_tz = pytz.timezone("Africa/Casablanca")
-    now = datetime.now(rabat_tz)
-    pdf.set_font("Arial", size=9)
-    pdf.cell(60, 5, txt=f"Date: {now.strftime('%d/%m/%Y')}", ln=True, align='L')
-    pdf.cell(60, 5, txt=f"Heure: {now.strftime('%H:%M:%S')}", ln=True, align='L')
-    pdf.ln(5)
-    pdf.set_font("Arial", 'B', 9)
-    pdf.cell(30, 7, txt="Produit", border=1, align='C')
-    pdf.cell(8, 7, txt="Qte", border=1, align='C')
-    pdf.cell(10, 7, txt="Prix", border=1, align='C')
-    pdf.cell(12, 7, txt="Total", border=1, align='C')
-    pdf.ln(7)
-    pdf.set_font("Arial", size=9)
-    
-    total_general = 0
-    for item in cart_data:
-        code_input = str(item.get('Code', ''))
-        nom_produit = code_input
-        qty = float(item.get('Quantité', 0))
-        prix = float(item.get('Prix', 0))
-        total = float(item.get('Total', 0))
-        total_general += total
-        
-        pdf.cell(30, 6, txt=nom_produit[:15], border=1)
-        pdf.cell(8, 6, txt=str(qty), border=1, align='C')
-        pdf.cell(10, 6, txt=f"{prix:.0f}", border=1, align='C')
-        pdf.cell(12, 6, txt=f"{total:.0f}", border=1, align='C')
-        pdf.ln(6)
-    
-    pdf.set_font("Arial", 'B', 11)
-    pdf.cell(60, 8, txt=f"TOTAL: {total_general:.2f} DH", ln=True, align='R')
-    pdf.ln(10)
-    pdf.set_font("Arial", size=9)
-    pdf.cell(60, 5, txt="Tel: 07.81.02.82.43", ln=True, align='C')
-    pdf.cell(60, 5, txt="Email: maaridprint@gmail.com", ln=True, align='C')
-    pdf.ln(5)
-    pdf.set_font("Arial", 'I', 9)
-    pdf.cell(60, 5, txt="Merci pour votre visite!", ln=True, align='C')
-    file_path = "facture.pdf"
-    pdf.output(file_path)
-    return file_path
+def auto_sale_scanner():
+    scanner_html = """
+    <div id="reader" style="width:100%"></div>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+    let lastScan = '';
+    let scanTimeout;
+    function onScanSuccess(decodedText, decodedResult) {
+        if (decodedText !== lastScan) {
+            lastScan = decodedText;
+            clearTimeout(scanTimeout);
+            scanTimeout = setTimeout(() => { lastScan = ''; }, 2000);
+            const inputs = window.parent.document.querySelectorAll('input');
+            inputs.forEach(input => {
+                if (input.getAttribute('aria-label') === 'Auto-Scan') {
+                    input.value = decodedText;
+                    input.dispatchEvent(new Event('input', {bubbles: true}));
+                    input.dispatchEvent(new Event('change', {bubbles: true}));
+                }
+            });
+        }
+    }
+    let html5QrcodeScanner = new Html5QrcodeScanner("reader", {fps: 10, qrbox: 250, facingMode: "environment"});
+    html5QrcodeScanner.render(onScanSuccess);
+    </script>
+    """
+    components.html(scanner_html, height=350)
+
+def auto_cart_scanner():
+    """سكانير السلة التلقائية - يضيف المنتج للسلة تلقائياً مع التعرف على المنتج الجديد"""
+    scanner_html = """
+    <div id="auto_cart_reader" style="width:100%"></div>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+    let lastCartScan = '';
+    let cartScanTimeout;
+    function onScanSuccess(decodedText, decodedResult) {
+        if (decodedText !== lastCartScan) {
+            lastCartScan = decodedText;
+            clearTimeout(cartScanTimeout);
+            cartScanTimeout = setTimeout(() => { lastCartScan = ''; }, 1500);
+            const inputs = window.parent.document.querySelectorAll('input');
+            inputs.forEach(input => {
+                if (input.getAttribute('aria-label') === 'Auto-Cart-Scan') {
+                    input.value = decodedText;
+                    input.dispatchEvent(new Event('input', {bubbles: true}));
+                    input.dispatchEvent(new Event('change', {bubbles: true}));
+                }
+            });
+        }
+    }
+    let html5QrcodeScanner = new Html5QrcodeScanner("auto_cart_reader", {fps: 10, qrbox: 250, facingMode: "environment"});
+    html5QrcodeScanner.render(onScanSuccess);
+    </script>
+    """
+    components.html(scanner_html, height=300)
+
+def stock_barcode_scanner(target_input_label):
+    scanner_html = f"""
+    <div id="stock_reader" style="width:100%"></div>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+    function onScanSuccess(decodedText, decodedResult) {{
+        const inputs = window.parent.document.querySelectorAll('input');
+        inputs.forEach(function(input) {{
+            if (input.getAttribute('aria-label') === '{target_input_label}') {{
+                input.value = decodedText;
+                input.dispatchEvent(new Event('input', {{bubbles: true}}));
+                input.dispatchEvent(new Event('change', {{bubbles: true}}));
+            }}
+        }});
+    }}
+    let html5QrcodeScanner = new Html5QrcodeScanner("stock_reader", {{fps: 10, qrbox: 250, facingMode: "environment"}});
+    html5QrcodeScanner.render(onScanSuccess);
+    </script>
+    """
+    components.html(scanner_html, height=300)
 
 # --- الحالة والتسجيل ---
 if "authenticated" not in st.session_state: st.session_state.authenticated = False
@@ -1041,6 +1033,8 @@ if "cart" not in st.session_state: st.session_state.cart = []
 if "last_cart" not in st.session_state: st.session_state.last_cart = None
 if "commande_cart" not in st.session_state: st.session_state.commande_cart = []
 if "caisse_reset_confirmed" not in st.session_state: st.session_state.caisse_reset_confirmed = False
+if "auto_sale_mode" not in st.session_state: st.session_state.auto_sale_mode = False
+if "live_sync_active" not in st.session_state: st.session_state.live_sync_active = False
 
 # --- صفحة تسجيل الدخول ---
 if not st.session_state.authenticated:
@@ -1097,10 +1091,19 @@ with st.sidebar:
         t("caisse"),
         t("credits"),
         t("factures"),
-        t("commandes"),
-        t("reports")
+        t("commandes")
     ]
     menu = st.selectbox(t("menu_main"), menu_options)
+    
+    st.divider()
+    
+    # زر المزامنة المباشرة
+    if st.button(t("live_sync_label")):
+        st.session_state.live_sync_active = not st.session_state.live_sync_active
+    if st.session_state.live_sync_active:
+        st.success(t("live_sync_active_msg"))
+        time.sleep(5)
+        st.rerun()
     
     st.divider()
     st.markdown(f"### {t('quick_stats')}")
@@ -1120,280 +1123,551 @@ with st.sidebar:
     st.markdown("📧 maaridprint@gmail.com")
     st.markdown(f"🕐 {datetime.now().strftime('%d/%m/%Y %H:%M')}")
 
-# --- القائمة الرئيسية ---
+# ==================== القائمة الرئيسية ====================
+
 if menu == t("pos"):
     st.header(t("pos"))
     
-    use_scanner = st.checkbox(t("activate_scanner"))
-    if use_scanner:
-        fast_barcode_scanner_with_qty(t("barcode"), t("quantity"))
-    
-    mode = st.radio(
-        t("sale_type"),
-        [t("normal_sale"), t("scan_qr"), t("free_sale"), t("cart")]
+    # Mode Auto Sale
+    st.session_state.auto_sale_mode = st.checkbox(
+        t("auto_sale_mode"),
+        value=st.session_state.auto_sale_mode
     )
     
-    if mode == t("normal_sale"):
-        col1, col2 = st.columns(2)
-        with col1:
-            code = st.text_input(t("barcode"), key="vente_normale_code")
-        with col2:
-            qty = st.number_input(t("quantity"), min_value=0.0, step=0.1, key="vente_normale_qty")
+    if st.session_state.auto_sale_mode:
+        st.success("⚡ Mode Auto: Scannez un produit = Vente directe + Facture 80mm imprimée automatiquement")
+        st.info("Placez le curseur dans le champ ci-dessous et scannez vos produits")
         
-        if st.button(t("confirm_sale")):
-            if code and qty > 0:
-                stocks = supabase.table("stock").select("*").eq("Code-barres", code).execute()
-                prix = 0; doc_id = None; q_old = 0
-                for s in stocks.data:
-                    prix = float(s.get('Prix', 0))
-                    q_old = float(s.get('Quantité', 0))
-                    doc_id = s.get('id')
-                if doc_id and q_old >= qty:
-                    total = prix * qty
+        auto_sale_scanner()
+        
+        code_auto = st.text_input(
+            "Code-barres",
+            key="auto_scan_input",
+            label_visibility="collapsed",
+            placeholder="📸 En attente du scan... Scannez ici!"
+        )
+        
+        if code_auto:
+            product = get_product_info(code_auto)
+            
+            if product:
+                if float(product['Quantité']) >= 1:
+                    total = float(product['Prix'])
                     supabase.table("ventes").insert({
-                        "Code": code, 
-                        "Quantité": qty, 
-                        "Prix": prix, 
-                        "Total": total, 
-                        "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
-                    }).execute()
-                    supabase.table("stock").update({"Quantité": q_old - qty}).eq("id", doc_id).execute()
-                    st.success(f"{t('sale_success')} {total:.2f} DH")
-                    st.rerun()
-                elif doc_id:
-                    st.error(f"{t('low_stock_warning')} {q_old}")
-                else:
-                    st.error(t("product_not_found"))
-            else:
-                st.error(t("fill_all_fields"))
-    
-    elif mode == t("scan_qr"):
-        st.subheader(t("scan_qr"))
-        col1, col2 = st.columns(2)
-        with col1:
-            code_qr = st.text_input(f"{t('barcode')} (auto)", key="qr_code")
-        with col2:
-            qty_qr = st.number_input(t("quantity"), min_value=0.0, step=0.1, value=1.0, key="qr_qty")
-        
-        fast_barcode_scanner_with_qty(f"{t('barcode')} (auto)", t("quantity"))
-        
-        if st.button(t("confirm_sale"), key="qr_sale"):
-            if code_qr and qty_qr > 0:
-                stocks = supabase.table("stock").select("*").eq("Code-barres", code_qr).execute()
-                prix = 0; doc_id = None; q_old = 0; nom_produit = ""
-                for s in stocks.data:
-                    prix = float(s.get('Prix', 0))
-                    q_old = float(s.get('Quantité', 0))
-                    doc_id = s.get('id')
-                    nom_produit = s.get('Nom', '')
-                if doc_id and q_old >= qty_qr:
-                    total = prix * qty_qr
-                    supabase.table("ventes").insert({
-                        "Code": code_qr, 
-                        "Quantité": qty_qr, 
-                        "Prix": prix, 
-                        "Total": total, 
+                        "Code": code_auto,
+                        "Quantité": 1.0,
+                        "Prix": float(product['Prix']),
+                        "Total": total,
                         "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
-                        "Nom": nom_produit
+                        "Nom": product.get('Nom', code_auto)
                     }).execute()
-                    supabase.table("stock").update({"Quantité": q_old - qty_qr}).eq("id", doc_id).execute()
-                    st.success(f"{t('sale_success')} {nom_produit} - {qty_qr} x {prix} = {total:.2f} DH")
+                    
+                    supabase.table("stock").update({
+                        "Quantité": float(product['Quantité']) - 1
+                    }).eq("id", product['id']).execute()
+                    
+                    cart_data = [{
+                        "Code": code_auto,
+                        "Nom": product.get('Nom', code_auto),
+                        "Quantité": 1,
+                        "Prix": float(product['Prix']),
+                        "Total": total
+                    }]
+                    generate_pdf_80mm(cart_data)
+                    
+                    play_success_sound()
+                    
+                    st.success(f"✅ {product.get('Nom', code_auto)} - {total:.2f} DH | {t('invoice_printed')}")
+                    st.balloons()
+                    
+                    time.sleep(1.5)
                     st.rerun()
-                elif doc_id:
-                    st.error(f"{t('low_stock_warning')} {q_old}")
+                    
                 else:
+                    st.error(f"❌ Stock épuisé pour {product.get('Nom', code_auto)}! Quantité disponible: {product['Quantité']}")
+            else:
+                if code_auto:
                     st.error(t("product_not_found"))
     
-    elif mode == t("free_sale"):
-        col1, col2 = st.columns(2)
-        with col1:
-            name = st.text_input(t("product_name"))
-        with col2:
-            price = st.number_input(t("price"), min_value=0.0)
-        qty_libre = st.number_input(t("quantity"), min_value=0.0, step=0.1, value=1.0)
+    else:
+        use_scanner = st.checkbox(t("activate_scanner"))
+        if use_scanner:
+            fast_barcode_scanner_with_qty(t("barcode"), t("quantity"))
         
-        if st.button(t("confirm_sale")):
-            if name and price > 0:
-                total_libre = float(price) * qty_libre
-                supabase.table("ventes").insert({
-                    "Code": name, 
-                    "Quantité": qty_libre, 
-                    "Prix": float(price), 
-                    "Total": total_libre, 
-                    "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
-                }).execute()
-                st.success(f"{t('sale_success')} {name} - {qty_libre} x {price} = {total_libre:.2f} DH")
-                st.rerun()
-    
-    elif mode == t("cart"):
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            st.subheader(t("add_to_cart"))
-            code = st.text_input(t("barcode"), key="panier_code")
-            qty = st.number_input(f"{t('quantity')}:", min_value=0.0, step=0.1, key="panier_qty")
-            stocks = supabase.table("stock").select("*").eq("Code-barres", code).execute()
-            prix_u = 0
-            nom_produit = ""
-            for s in stocks.data: 
-                prix_u = float(s.get('Prix', 0))
-                nom_produit = s.get('Nom', '')
+        mode = st.radio(
+            t("sale_type"),
+            [t("normal_sale"), t("scan_qr"), t("free_sale"), t("cart")]
+        )
+        
+        if mode == t("normal_sale"):
+            col1, col2 = st.columns(2)
+            with col1:
+                code = st.text_input(t("barcode"), key="vente_normale_code")
+            with col2:
+                qty = st.number_input(t("quantity"), min_value=0.0, step=0.1, key="vente_normale_qty")
             
-            if prix_u > 0:
-                st.info(f"{t('product_name')}: {nom_produit} - {t('price')}: {prix_u:.2f} DH")
+            if not code:
+                df_stock_sale = get_df("stock")
+                if not df_stock_sale.empty and 'Nom' in df_stock_sale.columns:
+                    selected_by_name = st.selectbox(
+                        t("or_choose_name"),
+                        [""] + df_stock_sale['Nom'].tolist(),
+                        key="select_by_name"
+                    )
+                    if selected_by_name:
+                        code = selected_by_name
             
-            if st.button(t("add_to_cart")):
-                if code and qty > 0 and prix_u > 0:
-                    st.session_state.cart.append({
-                        "Code": code, 
-                        "Quantité": qty, 
-                        "Prix": prix_u, 
-                        "Total": prix_u * qty,
-                        "Nom": nom_produit
-                    })
-                    st.success(f"{t('add_to_cart')}: {nom_produit} x {qty}")
+            if st.button(t("confirm_sale")):
+                if code and qty > 0:
+                    product = get_product_info(code)
+                    if product:
+                        prix = float(product.get('Prix', 0))
+                        q_old = float(product.get('Quantité', 0))
+                        doc_id = product.get('id')
+                        nom = product.get('Nom', code)
+                        
+                        if q_old >= qty:
+                            total = prix * qty
+                            supabase.table("ventes").insert({
+                                "Code": code, 
+                                "Quantité": qty, 
+                                "Prix": prix, 
+                                "Total": total, 
+                                "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
+                                "Nom": nom
+                            }).execute()
+                            supabase.table("stock").update({"Quantité": q_old - qty}).eq("id", doc_id).execute()
+                            play_success_sound()
+                            st.success(f"{t('sale_success')} {nom} - {total:.2f} DH")
+                            st.rerun()
+                        else:
+                            st.error(f"{t('low_stock_warning')} {q_old}")
+                    else:
+                        st.error(t("product_not_found"))
+                else:
+                    st.error(t("fill_all_fields"))
+        
+        elif mode == t("scan_qr"):
+            st.subheader(t("scan_qr"))
+            col1, col2 = st.columns(2)
+            with col1:
+                code_qr = st.text_input(f"{t('barcode')} (auto)", key="qr_code")
+            with col2:
+                qty_qr = st.number_input(t("quantity"), min_value=0.0, step=0.1, value=1.0, key="qr_qty")
+            
+            fast_barcode_scanner_with_qty(f"{t('barcode')} (auto)", t("quantity"))
+            
+            if st.button(t("confirm_sale"), key="qr_sale"):
+                if code_qr and qty_qr > 0:
+                    product = get_product_info(code_qr)
+                    if product:
+                        prix = float(product.get('Prix', 0))
+                        q_old = float(product.get('Quantité', 0))
+                        doc_id = product.get('id')
+                        nom = product.get('Nom', code_qr)
+                        
+                        if q_old >= qty_qr:
+                            total = prix * qty_qr
+                            supabase.table("ventes").insert({
+                                "Code": code_qr, 
+                                "Quantité": qty_qr, 
+                                "Prix": prix, 
+                                "Total": total, 
+                                "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
+                                "Nom": nom
+                            }).execute()
+                            supabase.table("stock").update({"Quantité": q_old - qty_qr}).eq("id", doc_id).execute()
+                            play_success_sound()
+                            st.success(f"{t('sale_success')} {nom} - {qty_qr} x {prix} = {total:.2f} DH")
+                            st.rerun()
+                        else:
+                            st.error(f"{t('low_stock_warning')} {q_old}")
+                    else:
+                        st.error(t("product_not_found"))
+        
+        elif mode == t("free_sale"):
+            col1, col2 = st.columns(2)
+            with col1:
+                name = st.text_input(t("product_name"))
+            with col2:
+                price = st.number_input(t("price"), min_value=0.0)
+            qty_libre = st.number_input(t("quantity"), min_value=0.0, step=0.1, value=1.0)
+            
+            if st.button(t("confirm_sale")):
+                if name and price > 0:
+                    total_libre = float(price) * qty_libre
+                    supabase.table("ventes").insert({
+                        "Code": name, 
+                        "Quantité": qty_libre, 
+                        "Prix": float(price), 
+                        "Total": total_libre, 
+                        "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
+                        "Nom": name
+                    }).execute()
+                    play_success_sound()
+                    st.success(f"{t('sale_success')} {name} - {qty_libre} x {price} = {total_libre:.2f} DH")
                     st.rerun()
         
-        with col2:
-            st.subheader(t("cart"))
-            if st.session_state.cart:
-                total_panier = sum(item['Total'] for item in st.session_state.cart)
-                st.table(pd.DataFrame(st.session_state.cart))
-                st.metric(t("total"), f"{total_panier:.2f} DH")
+        elif mode == t("cart"):
+            # اختيار نوع السلة: يدوي أو تلقائي
+            cart_mode = st.radio(
+                t("cart_mode_label"),
+                [t("cart_manual"), t("cart_auto")],
+                horizontal=True
+            )
+            
+            # ========== السلة اليدوية (طريقة قديمة) ==========
+            if cart_mode == t("cart_manual"):
+                col1, col2 = st.columns([1, 1])
+                with col1:
+                    st.subheader(t("add_to_cart"))
+                    code = st.text_input(t("barcode"), key="panier_code")
+                    qty = st.number_input(f"{t('quantity')}:", min_value=0.0, step=0.1, key="panier_qty")
+                    
+                    product = get_product_info(code) if code else None
+                    prix_u = float(product['Prix']) if product else 0
+                    nom_produit = product.get('Nom', code) if product else ""
+                    
+                    if prix_u > 0:
+                        st.info(f"{t('product_name')}: {nom_produit} - {t('price')}: {prix_u:.2f} DH")
+                    
+                    if st.button(t("add_to_cart")):
+                        if code and qty > 0 and prix_u > 0:
+                            # التحقق إذا كان المنتج موجوداً مسبقاً في السلة
+                            found = False
+                            for item in st.session_state.cart:
+                                if item['Code'] == code:
+                                    item['Quantité'] += qty
+                                    item['Total'] = item['Quantité'] * item['Prix']
+                                    found = True
+                                    break
+                            if not found:
+                                st.session_state.cart.append({
+                                    "Code": code, 
+                                    "Quantité": qty, 
+                                    "Prix": prix_u, 
+                                    "Total": prix_u * qty,
+                                    "Nom": nom_produit
+                                })
+                            st.success(f"{t('add_to_cart')}: {nom_produit} x {qty}")
+                            st.rerun()
                 
-                col_btn1, col_btn2 = st.columns(2)
-                with col_btn1:
-                    if st.button(t("validate_cart")):
+                with col2:
+                    st.subheader(t("cart"))
+                    if st.session_state.cart:
+                        total_panier = sum(item['Total'] for item in st.session_state.cart)
+                        st.table(pd.DataFrame(st.session_state.cart))
+                        st.metric(t("total"), f"{total_panier:.2f} DH")
+                        
+                        if st.button(t("finish_cart"), type="primary", use_container_width=True):
+                            for item in st.session_state.cart:
+                                product = get_product_info(item['Code'])
+                                if product:
+                                    supabase.table("stock").update({
+                                        "Quantité": float(product['Quantité']) - item['Quantité']
+                                    }).eq("id", product['id']).execute()
+                                supabase.table("ventes").insert({
+                                    **item, 
+                                    "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
+                                }).execute()
+                            
+                            generate_pdf_80mm(st.session_state.cart)
+                            st.session_state.last_cart = st.session_state.cart.copy()
+                            st.session_state.cart = []
+                            play_success_sound()
+                            st.success(f"✅ {t('invoice_printed')}")
+                            st.rerun()
+                        
+                        col_btn1, col_btn2 = st.columns(2)
+                        with col_btn1:
+                            if st.button(t("validate_cart"), use_container_width=True):
+                                for item in st.session_state.cart:
+                                    product = get_product_info(item['Code'])
+                                    if product:
+                                        supabase.table("stock").update({
+                                            "Quantité": float(product['Quantité']) - item['Quantité']
+                                        }).eq("id", product['id']).execute()
+                                    supabase.table("ventes").insert({
+                                        **item, 
+                                        "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
+                                    }).execute()
+                                st.session_state.cart = []
+                                play_success_sound()
+                                st.success(t("sale_success"))
+                                st.rerun()
+                        
+                        with col_btn2:
+                            if st.button(t("clear_cart"), use_container_width=True):
+                                st.session_state.cart = []
+                                st.rerun()
+                    else:
+                        st.info(t("no_data"))
+            
+            # ========== السلة التلقائية (سكانير متواصل) ==========
+            else:
+                st.success(t("cart_auto_info"))
+                auto_cart_scanner()
+                
+                code_auto_cart = st.text_input(
+                    "Code-barres",
+                    key="auto_cart_scan_input",
+                    label_visibility="collapsed",
+                    placeholder="📸 Scannez vos produits ici..."
+                )
+                
+                if code_auto_cart:
+                    product = get_product_info(code_auto_cart)
+                    if product:
+                        if float(product['Quantité']) >= 1:
+                            # التعرف على المنتج الجديد تلقائياً
+                            found = False
+                            for item in st.session_state.cart:
+                                if item['Code'] == code_auto_cart:
+                                    item['Quantité'] += 1
+                                    item['Total'] = item['Quantité'] * item['Prix']
+                                    found = True
+                                    break
+                            if not found:
+                                prix_u = float(product['Prix'])
+                                nom_produit = product.get('Nom', code_auto_cart)
+                                st.session_state.cart.append({
+                                    "Code": code_auto_cart,
+                                    "Quantité": 1.0,
+                                    "Prix": prix_u,
+                                    "Total": prix_u,
+                                    "Nom": nom_produit
+                                })
+                            play_success_sound()
+                            st.success(f"✅ {product.get('Nom', code_auto_cart)} - {float(product['Prix']):.2f} DH ajouté au panier!")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Stock insuffisant pour {product.get('Nom', code_auto_cart)}")
+                    else:
+                        st.error(t("product_not_found"))
+                
+                st.divider()
+                st.subheader(f"🛒 {t('cart')} ({len(st.session_state.cart)} {t('cart_products_count')})")
+                
+                if st.session_state.cart:
+                    total_panier = sum(item['Total'] for item in st.session_state.cart)
+                    df_cart_display = pd.DataFrame(st.session_state.cart)
+                    st.dataframe(df_cart_display[['Nom', 'Quantité', 'Prix', 'Total']], use_container_width=True)
+                    st.metric(t("total"), f"{total_panier:.2f} DH")
+                    
+                    if st.button("🧾 Enregistrer et Imprimer la Facture", type="primary", use_container_width=True, key="auto_finish_cart"):
                         for item in st.session_state.cart:
-                            stocks = supabase.table("stock").select("*").eq("Code-barres", item['Code']).execute()
-                            for s in stocks.data:
-                                q_old = float(s.get('Quantité', 0))
-                                supabase.table("stock").update({"Quantité": q_old - item['Quantité']}).eq("id", s['id']).execute()
+                            product = get_product_info(item['Code'])
+                            if product:
+                                supabase.table("stock").update({
+                                    "Quantité": float(product['Quantité']) - item['Quantité']
+                                }).eq("id", product['id']).execute()
                             supabase.table("ventes").insert({
-                                **item, 
+                                **item,
                                 "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
                             }).execute()
                         
-                        generate_pdf(st.session_state.cart)
+                        generate_pdf_80mm(st.session_state.cart)
                         st.session_state.last_cart = st.session_state.cart.copy()
                         st.session_state.cart = []
-                        st.success(t("sale_success"))
+                        play_success_sound()
+                        st.success(f"✅ {t('invoice_printed')}")
+                        st.balloons()
+                        time.sleep(1.5)
                         st.rerun()
-                
-                with col_btn2:
-                    if st.button(t("clear_cart")):
+                    
+                    if st.button("🗑️ Vider le panier", use_container_width=True, key="auto_clear_cart"):
                         st.session_state.cart = []
                         st.rerun()
-            else:
-                st.info(t("no_credits"))
+                else:
+                    st.info(t("cart_empty"))
     
     st.divider()
     st.subheader(t("recent_sales"))
     df_ventes = get_df("ventes")
     if not df_ventes.empty:
-        st.dataframe(df_ventes)
+        st.dataframe(df_ventes.tail(10))
         total_ventes = df_ventes['Total'].sum() if 'Total' in df_ventes.columns else 0
         st.metric(t("total_sales"), f"{total_ventes:.2f} DH")
+    export_import_buttons("ventes", df_ventes)
 
 elif menu == t("stock"):
     st.header(t("stock"))
     
-    with st.expander(t("add_product"), expanded=True):
-        col1, col2, col3, col4 = st.columns(4)
-        with col1: name = st.text_input(t("product_name"))
-        with col2: price = st.number_input(t("price"), min_value=0.0)
-        with col3: qty = st.number_input(t("quantity"), min_value=0.0, step=0.1)
-        with col4: barcode = st.text_input(t("barcode"))
+    # خانة البحث
+    st.subheader(t("search_stock"))
+    search_term = st.text_input(
+        t("search_placeholder"),
+        key="stock_search",
+        placeholder="اكتب اسم المنتج أو الباركود للبحث..."
+    )
+    
+    df_stock = get_df("stock")
+    
+    if search_term and not df_stock.empty:
+        mask_nom = df_stock['Nom'].str.contains(search_term, case=False, na=False)
+        mask_code = df_stock['Code-barres'].str.contains(search_term, case=False, na=False) if 'Code-barres' in df_stock.columns else pd.Series([False] * len(df_stock))
+        df_stock = df_stock[mask_nom | mask_code]
         
-        if st.button(t("add_button")):
-            if name and barcode:
-                supabase.table("stock").insert({
+        if df_stock.empty:
+            st.info(t("no_results"))
+        else:
+            st.success(f"{t('search_results')} {len(df_stock)} produit(s)")
+    
+    # إضافة منتج جديد مع ماسح باركود
+    with st.expander(t("add_product"), expanded=True):
+        use_add_scanner = st.checkbox(t("stock_scanner_add"), key="add_scanner_checkbox")
+        if use_add_scanner:
+            stock_barcode_scanner("stock_barcode")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1: 
+            name = st.text_input(t("product_name"), key="stock_name")
+        with col2: 
+            price = st.number_input(t("price"), min_value=0.0, key="stock_price")
+        with col3: 
+            qty = st.number_input(t("quantity"), min_value=0.0, step=0.1, key="stock_qty")
+        with col4: 
+            barcode = st.text_input(t("barcode_optional"), key="stock_barcode")
+        
+        if st.button(t("add_button"), key="stock_add_btn"):
+            if name:
+                product_data = {
                     "Nom": name, 
                     "Prix": float(price), 
                     "Quantité": float(qty), 
-                    "Code-barres": barcode
-                }).execute()
-                st.success(t("product_added"))
-                st.rerun()
+                    "Code-barres": barcode if barcode else ""
+                }
+                try:
+                    supabase.table("stock").insert(product_data).execute()
+                    st.success(t("product_added"))
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"{t('error_generic')}: {str(e)}")
             else:
                 st.error(t("fill_all_fields"))
     
     st.subheader(t("current_stock"))
-    df_stock = get_df("stock")
-    st.dataframe(df_stock)
+    if not df_stock.empty:
+        df_display = df_stock.copy()
+        if 'Code-barres' in df_display.columns:
+            df_display['Code-barres'] = df_display['Code-barres'].replace('', '—')
+        st.dataframe(df_display, use_container_width=True)
+    else:
+        st.info(t("no_data"))
+    
+    export_import_buttons("stock", df_stock)
     
     st.subheader(t("stock_alert"))
     low_stock = check_stock_levels()
     if not low_stock.empty:
-        st.warning(f"{len(low_stock)} {t('low_stock_products')}")
-        st.dataframe(low_stock)
+        st.warning(f"⚠️ {len(low_stock)} {t('low_stock_products')}")
+        st.dataframe(low_stock[['Nom', 'Quantité', 'Prix']], use_container_width=True)
     else:
         st.success(t("stock_ok"))
     
-    with st.expander(t("update_product")):
-        if not df_stock.empty:
-            selected_product = st.selectbox(t("select_product"), df_stock['Nom'].tolist())
-            new_qty = st.number_input(t("new_quantity"), min_value=0.0, step=0.1)
-            new_price = st.number_input(t("new_price"), min_value=0.0)
+    if not df_stock.empty:
+        with st.expander(t("update_product")):
+            use_update_scanner = st.checkbox(t("stock_scanner_update"), key="update_scanner_checkbox")
+            if use_update_scanner:
+                stock_barcode_scanner("stock_update_barcode")
             
-            if st.button(t("update_button")):
+            selected_product = st.selectbox(
+                t("select_product"), 
+                df_stock['Nom'].tolist(),
+                key="stock_update_select"
+            )
+            
+            if selected_product:
                 product_data = df_stock[df_stock['Nom'] == selected_product].iloc[0]
-                update_data = {}
-                if new_qty > 0:
-                    update_data['Quantité'] = new_qty
-                if new_price > 0:
-                    update_data['Prix'] = new_price
-                if update_data:
-                    supabase.table("stock").update(update_data).eq("id", product_data['id']).execute()
-                    st.success(t("product_updated"))
-                    st.rerun()
-    
-    st.divider()
-    st.subheader(f"{t('export_import')} Stock")
-    sidebar_export_import("stock")
+                current_barcode = product_data.get('Code-barres', '')
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    new_qty = st.number_input(
+                        t("new_quantity"), 
+                        min_value=0.0, 
+                        step=0.1,
+                        value=float(product_data.get('Quantité', 0)),
+                        key="stock_update_qty"
+                    )
+                with col2:
+                    new_price = st.number_input(
+                        t("new_price"), 
+                        min_value=0.0,
+                        value=float(product_data.get('Prix', 0)),
+                        key="stock_update_price"
+                    )
+                with col3:
+                    new_barcode = st.text_input(
+                        t("barcode_optional"),
+                        value=str(current_barcode) if current_barcode else "",
+                        key="stock_update_barcode"
+                    )
+                
+                if st.button(t("update_button"), key="stock_update_btn"):
+                    update_data = {
+                        'Quantité': new_qty,
+                        'Prix': new_price,
+                        'Code-barres': new_barcode if new_barcode else ""
+                    }
+                    try:
+                        supabase.table("stock").update(update_data).eq("id", product_data['id']).execute()
+                        st.success(t("product_updated"))
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"{t('error_generic')}: {str(e)}")
 
 elif menu == t("impression"):
     st.header(t("impression"))
     col1, col2 = st.columns(2)
     with col1:
-        p = st.number_input(t("price_per_page"), min_value=0.0)
+        p = st.number_input(t("price_per_page"), min_value=0.0, key="print_price")
     with col2:
-        n = st.number_input(t("number_of_pages"), min_value=0.0, step=0.1)
+        n = st.number_input(t("number_of_pages"), min_value=0.0, step=0.1, key="print_nb")
     
     total_imp = p * n
     if total_imp > 0:
         st.metric(t("total"), f"{total_imp:.2f} DH")
     
-    if st.button(t("save_print")):
+    if st.button(t("save_print"), key="print_save_btn"):
         if p > 0 and n > 0:
-            supabase.table("impressions").insert({
-                "Date": datetime.now().strftime('%d/%m/%Y %H:%M'), 
-                "Prix_Page": float(p), 
-                "Nombre": float(n), 
-                "Total": float(p) * float(n)
-            }).execute()
-            generate_impression_pdf(p, n)
-            st.success(t("sale_success"))
-            if os.path.exists("facture_impression.pdf"):
-                with open("facture_impression.pdf", "rb") as f:
-                    st.download_button(t("download_print_invoice"), f, "facture_impression.pdf")
+            try:
+                supabase.table("impressions").insert({
+                    "Date": datetime.now().strftime('%d/%m/%Y %H:%M'), 
+                    "Prix_Page": float(p), 
+                    "Nombre": float(n), 
+                    "Total": float(p) * float(n)
+                }).execute()
+                generate_impression_pdf(p, n)
+                st.success(t("sale_success"))
+                if os.path.exists("facture_impression.pdf"):
+                    with open("facture_impression.pdf", "rb") as f:
+                        st.download_button(t("download_print_invoice"), f, "facture_impression.pdf")
+            except Exception as e:
+                st.error(f"{t('error_generic')}: {str(e)}")
     
     st.divider()
     st.subheader(t("print_history"))
     df_imp = get_df("impressions")
     if not df_imp.empty:
-        st.dataframe(df_imp)
+        st.dataframe(df_imp, use_container_width=True)
         total_impressions = df_imp['Total'].sum() if 'Total' in df_imp.columns else 0
         st.metric(t("total_printing"), f"{total_impressions:.2f} DH")
+    else:
+        st.info(t("no_data"))
+    
+    export_import_buttons("impressions", df_imp)
 
 elif menu == t("caisse"):
     st.header(t("caisse"))
     
     df_ventes_caisse = get_df("ventes")
     df_impressions_caisse = get_df("impressions")
+    df_credits_caisse = get_df("credits")
     
     total_ventes = df_ventes_caisse['Total'].sum() if not df_ventes_caisse.empty and 'Total' in df_ventes_caisse.columns else 0
     total_impressions = df_impressions_caisse['Total'].sum() if not df_impressions_caisse.empty and 'Total' in df_impressions_caisse.columns else 0
-    total_credits = get_df("credits")['Montant'].sum() if not get_df("credits").empty and 'Montant' in get_df("credits").columns else 0
+    total_credits = df_credits_caisse['Montant'].sum() if not df_credits_caisse.empty and 'Montant' in df_credits_caisse.columns else 0
     
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -1410,19 +1684,26 @@ elif menu == t("caisse"):
     st.divider()
     st.subheader(t("reset_caisse"))
     st.warning(t("reset_warning"))
+    st.error("⚠️ تحذير: هذا الزر سيحفظ ملخص اليوم ثم يمسح جميع بيانات اليوم (مبيعات، طباعة، ديون)")
     
     if st.button(t("reset_button"), type="primary"):
         st.session_state.caisse_reset_confirmed = True
     
     if st.session_state.caisse_reset_confirmed:
-        st.error(t("confirm_reset"))
+        st.error("❌ هل أنت متأكد؟ سيتم مسح جميع بيانات اليوم نهائياً!")
         col_confirm, col_cancel = st.columns(2)
         with col_confirm:
             if st.button(t("yes_reset")):
-                total_jour = reset_caisse()
-                st.success(f"{t('reset_success')} {total_jour:.2f} DH")
-                st.session_state.caisse_reset_confirmed = False
-                st.balloons()
+                try:
+                    total_jour = reset_caisse()
+                    st.success(f"✅ {t('reset_success')} {total_jour:.2f} DH - تم مسح جميع بيانات اليوم")
+                    st.session_state.caisse_reset_confirmed = False
+                    st.balloons()
+                    time.sleep(2)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"{t('error_generic')}: {str(e)}")
+                    st.session_state.caisse_reset_confirmed = False
         with col_cancel:
             if st.button(t("cancel")):
                 st.session_state.caisse_reset_confirmed = False
@@ -1432,33 +1713,42 @@ elif menu == t("caisse"):
     st.subheader(t("history"))
     df_historique = get_df("historique_caisse")
     if not df_historique.empty:
-        st.dataframe(df_historique)
+        st.dataframe(df_historique, use_container_width=True)
         total_historique = df_historique['Total_Jour'].sum() if 'Total_Jour' in df_historique.columns else 0
         st.metric(t("grand_total"), f"{total_historique:,.2f} DH")
+    else:
+        st.info(t("no_data"))
+    
+    export_import_buttons("historique_caisse", df_historique)
     
     st.subheader(t("recent_sales"))
     if not df_ventes_caisse.empty:
-        st.dataframe(df_ventes_caisse.tail(20))
+        st.dataframe(df_ventes_caisse.tail(20), use_container_width=True)
+    else:
+        st.info(t("no_data"))
 
 elif menu == t("credits"):
     st.header(t("credits"))
     
-    with st.expander(t("add_credit")):
+    with st.expander(t("add_credit"), expanded=True):
         col1, col2 = st.columns(2)
         with col1:
-            client = st.text_input(t("client_name"))
+            client = st.text_input(t("client_name"), key="credit_client")
         with col2:
-            montant = st.number_input(t("amount"), min_value=0.0)
+            montant = st.number_input(t("amount"), min_value=0.0, key="credit_amount")
         
-        if st.button(t("add_credit_button")):
+        if st.button(t("add_credit_button"), key="credit_add_btn"):
             if client and montant > 0:
-                supabase.table("credits").insert({
-                    "Client": client, 
-                    "Montant": float(montant),
-                    "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
-                }).execute()
-                st.success(f"{client} - {montant:.2f} DH")
-                st.rerun()
+                try:
+                    supabase.table("credits").insert({
+                        "Client": client, 
+                        "Montant": float(montant),
+                        "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
+                    }).execute()
+                    st.success(f"✅ {client} - {montant:.2f} DH")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"{t('error_generic')}: {str(e)}")
             else:
                 st.error(t("fill_all_fields"))
     
@@ -1466,9 +1756,11 @@ elif menu == t("credits"):
     st.subheader(t("credit_list"))
     df_credits = get_df("credits")
     if not df_credits.empty:
-        st.dataframe(df_credits)
+        st.dataframe(df_credits, use_container_width=True)
         total_credits = df_credits['Montant'].sum() if 'Montant' in df_credits.columns else 0
         st.metric(t("total_credits"), f"{total_credits:,.2f} DH")
+        
+        export_import_buttons("credits", df_credits)
         
         st.divider()
         st.subheader(t("reduce_credit"))
@@ -1477,34 +1769,51 @@ elif menu == t("credits"):
         col_credit1, col_credit2 = st.columns(2)
         with col_credit1:
             if 'id' in df_credits.columns:
+                credit_options = df_credits.apply(
+                    lambda x: f"{x['Client']} - {x['Montant']:.2f} DH (ID: {x['id']})",
+                    axis=1
+                ).tolist()
+                
                 credit_a_reduire = st.selectbox(
                     t("select_credit"),
-                    df_credits.apply(lambda x: f"{x['Client']} - {x['Montant']:.2f} DH (ID: {x['id']})", axis=1).tolist()
+                    credit_options,
+                    key="credit_select"
                 )
         with col_credit2:
-            montant_reduction = st.number_input(t("payment_amount"), min_value=0.0, step=0.5)
+            montant_reduction = st.number_input(
+                t("payment_amount"),
+                min_value=0.0,
+                step=0.5,
+                key="credit_reduction"
+            )
         
-        if st.button(t("pay_button"), type="primary"):
+        if st.button(t("pay_button"), type="primary", key="credit_pay_btn"):
             if credit_a_reduire and montant_reduction > 0:
-                credit_id = int(credit_a_reduire.split("ID: ")[1].replace(")", ""))
-                credit_data = supabase.table("credits").select("*").eq("id", credit_id).execute().data[0]
-                
-                if montant_reduction > float(credit_data['Montant']):
-                    st.error(f"{t('payment_amount')} ({montant_reduction:.2f}) > {t('amount')} ({credit_data['Montant']:.2f})!")
-                else:
-                    nouveau = reduce_credit(credit_id, montant_reduction)
-                    if nouveau == 0:
-                        st.success(f"✅ {t('sale_success')}")
-                        supabase.table("credits").delete().eq("id", credit_id).execute()
+                try:
+                    credit_id = int(credit_a_reduire.split("ID: ")[1].replace(")", ""))
+                    credit_data = supabase.table("credits").select("*").eq("id", credit_id).execute().data[0]
+                    
+                    if montant_reduction > float(credit_data['Montant']):
+                        st.error(f"❌ {t('payment_amount')} ({montant_reduction:.2f}) > {t('amount')} ({credit_data['Montant']:.2f})!")
                     else:
-                        st.success(f"✅ {t('pay_button')}: {montant_reduction:.2f} DH | Reste: {nouveau:.2f} DH")
-                    st.rerun()
+                        nouveau = reduce_credit(credit_id, montant_reduction)
+                        if nouveau == 0:
+                            st.success(f"✅ Crédit entièrement remboursé!")
+                            supabase.table("credits").delete().eq("id", credit_id).execute()
+                        else:
+                            st.success(f"✅ Payé: {montant_reduction:.2f} DH | Reste: {nouveau:.2f} DH")
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"{t('error_generic')}: {str(e)}")
         
         st.divider()
         st.subheader(t("payment_history"))
         df_paiements = get_df("paiements_credits")
         if not df_paiements.empty:
-            st.dataframe(df_paiements)
+            st.dataframe(df_paiements, use_container_width=True)
+            export_import_buttons("paiements_credits", df_paiements)
+        else:
+            st.info(t("no_data"))
     else:
         st.info(t("no_credits"))
 
@@ -1517,13 +1826,16 @@ elif menu == t("factures"):
         total_last = sum(item['Total'] for item in st.session_state.last_cart)
         st.metric(t("total"), f"{total_last:.2f} DH")
         
-        if st.button(t("print_invoice")):
-            generate_pdf(st.session_state.last_cart)
+        if st.button(t("print_invoice"), key="facture_print_btn"):
+            generate_pdf_80mm(st.session_state.last_cart)
             st.success(t("sale_success"))
     
-    if os.path.exists("facture.pdf"):
-        with open("facture.pdf", "rb") as f:
-            st.download_button(t("download_sale_invoice"), f, "facture.pdf")
+    st.divider()
+    st.subheader("📥 Télécharger les factures")
+    
+    if os.path.exists("facture_80mm.pdf"):
+        with open("facture_80mm.pdf", "rb") as f:
+            st.download_button(t("download_sale_invoice"), f, "facture_80mm.pdf")
     
     if os.path.exists("facture_impression.pdf"):
         with open("facture_impression.pdf", "rb") as f:
@@ -1537,7 +1849,9 @@ elif menu == t("factures"):
     st.subheader(t("all_sales"))
     df_all_ventes = get_df("ventes")
     if not df_all_ventes.empty:
-        st.dataframe(df_all_ventes)
+        st.dataframe(df_all_ventes, use_container_width=True)
+    else:
+        st.info(t("no_data"))
 
 elif menu == t("commandes"):
     st.header(t("commandes"))
@@ -1576,18 +1890,21 @@ elif menu == t("commandes"):
             col_btn1, col_btn2, col_btn3 = st.columns(3)
             with col_btn1:
                 if st.button(t("save_order")):
-                    for item in st.session_state.commande_cart:
-                        supabase.table("commandes").insert({
-                            "Nom": item['Nom'],
-                            "Qté": item['Qté'],
-                            "Prix_U": item['Prix_U'],
-                            "Total": item['Total'],
-                            "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
-                            "Statut": "En attente"
-                        }).execute()
-                    st.success(t("order_saved"))
-                    st.session_state.commande_cart = []
-                    st.rerun()
+                    try:
+                        for item in st.session_state.commande_cart:
+                            supabase.table("commandes").insert({
+                                "Nom": item['Nom'],
+                                "Qté": item['Qté'],
+                                "Prix_U": item['Prix_U'],
+                                "Total": item['Total'],
+                                "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
+                                "Statut": "En attente"
+                            }).execute()
+                        st.success(t("order_saved"))
+                        st.session_state.commande_cart = []
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"{t('error_generic')}: {str(e)}")
             
             with col_btn2:
                 if st.button(t("print_order")):
@@ -1608,7 +1925,8 @@ elif menu == t("commandes"):
     st.subheader(t("previous_orders"))
     df_commandes = get_df("commandes")
     if not df_commandes.empty:
-        st.dataframe(df_commandes)
+        st.dataframe(df_commandes, use_container_width=True)
+        export_import_buttons("commandes", df_commandes)
         
         st.subheader(t("confirm_reception"))
         if 'id' in df_commandes.columns and 'Statut' in df_commandes.columns:
@@ -1620,159 +1938,15 @@ elif menu == t("commandes"):
                 )
                 if st.button(t("confirm_button")):
                     if cmd_to_confirm:
-                        cmd_id = int(cmd_to_confirm.split("ID: ")[1].split(" -")[0])
-                        confirm_purchase(cmd_id)
-                        st.success(t("order_received"))
-                        st.rerun()
+                        try:
+                            cmd_id = int(cmd_to_confirm.split("ID: ")[1].split(" -")[0])
+                            confirm_purchase(cmd_id)
+                            st.success(t("order_received"))
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"{t('error_generic')}: {str(e)}")
             else:
                 st.info(t("no_pending_orders"))
-
-elif menu == t("reports"):
-    st.header(t("reports"))
-    
-    tab1, tab2, tab3 = st.tabs([
-        t("sales_evolution"),
-        t("comparison_periods"),
-        t("revenue_analysis")
-    ])
-    
-    with tab1:
-        st.subheader(t("sales_evolution"))
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            date_debut = st.date_input(
-                t("start_date"),
-                value=datetime.now() - timedelta(days=30)
-            )
-        with col2:
-            date_fin = st.date_input(
-                t("end_date"),
-                value=datetime.now()
-            )
-        
-        if st.button(t("generate_report"), key="gen_evolution"):
-            df_ventes_all = get_df("ventes")
-            ventes_filtrees = filter_data_by_date(df_ventes_all, 'Date', date_debut, date_fin)
-            
-            if not ventes_filtrees.empty:
-                # رسم بياني لتطور المبيعات
-                fig = generate_sales_evolution_chart(ventes_filtrees)
-                if fig:
-                    st.plotly_chart(fig, use_container_width=True)
-                
-                # إحصائيات
-                col_m1, col_m2, col_m3 = st.columns(3)
-                with col_m1:
-                    best_day = ventes_filtrees.groupby(
-                        pd.to_datetime(ventes_filtrees['Date'], format='%d/%m/%Y %H:%M', errors='coerce').dt.date
-                    )['Total'].sum().max()
-                    st.metric(t("best_day"), f"{best_day:.2f} DH" if best_day else "0 DH")
-                
-                with col_m2:
-                    total_period = ventes_filtrees['Total'].sum()
-                    jours = (date_fin - date_debut).days + 1
-                    st.metric(t("average_daily"), f"{(total_period/jours):.2f} DH" if jours > 0 else "0 DH")
-                
-                with col_m3:
-                    nb_transactions = len(ventes_filtrees)
-                    st.metric("Nombre de transactions", nb_transactions)
-                
-                # المنتجات الأكثر مبيعاً
-                st.subheader(t("top_products"))
-                top_products = get_top_products(ventes_filtrees)
-                if not top_products.empty:
-                    fig_top = generate_top_products_chart(top_products)
-                    if fig_top:
-                        st.plotly_chart(fig_top, use_container_width=True)
-                    st.dataframe(top_products)
-            else:
-                st.warning(t("no_data"))
-    
-    with tab2:
-        st.subheader(t("comparison_periods"))
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown(f"**{t('period1')}**")
-            start1 = st.date_input(
-                t("start_date"),
-                value=datetime.now() - timedelta(days=60),
-                key="start1"
-            )
-            end1 = st.date_input(
-                t("end_date"),
-                value=datetime.now() - timedelta(days=31),
-                key="end1"
-            )
-        
-        with col2:
-            st.markdown(f"**{t('period2')}**")
-            start2 = st.date_input(
-                t("start_date"),
-                value=datetime.now() - timedelta(days=30),
-                key="start2"
-            )
-            end2 = st.date_input(
-                t("end_date"),
-                value=datetime.now(),
-                key="end2"
-            )
-        
-        if st.button(t("compare"), key="compare_periods"):
-            result = generate_period_comparison(start1, end1, start2, end2)
-            
-            col_r1, col_r2, col_r3 = st.columns(3)
-            with col_r1:
-                st.metric(
-                    f"{t('period1')} ({start1} → {end1})",
-                    f"{result['period1_total']:.2f} DH"
-                )
-            with col_r2:
-                st.metric(
-                    f"{t('period2')} ({start2} → {end2})",
-                    f"{result['period2_total']:.2f} DH",
-                    delta=f"{result['difference']:.2f} DH"
-                )
-            with col_r3:
-                couleur = "normal" if result['pourcentage'] >= 0 else "inverse"
-                st.metric(
-                    "Évolution",
-                    f"{result['pourcentage']:.1f}%",
-                    delta=f"{result['pourcentage']:.1f}%"
-                )
-            
-            # مقارنة بيانية
-            fig_comp = go.Figure(data=[
-                go.Bar(name=t('period1'), x=['Total'], y=[result['period1_total']]),
-                go.Bar(name=t('period2'), x=['Total'], y=[result['period2_total']])
-            ])
-            fig_comp.update_layout(title=t('comparison_periods'), height=400)
-            st.plotly_chart(fig_comp, use_container_width=True)
-    
-    with tab3:
-        st.subheader(t("revenue_analysis"))
-        
-        df_ventes_all = get_df("ventes")
-        df_impressions_all = get_df("impressions")
-        
-        total_ventes_global = df_ventes_all['Total'].sum() if not df_ventes_all.empty and 'Total' in df_ventes_all.columns else 0
-        total_impressions_global = df_impressions_all['Total'].sum() if not df_impressions_all.empty and 'Total' in df_impressions_all.columns else 0
-        
-        # مخطط دائري
-        fig_pie = generate_revenue_pie_chart(total_ventes_global, total_impressions_global)
-        st.plotly_chart(fig_pie, use_container_width=True)
-        
-        col_a1, col_a2 = st.columns(2)
-        with col_a1:
-            st.metric(t("total_sales"), f"{total_ventes_global:.2f} DH")
-            pourcentage_ventes = (total_ventes_global / (total_ventes_global + total_impressions_global) * 100) if (total_ventes_global + total_impressions_global) > 0 else 0
-            st.caption(f"{pourcentage_ventes:.1f}% du chiffre d'affaires")
-        
-        with col_a2:
-            st.metric(t("total_printing"), f"{total_impressions_global:.2f} DH")
-            pourcentage_impressions = (total_impressions_global / (total_ventes_global + total_impressions_global) * 100) if (total_ventes_global + total_impressions_global) > 0 else 0
-            st.caption(f"{pourcentage_impressions:.1f}% du chiffre d'affaires")
 
 # إخفاء footer Streamlit
 hide_streamlit_style = """
