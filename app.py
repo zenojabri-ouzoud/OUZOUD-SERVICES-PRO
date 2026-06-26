@@ -2420,40 +2420,40 @@ elif menu == t("outils"):
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        if st.button("📄 Word", use_container_width=True):
+        if st.button("📄 Word", use_container_width=True, key="open_word_btn"):
             components.html("""
             <script>
-            window.open('https://www.office.com/launch/word', '_blank');
+            window.location.href = 'ms-word:ofe|u|';
             </script>
             """)
-            st.success("✅ تم فتح Word")
+            st.success("✅ تم فتح Word على الكمبيوتر")
     
     with col2:
-        if st.button("📊 Excel", use_container_width=True):
+        if st.button("📊 Excel", use_container_width=True, key="open_excel_btn"):
             components.html("""
             <script>
-            window.open('https://www.office.com/launch/excel', '_blank');
+            window.location.href = 'ms-excel:ofe|u|';
             </script>
             """)
-            st.success("✅ تم فتح Excel")
+            st.success("✅ تم فتح Excel على الكمبيوتر")
     
     with col3:
-        if st.button("📽️ PowerPoint", use_container_width=True):
+        if st.button("📽️ PowerPoint", use_container_width=True, key="open_powerpoint_btn"):
             components.html("""
             <script>
-            window.open('https://www.office.com/launch/powerpoint', '_blank');
+            window.location.href = 'ms-powerpoint:ofe|u|';
             </script>
             """)
-            st.success("✅ تم فتح PowerPoint")
+            st.success("✅ تم فتح PowerPoint على الكمبيوتر")
     
     with col4:
-        if st.button("📧 Gmail", use_container_width=True):
+        if st.button("📧 Gmail", use_container_width=True, key="open_gmail_btn"):
             components.html("""
             <script>
             window.open('https://mail.google.com', '_blank');
             </script>
             """)
-            st.success("✅ تم فتح Gmail")
+            st.success("✅ تم فتح Gmail في المتصفح")
     
     st.markdown("---")
     
@@ -2474,14 +2474,14 @@ elif menu == t("outils"):
             key="whatsapp_message_input"
         )
     
-    if st.button(t("whatsapp_open"), use_container_width=True, type="primary"):
-        whatsapp_url = f"https://wa.me/{whatsapp_number}?text={whatsapp_message}"
+    if st.button(t("whatsapp_open"), use_container_width=True, type="primary", key="open_whatsapp_btn"):
+        whatsapp_url = f"https://web.whatsapp.com/send?phone={whatsapp_number}&text={whatsapp_message}"
         components.html(f"""
         <script>
         window.open('{whatsapp_url}', '_blank');
         </script>
         """)
-        st.success(f"✅ تم فتح WhatsApp للرقم {whatsapp_number}")
+        st.success(f"✅ تم فتح WhatsApp Web للرقم {whatsapp_number}")
     
     st.markdown("---")
     
@@ -2494,7 +2494,7 @@ elif menu == t("outils"):
         key="google_query_input"
     )
     
-    if google_query and st.button("🔍 بحث", use_container_width=True, type="primary"):
+    if google_query and st.button("🔍 بحث", use_container_width=True, type="primary", key="search_google_btn"):
         search_url = f"https://www.google.com/search?q={google_query}"
         components.html(f"""
         <script>
@@ -2507,7 +2507,7 @@ elif menu == t("outils"):
     st.markdown("---")
     st.subheader(t("google_embedded"))
     
-    if st.checkbox(t("show_google")):
+    if st.checkbox(t("show_google"), key="show_google_checkbox"):
         google_iframe = """
         <iframe src="https://www.google.com/webhp?igu=1" 
                 width="100%" 
