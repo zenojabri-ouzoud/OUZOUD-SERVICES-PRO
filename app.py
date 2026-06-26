@@ -85,6 +85,11 @@ translations = {
         "fr": "📋 Commandes Fournisseur",
         "en": "📋 Supplier Orders"
     },
+    "services": {
+        "ar": "🔧 الخدمات الإلكترونية",
+        "fr": "🔧 Services Électroniques",
+        "en": "🔧 Electronic Services"
+    },
     "activate_scanner": {
         "ar": "📸 تفعيل الماسح الضوئي السريع",
         "fr": "📸 Activer le scanner rapide",
@@ -650,6 +655,56 @@ translations = {
         "fr": "📸 Scanner pour modifier",
         "en": "📸 Scan barcode to update"
     },
+    "service_select": {
+        "ar": "اختر الخدمة المطلوبة:",
+        "fr": "Choisissez le service:",
+        "en": "Select service:"
+    },
+    "service_selected": {
+        "ar": "الخدمة المختارة:",
+        "fr": "Service sélectionné:",
+        "en": "Selected service:"
+    },
+    "service_quantity": {
+        "ar": "الكمية / العدد",
+        "fr": "Quantité / Nombre",
+        "en": "Quantity / Number"
+    },
+    "service_confirm": {
+        "ar": "✅ إتمام الخدمة وطباعة الفاتورة",
+        "fr": "✅ Terminer le service et imprimer la facture",
+        "en": "✅ Complete service and print invoice"
+    },
+    "service_history": {
+        "ar": "📋 سجل الخدمات",
+        "fr": "📋 Historique des services",
+        "en": "📋 Service History"
+    },
+    "service_total": {
+        "ar": "💰 إجمالي الخدمات",
+        "fr": "💰 Total des services",
+        "en": "💰 Total Services"
+    },
+    "service_client_info": {
+        "ar": "📝 معلومات العميل (اختياري)",
+        "fr": "📝 Informations client (Optionnel)",
+        "en": "📝 Client Information (Optional)"
+    },
+    "service_client_name": {
+        "ar": "اسم العميل",
+        "fr": "Nom du client",
+        "en": "Client Name"
+    },
+    "service_client_tel": {
+        "ar": "رقم الهاتف",
+        "fr": "Numéro de téléphone",
+        "en": "Phone Number"
+    },
+    "service_no_history": {
+        "ar": "لا توجد خدمات سابقة",
+        "fr": "Aucun service précédent",
+        "en": "No previous services"
+    },
 }
 
 def t(key):
@@ -1035,6 +1090,9 @@ if "commande_cart" not in st.session_state: st.session_state.commande_cart = []
 if "caisse_reset_confirmed" not in st.session_state: st.session_state.caisse_reset_confirmed = False
 if "auto_sale_mode" not in st.session_state: st.session_state.auto_sale_mode = False
 if "live_sync_active" not in st.session_state: st.session_state.live_sync_active = False
+if "selected_service" not in st.session_state: st.session_state.selected_service = None
+if "selected_service_price" not in st.session_state: st.session_state.selected_service_price = 0.0
+if "selected_service_unit" not in st.session_state: st.session_state.selected_service_unit = ""
 
 # --- صفحة تسجيل الدخول ---
 if not st.session_state.authenticated:
@@ -1091,7 +1149,8 @@ with st.sidebar:
         t("caisse"),
         t("credits"),
         t("factures"),
-        t("commandes")
+        t("commandes"),
+        t("services")
     ]
     menu = st.selectbox(t("menu_main"), menu_options)
     
@@ -1947,6 +2006,139 @@ elif menu == t("commandes"):
                             st.error(f"{t('error_generic')}: {str(e)}")
             else:
                 st.info(t("no_pending_orders"))
+
+# ==================== SERVICES ====================
+elif menu == t("services"):
+    st.header(t("services"))
+    st.markdown("---")
+    
+    # قائمة الخدمات الإلكترونية
+    services_list = {
+        "📄 نسخ ورق (Photocopie)": {"price": 0.50, "unit": "page", "icon": "📄"},
+        "🖨️ طباعة ورق (Impression)": {"price": 1.00, "unit": "page", "icon": "🖨️"},
+        "📧 إرسال بريد إلكتروني": {"price": 5.00, "unit": "email", "icon": "📧"},
+        "📱 شحن رصيد": {"price": 10.00, "unit": "recharge", "icon": "📱"},
+        "💳 دفع فاتورة": {"price": 5.00, "unit": "facture", "icon": "💳"},
+        "📄 طلب وثيقة إدارية": {"price": 20.00, "unit": "document", "icon": "📄"},
+        "📸 تصوير مستندات": {"price": 2.00, "unit": "photo", "icon": "📸"},
+        "📋 تعبئة استمارة": {"price": 15.00, "unit": "form", "icon": "📋"},
+        "✉️ إرسال رسالة": {"price": 3.00, "unit": "message", "icon": "✉️"},
+        "📞 خدمة هاتفية": {"price": 2.00, "unit": "call", "icon": "📞"},
+        "🖊️ كتابة خطاب": {"price": 25.00, "unit": "letter", "icon": "🖊️"},
+        "📑 تصوير وثائق": {"price": 1.00, "unit": "page", "icon": "📑"},
+    }
+    
+    # عرض الخدمات في شبكة
+    st.subheader(t("service_select"))
+    
+    cols = st.columns(3)
+    selected_service = None
+    
+    for i, (service_name, service_info) in enumerate(services_list.items()):
+        col = cols[i % 3]
+        with col:
+            if st.button(
+                f"{service_info['icon']} {service_name}\n{service_info['price']:.2f} DH / {service_info['unit']}",
+                use_container_width=True,
+                key=f"service_{i}"
+            ):
+                selected_service = service_name
+                st.session_state.selected_service = service_name
+                st.session_state.selected_service_price = service_info['price']
+                st.session_state.selected_service_unit = service_info['unit']
+    
+    st.markdown("---")
+    
+    # نموذج الخدمة المختارة
+    if "selected_service" in st.session_state and st.session_state.selected_service:
+        st.subheader(f"{t('service_selected')} {st.session_state.selected_service}")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            quantity = st.number_input(
+                t("service_quantity"),
+                min_value=1,
+                value=1,
+                step=1,
+                key="service_quantity"
+            )
+        with col2:
+            prix_unitaire = st.number_input(
+                t("price"),
+                min_value=0.0,
+                value=st.session_state.selected_service_price,
+                step=0.5,
+                key="service_price_input"
+            )
+        
+        total_service = quantity * prix_unitaire
+        
+        if total_service > 0:
+            st.metric(t("total"), f"{total_service:.2f} DH")
+        
+        # معلومات العميل (اختياري)
+        with st.expander(t("service_client_info"), expanded=False):
+            client_name = st.text_input(t("service_client_name"), key="service_client_name_input")
+            client_tel = st.text_input(t("service_client_tel"), key="service_client_tel_input")
+        
+        # زر إتمام الخدمة وطباعة الفاتورة
+        if st.button(t("service_confirm"), type="primary", use_container_width=True, key="service_confirm_btn"):
+            # تحضير بيانات الفاتورة
+            service_cart = [{
+                "Code": st.session_state.selected_service,
+                "Nom": st.session_state.selected_service,
+                "Quantité": quantity,
+                "Prix": prix_unitaire,
+                "Total": total_service
+            }]
+            
+            # تسجيل الخدمة في المبيعات
+            supabase.table("ventes").insert({
+                "Code": st.session_state.selected_service,
+                "Quantité": float(quantity),
+                "Prix": float(prix_unitaire),
+                "Total": float(total_service),
+                "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
+                "Nom": st.session_state.selected_service
+            }).execute()
+            
+            # طباعة الفاتورة
+            generate_pdf_80mm(service_cart)
+            
+            # صوت النجاح
+            play_success_sound()
+            
+            # رسالة نجاح
+            st.success(f"✅ تم إتمام الخدمة: {st.session_state.selected_service} - {total_service:.2f} DH")
+            st.balloons()
+            
+            # عرض الفاتورة للتحميل
+            if os.path.exists("facture_80mm.pdf"):
+                with open("facture_80mm.pdf", "rb") as f:
+                    st.download_button(
+                        "📥 تحميل الفاتورة",
+                        f,
+                        "facture_80mm.pdf",
+                        mime="application/pdf",
+                        key="download_service_invoice"
+                    )
+    
+    st.markdown("---")
+    
+    # سجل الخدمات السابقة
+    st.subheader(t("service_history"))
+    df_services = get_df("ventes")
+    if not df_services.empty:
+        # عرض فقط الخدمات (التي تبدأ بأيقونة)
+        services_df = df_services[df_services['Nom'].isin(services_list.keys())]
+        if not services_df.empty:
+            st.dataframe(services_df.tail(10), use_container_width=True)
+            total_services = services_df['Total'].sum() if 'Total' in services_df.columns else 0
+            st.metric(t("service_total"), f"{total_services:.2f} DH")
+        else:
+            st.info(t("service_no_history"))
+    else:
+        st.info(t("no_data"))
 
 # إخفاء footer Streamlit
 hide_streamlit_style = """
