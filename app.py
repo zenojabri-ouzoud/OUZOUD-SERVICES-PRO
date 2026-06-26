@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from supabase import create_client, client
+from supabase import create_client, Client
 import os
 from fpdf import FPDF
 from datetime import datetime
@@ -1919,7 +1919,7 @@ elif menu == t("credits"):
         with col2:
             montant = st.number_input(t("amount"), min_value=0.0, key="credit_amount")
         
-        if st.button(t("add_credit_button"), key="credit_add_btn"):
+        if st.button(t("add_credit_button"), key="add_new_credit_btn"):
             if client and montant > 0:
                 try:
                     supabase.table("credits").insert({
@@ -1997,7 +1997,7 @@ elif menu == t("credits"):
         
         # زر إضافة للدين (يزيد المبلغ)
         with col_add:
-            if st.button(t("add_to_credit"), use_container_width=True, key="credit_add_btn"):
+            if st.button(t("add_to_credit"), use_container_width=True, key="add_to_existing_credit_btn"):
                 if credit_a_reduire and montant_operation > 0:
                     try:
                         credit_id = int(credit_a_reduire.split("ID: ")[1].replace(")", ""))
@@ -2012,7 +2012,7 @@ elif menu == t("credits"):
         
         # زر تسديد (ينقص المبلغ)
         with col_pay:
-            if st.button(t("pay_button"), use_container_width=True, key="credit_pay_btn"):
+            if st.button(t("pay_button"), use_container_width=True, key="pay_existing_credit_btn"):
                 if credit_a_reduire and montant_operation > 0:
                     try:
                         credit_id = int(credit_a_reduire.split("ID: ")[1].replace(")", ""))
@@ -2036,7 +2036,7 @@ elif menu == t("credits"):
         
         # زر حذف الدين نهائياً
         with col_delete:
-            if st.button(t("delete_credit"), use_container_width=True, key="credit_delete_btn"):
+            if st.button(t("delete_credit"), use_container_width=True, key="delete_existing_credit_btn"):
                 if credit_a_reduire:
                     try:
                         credit_id = int(credit_a_reduire.split("ID: ")[1].replace(")", ""))
@@ -2046,14 +2046,14 @@ elif menu == t("credits"):
                         
                         col_confirm_del, col_cancel_del = st.columns(2)
                         with col_confirm_del:
-                            if st.button("✅ نعم، احذف", key="confirm_delete_credit"):
+                            if st.button("✅ نعم، احذف", key="confirm_delete_credit_btn"):
                                 supabase.table("credits").delete().eq("id", credit_id).execute()
                                 st.success(f"✅ تم حذف الدين نهائياً")
                                 play_success_sound()
                                 time.sleep(0.5)
                                 st.rerun()
                         with col_cancel_del:
-                            if st.button("❌ إلغاء", key="cancel_delete_credit"):
+                            if st.button("❌ إلغاء", key="cancel_delete_credit_btn"):
                                 st.rerun()
                     except Exception as e:
                         st.error(f"{t('error_generic')}: {str(e)}")
