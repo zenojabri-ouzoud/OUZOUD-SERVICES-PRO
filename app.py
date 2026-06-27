@@ -22,6 +22,71 @@ except Exception as e:
     st.error(f"❌ Erreur de connexion à Supabase: {e}")
     st.stop()
 
+# ==================== دالة الماسح الضوئي العامة ====================
+def barcode_scanner_for_field(target_input_key, target_input_label="barcode_input", height=300):
+    """
+    ماسح باركود عام يمكن استخدامه في أي مكان
+    target_input_key: المفتاح الفريد لحقل الإدخال (مثل "my_barcode_input")
+    target_input_label: التسمية التي ستظهر في الكود (يجب أن تكون فريدة)
+    height: ارتفاع الماسح
+    """
+    scanner_html = f"""
+    <div id="scanner_{target_input_key}" style="width:100%; min-height:{height}px;"></div>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+    let lastScan_{target_input_key} = '';
+    let scanTimeout_{target_input_key};
+    
+    function onScanSuccess_{target_input_key}(decodedText, decodedResult) {{
+        if (decodedText !== lastScan_{target_input_key}) {{
+            lastScan_{target_input_key} = decodedText;
+            clearTimeout(scanTimeout_{target_input_key});
+            scanTimeout_{target_input_key} = setTimeout(() => {{ 
+                lastScan_{target_input_key} = ''; 
+            }}, 2000);
+            
+            // البحث عن حقل الإدخال باستخدام aria-label أو name أو id
+            const inputs = window.parent.document.querySelectorAll('input');
+            inputs.forEach(function(input) {{
+                const ariaLabel = input.getAttribute('aria-label') || '';
+                const inputName = input.getAttribute('name') || '';
+                const inputId = input.getAttribute('id') || '';
+                
+                // التحقق من التطابق مع التسمية المستهدفة أو المفتاح
+                if (ariaLabel === '{target_input_label}' || 
+                    inputName === '{target_input_label}' ||
+                    inputId === '{target_input_key}') {{
+                    input.value = decodedText;
+                    input.dispatchEvent(new Event('input', {{bubbles: true}}));
+                    input.dispatchEvent(new Event('change', {{bubbles: true}}));
+                    
+                    // تأثير بصري للتأكيد
+                    input.style.background = '#a5d6a7';
+                    setTimeout(() => {{ 
+                        input.style.background = ''; 
+                    }}, 600);
+                }}
+            }});
+        }}
+    }}
+    
+    try {{
+        let html5QrcodeScanner_{target_input_key} = new Html5QrcodeScanner(
+            "scanner_{target_input_key}", 
+            {{
+                fps: 10, 
+                qrbox: {{width: 250, height: 200}},
+                facingMode: "environment"
+            }}
+        );
+        html5QrcodeScanner_{target_input_key}.render(onScanSuccess_{target_input_key});
+    }} catch(e) {{
+        console.error('Scanner error:', e);
+    }}
+    </script>
+    """
+    components.html(scanner_html, height=height + 50)
+
 # --- نظام الترجمة (العربية، الفرنسية، الإنجليزية) ---
 if "lang" not in st.session_state:
     st.session_state.lang = "ar"
@@ -1675,13 +1740,17 @@ if menu == t("pos"):
         
         elif mode == t("scan_qr"):
             st.subheader(t("scan_qr"))
+            
+            # ماسح الباركود لـ QR
+            use_qr_scanner = st.checkbox("📸 تفعيل الماسح", key="qr_scanner_checkbox")
+            if use_qr_scanner:
+                barcode_scanner_for_field("qr_code", "qr_code")
+            
             col1, col2 = st.columns(2)
             with col1:
-                code_qr = st.text_input(f"{t('barcode')} (auto)", key="qr_code")
+                code_qr = st.text_input(f"{t('barcode')} (auto)", key="qr_code", placeholder="امسح الباركود أو QR code...")
             with col2:
                 qty_qr = st.number_input(t("quantity"), min_value=0.0, step=0.1, value=1.0, key="qr_qty")
-            
-            fast_barcode_scanner_with_qty(f"{t('barcode')} (auto)", t("quantity"))
             
             if st.button(t("confirm_sale"), key="qr_sale"):
                 if code_qr and qty_qr > 0:
@@ -1715,6 +1784,8 @@ if menu == t("pos"):
                             st.error(f"{t('low_stock_warning')} {q_old}")
                     else:
                         st.error(t("product_not_found"))
+                else:
+                    st.error(t("fill_all_fields"))
         
         elif mode == t("free_sale"):
             col1, col2 = st.columns(2)
@@ -1846,7 +1917,11 @@ if menu == t("pos"):
             # ========== السلة التلقائية (سكانير متواصل) ==========
             else:
                 st.success(t("cart_auto_info"))
-                auto_cart_scanner()
+                
+                # ماسح الباركود للسلة التلقائية
+                use_auto_scanner = st.checkbox("📸 تفعيل الماسح التلقائي", key="auto_cart_scanner_checkbox")
+                if use_auto_scanner:
+                    barcode_scanner_for_field("auto_cart_scan_input", "auto_cart_scan_input")
                 
                 code_auto_cart = st.text_input(
                     "Code-barres",
@@ -1962,7 +2037,7 @@ elif menu == t("stock"):
         use_add_scanner = st.checkbox(t("stock_scanner_add"), key="add_scanner_checkbox")
         if use_add_scanner:
             st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-            stock_barcode_scanner("stock_barcode")
+            barcode_scanner_for_field("stock_barcode_new", "stock_barcode_new")
         
         col1, col2, col3, col4 = st.columns(4)
         with col1: 
@@ -1972,7 +2047,7 @@ elif menu == t("stock"):
         with col3: 
             qty = st.number_input(t("quantity"), min_value=0.0, step=0.1, key="stock_qty")
         with col4: 
-            barcode = st.text_input(t("barcode_optional"), key="stock_barcode")
+            barcode = st.text_input(t("barcode_optional"), key="stock_barcode_new")
         
         if st.button(t("add_button"), key="stock_add_btn"):
             if name:
@@ -2015,13 +2090,29 @@ elif menu == t("stock"):
             use_update_scanner = st.checkbox(t("stock_scanner_update"), key="update_scanner_checkbox")
             if use_update_scanner:
                 st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-                stock_barcode_scanner("stock_update_barcode")
+                barcode_scanner_for_field("stock_update_barcode_new", "stock_update_barcode_new")
             
-            selected_product = st.selectbox(
-                t("select_product"), 
-                df_stock['Nom'].tolist(),
-                key="stock_update_select"
-            )
+            # بحث بالباركود أولاً
+            search_barcode_input = st.text_input("🔍 ابحث بالباركود", key="search_barcode_update", placeholder="امسح الباركود للبحث عن المنتج...")
+            
+            if search_barcode_input:
+                found_product = get_product_info(search_barcode_input)
+                if found_product:
+                    st.success(f"✅ تم العثور على: {found_product.get('Nom', '')}")
+                    selected_product = found_product.get('Nom', '')
+                else:
+                    st.warning("❌ لم يتم العثور على منتج بهذا الباركود")
+                    selected_product = st.selectbox(
+                        t("select_product"), 
+                        df_stock['Nom'].tolist(),
+                        key="stock_update_select"
+                    )
+            else:
+                selected_product = st.selectbox(
+                    t("select_product"), 
+                    df_stock['Nom'].tolist(),
+                    key="stock_update_select"
+                )
             
             if selected_product:
                 product_data = df_stock[df_stock['Nom'] == selected_product].iloc[0]
@@ -2047,7 +2138,7 @@ elif menu == t("stock"):
                     new_barcode = st.text_input(
                         t("barcode_optional"),
                         value=str(current_barcode) if current_barcode else "",
-                        key="stock_update_barcode"
+                        key="stock_update_barcode_new"
                     )
                 
                 if st.button(t("update_button"), key="stock_update_btn"):
