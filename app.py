@@ -22,6 +22,75 @@ except Exception as e:
     st.error(f"❌ Erreur de connexion à Supabase: {e}")
     st.stop()
 
+# ==================== دالة الماسح الضوئي البسيطة والقوية ====================
+def simple_barcode_scanner(input_key, height=300):
+    """
+    ماسح باركود بسيط وقوي - يشتغل مع أي خانة
+    input_key: هو نفس الـ key لي ديرها فـ st.text_input
+    """
+    scanner_html = f"""
+    <div id="scanner_{input_key}" style="width:100%; min-height:{height}px;"></div>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+    let lastScan = '';
+    let scanTimeout;
+    
+    function onScanSuccess(decodedText, decodedResult) {{
+        if (decodedText !== lastScan) {{
+            lastScan = decodedText;
+            clearTimeout(scanTimeout);
+            scanTimeout = setTimeout(() => {{ lastScan = ''; }}, 2000);
+            
+            // البحث عن الخانة بالـ id
+            let input = window.parent.document.getElementById('{input_key}');
+            
+            // إذا ما لقاها بالـ id، جرب البحث بكل الطرق
+            if (!input) {{
+                const inputs = window.parent.document.querySelectorAll('input');
+                inputs.forEach(function(el) {{
+                    if (el.id === '{input_key}' || 
+                        el.getAttribute('aria-label') === '{input_key}' ||
+                        el.name === '{input_key}') {{
+                        input = el;
+                    }}
+                }});
+            }}
+            
+            // إذا لقاها، اكتب القيمة
+            if (input) {{
+                input.value = decodedText;
+                input.dispatchEvent(new Event('input', {{bubbles: true}}));
+                input.dispatchEvent(new Event('change', {{bubbles: true}}));
+                input.style.background = '#a5d6a7';
+                setTimeout(() => {{ input.style.background = ''; }}, 600);
+                
+                // تشغيل الصوت (اختياري)
+                try {{
+                    const audio = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
+                    audio.play();
+                }} catch(e) {{}}
+            }}
+        }}
+    }}
+    
+    try {{
+        let html5QrcodeScanner = new Html5QrcodeScanner(
+            "scanner_{input_key}", 
+            {{
+                fps: 10, 
+                qrbox: {{width: 250, height: 200}},
+                facingMode: "environment"
+            }}
+        );
+        html5QrcodeScanner.render(onScanSuccess);
+    }} catch(e) {{
+        console.error('Scanner error:', e);
+        document.getElementById('scanner_{input_key}').innerHTML = '❌ خطأ: ' + e.message;
+    }}
+    </script>
+    """
+    components.html(scanner_html, height=height + 50)
+
 # ==================== دالة الماسح الضوئي العامة ====================
 def barcode_scanner_for_field(target_input_key, target_input_label="barcode_input", height=300):
     """
@@ -1741,10 +1810,10 @@ if menu == t("pos"):
         elif mode == t("scan_qr"):
             st.subheader(t("scan_qr"))
             
-            # ماسح الباركود لـ QR
+            # ماسح الباركود لـ QR باستخدام الدالة الجديدة
             use_qr_scanner = st.checkbox("📸 تفعيل الماسح", key="qr_scanner_checkbox")
             if use_qr_scanner:
-                barcode_scanner_for_field("qr_code", "qr_code")
+                simple_barcode_scanner("qr_code")
             
             col1, col2 = st.columns(2)
             with col1:
@@ -1828,6 +1897,12 @@ if menu == t("pos"):
                 col1, col2 = st.columns([1, 1])
                 with col1:
                     st.subheader(t("add_to_cart"))
+                    
+                    # ماسح للسلة اليدوية
+                    use_cart_scanner = st.checkbox("📸 تفعيل الماسح", key="cart_manual_scanner")
+                    if use_cart_scanner:
+                        simple_barcode_scanner("panier_code")
+                    
                     code = st.text_input(t("barcode"), key="panier_code")
                     qty = st.number_input(f"{t('quantity')}:", min_value=0.0, step=0.1, key="panier_qty")
                     
@@ -1918,10 +1993,10 @@ if menu == t("pos"):
             else:
                 st.success(t("cart_auto_info"))
                 
-                # ماسح الباركود للسلة التلقائية
+                # ماسح الباركود للسلة التلقائية باستخدام الدالة الجديدة
                 use_auto_scanner = st.checkbox("📸 تفعيل الماسح التلقائي", key="auto_cart_scanner_checkbox")
                 if use_auto_scanner:
-                    barcode_scanner_for_field("auto_cart_scan_input", "auto_cart_scan_input")
+                    simple_barcode_scanner("auto_cart_scan_input")
                 
                 code_auto_cart = st.text_input(
                     "Code-barres",
@@ -2037,7 +2112,7 @@ elif menu == t("stock"):
         use_add_scanner = st.checkbox(t("stock_scanner_add"), key="add_scanner_checkbox")
         if use_add_scanner:
             st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-            barcode_scanner_for_field("stock_barcode_new", "stock_barcode_new")
+            simple_barcode_scanner("stock_barcode_new")
         
         col1, col2, col3, col4 = st.columns(4)
         with col1: 
@@ -2090,7 +2165,7 @@ elif menu == t("stock"):
             use_update_scanner = st.checkbox(t("stock_scanner_update"), key="update_scanner_checkbox")
             if use_update_scanner:
                 st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-                barcode_scanner_for_field("stock_update_barcode_new", "stock_update_barcode_new")
+                simple_barcode_scanner("stock_update_barcode_new")
             
             # بحث بالباركود أولاً
             search_barcode_input = st.text_input("🔍 ابحث بالباركود", key="search_barcode_update", placeholder="امسح الباركود للبحث عن المنتج...")
@@ -2332,8 +2407,7 @@ elif menu == t("credits"):
             if 'id' in df_credits.columns:
                 credit_options = df_credits.apply(
                     lambda x: f"{x['Client']} - {x['Montant']:.2f} DH (ID: {x['id']})",
-                    axis=1
-                ).tolist()
+                    axis=1                ).tolist()
                 
                 credit_a_reduire = st.selectbox(
                     t("select_credit"),
