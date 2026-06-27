@@ -3,12 +3,14 @@ import pandas as pd
 from supabase import create_client, Client
 import os
 from fpdf import FPDF
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 import streamlit.components.v1 as components
 import io
 import json
 import time
+import plotly.express as px
+import plotly.graph_objects as go
 
 # --- إعداد Supabase ---
 try:
@@ -790,6 +792,51 @@ translations = {
         "fr": "Afficher Google intégré",
         "en": "Show Embedded Google"
     },
+    "voice_command": {
+        "ar": "🎤 تحكم صوتي",
+        "fr": "🎤 Commande Vocale",
+        "en": "🎤 Voice Command"
+    },
+    "voice_listening": {
+        "ar": "🎤 جاري الاستماع...",
+        "fr": "🎤 Écoute en cours...",
+        "en": "🎤 Listening..."
+    },
+    "voice_start": {
+        "ar": "🎤 ابدأ الاستماع",
+        "fr": "🎤 Commencer l'écoute",
+        "en": "🎤 Start Listening"
+    },
+    "voice_stop": {
+        "ar": "⏹️ إيقاف الاستماع",
+        "fr": "⏹️ Arrêter l'écoute",
+        "en": "⏹️ Stop Listening"
+    },
+    "invoice_number": {
+        "ar": "رقم الفاتورة",
+        "fr": "Numéro de facture",
+        "en": "Invoice Number"
+    },
+    "top_products": {
+        "ar": "🏆 المنتجات الأكثر ربحية",
+        "fr": "🏆 Produits les plus rentables",
+        "en": "🏆 Most Profitable Products"
+    },
+    "compare_periods": {
+        "ar": "📊 مقارنة الفترات",
+        "fr": "📊 Comparer les périodes",
+        "en": "📊 Compare Periods"
+    },
+    "sales_chart": {
+        "ar": "📈 رسم بياني للمبيعات",
+        "fr": "📈 Graphique des ventes",
+        "en": "📈 Sales Chart"
+    },
+    "sales_prediction": {
+        "ar": "🔮 توقعات المبيعات",
+        "fr": "🔮 Prévisions des ventes",
+        "en": "🔮 Sales Prediction"
+    },
 }
 
 def t(key):
@@ -946,12 +993,30 @@ def add_to_credit(credit_id, montant_addition):
     }).execute()
     return nouveau_montant
 
-# ==================== دالة الفاتورة الموحدة 80mm ====================
+# ==================== دالة الفاتورة الموحدة 80mm مع رقم تسلسلي ====================
+def get_next_invoice_number():
+    """الحصول على رقم الفاتورة التالي"""
+    df_ventes = get_df("ventes")
+    if df_ventes.empty:
+        return "FACT-0001"
+    
+    # البحث عن آخر رقم فاتورة
+    if 'Facture' in df_ventes.columns:
+        last_invoices = df_ventes[df_ventes['Facture'].notna()]['Facture'].tolist()
+        if last_invoices:
+            last_num = max([int(inv.replace("FACT-", "")) for inv in last_invoices if "FACT-" in str(inv)])
+            return f"FACT-{last_num + 1:04d}"
+    
+    # إذا لم يكن هناك أرقام فواتير، ابدأ من 1
+    return f"FACT-{len(df_ventes) + 1:04d}"
+
 def generate_facture_80mm(cart_data, titre="FACTURE"):
     """
     فاتورة موحدة 80mm لجميع العمليات (بيع، طباعة، خدمات، طلبيات)
-    نفس التصميم بالضبط لجميع الفواتير
+    مع رقم فاتورة تسلسلي تلقائي
     """
+    invoice_number = get_next_invoice_number()
+    
     pdf = FPDF('P', 'mm', (80, 297))
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=5)
@@ -962,6 +1027,7 @@ def generate_facture_80mm(cart_data, titre="FACTURE"):
     pdf.set_font("Arial", 'B', 10)
     pdf.cell(70, 6, titre, ln=True, align='C')
     pdf.set_font("Arial", size=8)
+    pdf.cell(70, 4, f"Facture N°: {invoice_number}", ln=True, align='C')
     pdf.cell(70, 4, "Tel: 07.81.02.82.43", ln=True, align='C')
     pdf.cell(70, 4, "maaridprint@gmail.com", ln=True, align='C')
     pdf.cell(70, 4, "-" * 40, ln=True, align='C')
@@ -1008,7 +1074,7 @@ def generate_facture_80mm(cart_data, titre="FACTURE"):
     
     file_path = "facture_80mm.pdf"
     pdf.output(file_path)
-    return file_path
+    return file_path, invoice_number
 
 
 # ==================== الدوال المعدلة لاستخدام الفاتورة الموحدة ====================
@@ -1150,25 +1216,128 @@ def auto_cart_scanner():
     components.html(scanner_html, height=300)
 
 def stock_barcode_scanner(target_input_label):
+    """ماسح باركود يملأ خانة محددة فقط - يعمل بشكل صحيح"""
     scanner_html = f"""
     <div id="stock_reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
+    let lastStockScan = '';
+    let stockScanTimeout;
+    
     function onScanSuccess(decodedText, decodedResult) {{
-        const inputs = window.parent.document.querySelectorAll('input');
-        inputs.forEach(function(input) {{
-            if (input.getAttribute('aria-label') === '{target_input_label}') {{
-                input.value = decodedText;
-                input.dispatchEvent(new Event('input', {{bubbles: true}}));
-                input.dispatchEvent(new Event('change', {{bubbles: true}}));
-            }}
-        }});
+        if (decodedText !== lastStockScan) {{
+            lastStockScan = decodedText;
+            clearTimeout(stockScanTimeout);
+            stockScanTimeout = setTimeout(() => {{ lastStockScan = ''; }}, 2000);
+            
+            // البحث عن خانة الباركود الصحيحة
+            const inputs = window.parent.document.querySelectorAll('input');
+            inputs.forEach(function(input) {{
+                if (input.getAttribute('aria-label') === '{target_input_label}') {{
+                    input.value = decodedText;
+                    input.dispatchEvent(new Event('input', {{bubbles: true}}));
+                    input.dispatchEvent(new Event('change', {{bubbles: true}}));
+                    
+                    // تأكيد بصري
+                    input.style.background = '#e8f5e9';
+                    setTimeout(() => {{ input.style.background = ''; }}, 500);
+                }}
+            }});
+        }}
     }}
-    let html5QrcodeScanner = new Html5QrcodeScanner("stock_reader", {{fps: 10, qrbox: 250, facingMode: "environment"}});
+    
+    let html5QrcodeScanner = new Html5QrcodeScanner(
+        "stock_reader", 
+        {{fps: 10, qrbox: 250, facingMode: "environment"}}
+    );
     html5QrcodeScanner.render(onScanSuccess);
     </script>
     """
     components.html(scanner_html, height=300)
+
+# ==================== نظام التحكم الصوتي ====================
+def voice_command_component():
+    """مكون التحكم الصوتي"""
+    voice_html = """
+    <div id="voice-control">
+        <button id="start-voice" style="padding:10px 20px; background:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
+            🎤 ابدأ الاستماع
+        </button>
+        <button id="stop-voice" style="padding:10px 20px; background:#f44336; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px; display:none;">
+            ⏹️ إيقاف
+        </button>
+        <p id="voice-status" style="margin-top:10px; color:#666;"></p>
+        <p id="voice-result" style="font-size:18px; font-weight:bold; color:#2196F3;"></p>
+    </div>
+    
+    <script>
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ar-MA';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    
+    let isListening = false;
+    
+    document.getElementById('start-voice').addEventListener('click', function() {
+        recognition.start();
+        isListening = true;
+        document.getElementById('start-voice').style.display = 'none';
+        document.getElementById('stop-voice').style.display = 'inline-block';
+        document.getElementById('voice-status').innerText = '🎤 جاري الاستماع...';
+    });
+    
+    document.getElementById('stop-voice').addEventListener('click', function() {
+        recognition.stop();
+        isListening = false;
+        document.getElementById('start-voice').style.display = 'inline-block';
+        document.getElementById('stop-voice').style.display = 'none';
+        document.getElementById('voice-status').innerText = '';
+    });
+    
+    recognition.onresult = function(event) {
+        const last = event.results.length - 1;
+        const command = event.results[last][0].transcript.trim();
+        document.getElementById('voice-result').innerText = '🗣️ ' + command;
+        
+        if (command.includes('ضيف') || command.includes('أضف')) {
+            const inputs = window.parent.document.querySelectorAll('input');
+            inputs.forEach(input => {
+                if (input.getAttribute('aria-label') && input.getAttribute('aria-label').includes('باركود')) {
+                    const words = command.split(' ');
+                    const qtyIndex = words.findIndex(w => w === 'كمية' || w === 'الكمية');
+                    if (qtyIndex >= 0 && words[qtyIndex + 1]) {
+                        const qtyInput = window.parent.document.querySelector('input[aria-label*="كمية"]');
+                        if (qtyInput) {
+                            qtyInput.value = words[qtyIndex + 1];
+                            qtyInput.dispatchEvent(new Event('input', {bubbles: true}));
+                        }
+                    }
+                }
+            });
+        } else if (command.includes('طبع') || command.includes('اطبع') || command.includes('فاتورة')) {
+            const buttons = window.parent.document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                if (btn.innerText.includes('فاتورة') || btn.innerText.includes('Facture') || btn.innerText.includes('طباعة')) {
+                    btn.click();
+                }
+            });
+        } else if (command.includes('تأكيد') || command.includes('بيع')) {
+            const buttons = window.parent.document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                if (btn.innerText.includes('تأكيد') || btn.innerText.includes('تسجيل')) {
+                    btn.click();
+                }
+            });
+        }
+    };
+    
+    recognition.onerror = function(event) {
+        document.getElementById('voice-status').innerText = '❌ خطأ: ' + event.error;
+    };
+    </script>
+    """
+    components.html(voice_html, height=150)
 
 # --- الحالة والتسجيل ---
 if "authenticated" not in st.session_state: st.session_state.authenticated = False
@@ -1181,6 +1350,7 @@ if "live_sync_active" not in st.session_state: st.session_state.live_sync_active
 if "selected_service" not in st.session_state: st.session_state.selected_service = None
 if "selected_service_price" not in st.session_state: st.session_state.selected_service_price = 0.0
 if "selected_service_unit" not in st.session_state: st.session_state.selected_service_unit = ""
+if "invoice_counter" not in st.session_state: st.session_state.invoice_counter = 0
 
 # --- صفحة تسجيل الدخول ---
 if not st.session_state.authenticated:
@@ -1300,14 +1470,86 @@ if menu == t("dashboard"):
     
     st.divider()
     
+    # ========== المنتجات الأكثر ربحية ==========
+    st.subheader(t("top_products"))
+    if not df_v.empty:
+        top_products = df_v.groupby('Nom')['Total'].sum().sort_values(ascending=False).head(10)
+        if not top_products.empty:
+            fig = px.bar(x=top_products.index, y=top_products.values, title="أفضل 10 منتجات", labels={'x': 'المنتج', 'y': 'المبيعات (DH)'})
+            st.plotly_chart(fig, use_container_width=True)
+    
+    st.divider()
+    
+    # ========== مقارنة الفترات ==========
+    st.subheader(t("compare_periods"))
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+        date1_start = st.date_input("من", value=datetime.now() - timedelta(days=7), key="p1_start")
+        date1_end = st.date_input("إلى", value=datetime.now(), key="p1_end")
+    with col_p2:
+        date2_start = st.date_input("من", value=datetime.now() - timedelta(days=14), key="p2_start")
+        date2_end = st.date_input("إلى", value=datetime.now() - timedelta(days=7), key="p2_end")
+    
+    if st.button("📊 قارن"):
+        df_v['Date_dt'] = pd.to_datetime(df_v['Date'], format='%d/%m/%Y %H:%M', errors='coerce')
+        p1 = df_v[(df_v['Date_dt'].dt.date >= date1_start) & (df_v['Date_dt'].dt.date <= date1_end)]['Total'].sum()
+        p2 = df_v[(df_v['Date_dt'].dt.date >= date2_start) & (df_v['Date_dt'].dt.date <= date2_end)]['Total'].sum()
+        
+        col_m1, col_m2, col_m3 = st.columns(3)
+        with col_m1:
+            st.metric("الفترة 1", f"{p1:.0f} DH")
+        with col_m2:
+            st.metric("الفترة 2", f"{p2:.0f} DH")
+        with col_m3:
+            diff = p1 - p2
+            st.metric("الفرق", f"{diff:.0f} DH", delta=f"{(diff/p2*100 if p2 > 0 else 0):.1f}%")
+    
+    st.divider()
+    
+    # ========== رسم بياني للمبيعات ==========
+    st.subheader(t("sales_chart"))
+    if not df_v.empty:
+        df_v['Date_dt'] = pd.to_datetime(df_v['Date'], format='%d/%m/%Y %H:%M', errors='coerce')
+        daily_sales = df_v.groupby(df_v['Date_dt'].dt.date)['Total'].sum().reset_index()
+        daily_sales.columns = ['التاريخ', 'المبيعات']
+        
+        fig = px.line(daily_sales.tail(30), x='التاريخ', y='المبيعات', title="تطور المبيعات (آخر 30 يوم)")
+        st.plotly_chart(fig, use_container_width=True)
+    
+    st.divider()
+    
+    # ========== توقعات المبيعات ==========
+    st.subheader(t("sales_prediction"))
+    if not df_v.empty:
+        df_v['Date_dt'] = pd.to_datetime(df_v['Date'], format='%d/%m/%Y %H:%M', errors='coerce')
+        daily_sales = df_v.groupby(df_v['Date_dt'].dt.date)['Total'].sum().reset_index()
+        daily_sales.columns = ['التاريخ', 'المبيعات']
+        
+        if len(daily_sales) > 7:
+            avg_sales = daily_sales['المبيعات'].tail(7).mean()
+            last_sales = daily_sales['المبيعات'].tail(1).values[0]
+            
+            col_t1, col_t2, col_t3 = st.columns(3)
+            with col_t1:
+                st.metric("متوسط المبيعات (7 أيام)", f"{avg_sales:.0f} DH")
+            with col_t2:
+                st.metric("آخر يوم", f"{last_sales:.0f} DH")
+            with col_t3:
+                prediction = (avg_sales * 0.7 + last_sales * 0.3)
+                st.metric("توقعات الغد", f"{prediction:.0f} DH")
+    
     st.subheader("🕐 آخر المبيعات")
     if not df_v.empty:
-        st.dataframe(df_v.tail(5), use_container_width=True)
+        st.dataframe(df_v.tail(5))
     else:
         st.info(t("no_data"))
 
 if menu == t("pos"):
     st.header(t("pos"))
+    
+    # ========== نظام التحكم الصوتي ==========
+    with st.expander(t("voice_command"), expanded=False):
+        voice_command_component()
     
     # Mode Auto Sale
     st.session_state.auto_sale_mode = st.checkbox(
@@ -1334,31 +1576,28 @@ if menu == t("pos"):
             if product:
                 if float(product['Quantité']) >= 1:
                     total = float(product['Prix'])
+                    
+                    # حفظ رقم الفاتورة
+                    facture_result = generate_facture_80mm([{"Nom": product.get('Nom', code_auto), "Quantité": 1, "Prix": float(product['Prix']), "Total": total}], "FACTURE DE VENTE")
+                    facture_path, invoice_number = facture_result
+                    
                     supabase.table("ventes").insert({
                         "Code": code_auto,
                         "Quantité": 1.0,
                         "Prix": float(product['Prix']),
                         "Total": total,
                         "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
-                        "Nom": product.get('Nom', code_auto)
+                        "Nom": product.get('Nom', code_auto),
+                        "Facture": invoice_number
                     }).execute()
                     
                     supabase.table("stock").update({
                         "Quantité": float(product['Quantité']) - 1
                     }).eq("id", product['id']).execute()
                     
-                    cart_data = [{
-                        "Code": code_auto,
-                        "Nom": product.get('Nom', code_auto),
-                        "Quantité": 1,
-                        "Prix": float(product['Prix']),
-                        "Total": total
-                    }]
-                    generate_facture_80mm(cart_data, "FACTURE DE VENTE")
-                    
                     play_success_sound()
                     
-                    st.success(f"✅ {product.get('Nom', code_auto)} - {total:.2f} DH | {t('invoice_printed')}")
+                    st.success(f"✅ {product.get('Nom', code_auto)} - {total:.2f} DH | {t('invoice_number')}: {invoice_number}")
                     st.balloons()
                     
                     time.sleep(1.5)
@@ -1409,17 +1648,23 @@ if menu == t("pos"):
                         
                         if q_old >= qty:
                             total = prix * qty
+                            
+                            # رقم الفاتورة
+                            facture_result = generate_facture_80mm([{"Nom": nom, "Quantité": qty, "Prix": prix, "Total": total}], "FACTURE DE VENTE")
+                            facture_path, invoice_number = facture_result
+                            
                             supabase.table("ventes").insert({
                                 "Code": code, 
                                 "Quantité": qty, 
                                 "Prix": prix, 
                                 "Total": total, 
                                 "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
-                                "Nom": nom
+                                "Nom": nom,
+                                "Facture": invoice_number
                             }).execute()
                             supabase.table("stock").update({"Quantité": q_old - qty}).eq("id", doc_id).execute()
                             play_success_sound()
-                            st.success(f"{t('sale_success')} {nom} - {total:.2f} DH")
+                            st.success(f"{t('sale_success')} {nom} - {total:.2f} DH | Facture: {invoice_number}")
                             st.rerun()
                         else:
                             st.error(f"{t('low_stock_warning')} {q_old}")
@@ -1449,17 +1694,22 @@ if menu == t("pos"):
                         
                         if q_old >= qty_qr:
                             total = prix * qty_qr
+                            
+                            facture_result = generate_facture_80mm([{"Nom": nom, "Quantité": qty_qr, "Prix": prix, "Total": total}], "FACTURE DE VENTE")
+                            facture_path, invoice_number = facture_result
+                            
                             supabase.table("ventes").insert({
                                 "Code": code_qr, 
                                 "Quantité": qty_qr, 
                                 "Prix": prix, 
                                 "Total": total, 
                                 "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
-                                "Nom": nom
+                                "Nom": nom,
+                                "Facture": invoice_number
                             }).execute()
                             supabase.table("stock").update({"Quantité": q_old - qty_qr}).eq("id", doc_id).execute()
                             play_success_sound()
-                            st.success(f"{t('sale_success')} {nom} - {qty_qr} x {prix} = {total:.2f} DH")
+                            st.success(f"{t('sale_success')} {nom} - {qty_qr} x {prix} = {total:.2f} DH | Facture: {invoice_number}")
                             st.rerun()
                         else:
                             st.error(f"{t('low_stock_warning')} {q_old}")
@@ -1477,16 +1727,21 @@ if menu == t("pos"):
             if st.button(t("confirm_sale")):
                 if name and price > 0:
                     total_libre = float(price) * qty_libre
+                    
+                    facture_result = generate_facture_80mm([{"Nom": name, "Quantité": qty_libre, "Prix": float(price), "Total": total_libre}], "FACTURE DE VENTE")
+                    facture_path, invoice_number = facture_result
+                    
                     supabase.table("ventes").insert({
                         "Code": name, 
                         "Quantité": qty_libre, 
                         "Prix": float(price), 
                         "Total": total_libre, 
                         "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
-                        "Nom": name
+                        "Nom": name,
+                        "Facture": invoice_number
                     }).execute()
                     play_success_sound()
-                    st.success(f"{t('sale_success')} {name} - {qty_libre} x {price} = {total_libre:.2f} DH")
+                    st.success(f"{t('sale_success')} {name} - {qty_libre} x {price} = {total_libre:.2f} DH | Facture: {invoice_number}")
                     st.rerun()
         
         elif mode == t("cart"):
@@ -1547,16 +1802,20 @@ if menu == t("pos"):
                                     supabase.table("stock").update({
                                         "Quantité": float(product['Quantité']) - item['Quantité']
                                     }).eq("id", product['id']).execute()
+                                
+                                facture_result = generate_facture_80mm(st.session_state.cart, "FACTURE DE VENTE")
+                                facture_path, invoice_number = facture_result
+                                
                                 supabase.table("ventes").insert({
                                     **item, 
-                                    "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
+                                    "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
+                                    "Facture": invoice_number
                                 }).execute()
                             
-                            generate_facture_80mm(st.session_state.cart, "FACTURE DE VENTE")
                             st.session_state.last_cart = st.session_state.cart.copy()
                             st.session_state.cart = []
                             play_success_sound()
-                            st.success(f"✅ {t('invoice_printed')}")
+                            st.success(f"✅ {t('invoice_printed')} | Facture: {invoice_number}")
                             st.rerun()
                         
                         col_btn1, col_btn2 = st.columns(2)
@@ -1642,16 +1901,20 @@ if menu == t("pos"):
                                 supabase.table("stock").update({
                                     "Quantité": float(product['Quantité']) - item['Quantité']
                                 }).eq("id", product['id']).execute()
+                            
+                            facture_result = generate_facture_80mm(st.session_state.cart, "FACTURE DE VENTE")
+                            facture_path, invoice_number = facture_result
+                            
                             supabase.table("ventes").insert({
                                 **item,
-                                "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
+                                "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
+                                "Facture": invoice_number
                             }).execute()
                         
-                        generate_facture_80mm(st.session_state.cart, "FACTURE DE VENTE")
                         st.session_state.last_cart = st.session_state.cart.copy()
                         st.session_state.cart = []
                         play_success_sound()
-                        st.success(f"✅ {t('invoice_printed')}")
+                        st.success(f"✅ {t('invoice_printed')} | Facture: {invoice_number}")
                         st.balloons()
                         time.sleep(1.5)
                         st.rerun()
@@ -1698,6 +1961,7 @@ elif menu == t("stock"):
     with st.expander(t("add_product"), expanded=True):
         use_add_scanner = st.checkbox(t("stock_scanner_add"), key="add_scanner_checkbox")
         if use_add_scanner:
+            st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
             stock_barcode_scanner("stock_barcode")
         
         col1, col2, col3, col4 = st.columns(4)
@@ -1750,6 +2014,7 @@ elif menu == t("stock"):
         with st.expander(t("update_product")):
             use_update_scanner = st.checkbox(t("stock_scanner_update"), key="update_scanner_checkbox")
             if use_update_scanner:
+                st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
                 stock_barcode_scanner("stock_update_barcode")
             
             selected_product = st.selectbox(
@@ -2361,6 +2626,10 @@ elif menu == t("services"):
                 "Total": total_service
             }]
             
+            # رقم الفاتورة
+            facture_result = generate_facture_80mm(service_cart, "FACTURE SERVICE")
+            facture_path, invoice_number = facture_result
+            
             # تسجيل الخدمة في المبيعات
             supabase.table("ventes").insert({
                 "Code": st.session_state.selected_service,
@@ -2368,17 +2637,15 @@ elif menu == t("services"):
                 "Prix": float(prix_unitaire),
                 "Total": float(total_service),
                 "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
-                "Nom": st.session_state.selected_service
+                "Nom": st.session_state.selected_service,
+                "Facture": invoice_number
             }).execute()
-            
-            # طباعة الفاتورة
-            generate_facture_80mm(service_cart, "FACTURE SERVICE")
             
             # صوت النجاح
             play_success_sound()
             
             # رسالة نجاح
-            st.success(f"✅ تم إتمام الخدمة: {st.session_state.selected_service} - {total_service:.2f} DH")
+            st.success(f"✅ تم إتمام الخدمة: {st.session_state.selected_service} - {total_service:.2f} DH | Facture: {invoice_number}")
             st.balloons()
             
             # عرض الفاتورة للتحميل
