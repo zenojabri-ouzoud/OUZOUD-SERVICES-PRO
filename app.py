@@ -22,136 +22,123 @@ except Exception as e:
     st.error(f"❌ Erreur de connexion à Supabase: {e}")
     st.stop()
 
-# ==================== دالة الماسح الضوئي البسيطة والقوية ====================
-def simple_barcode_scanner(input_key, height=300):
+# ==================== دالة الماسح للهواتف ====================
+def mobile_barcode_scanner(input_key, height=350):
     """
-    ماسح باركود بسيط وقوي - يشتغل مع أي خانة
-    input_key: هو نفس الـ key لي ديرها فـ st.text_input
+    ماسح باركود مخصص للهواتف المحمولة - يكتب الباركود تلقائياً في الخانة
+    input_key: نفس الـ key ديال الخانة
     """
     scanner_html = f"""
-    <div id="scanner_{input_key}" style="width:100%; min-height:{height}px;"></div>
+    <div id="mobile_scanner_{input_key}" style="width:100%; min-height:{height}px; border:2px dashed #4CAF50; border-radius:10px; padding:10px;"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
-    let lastScan = '';
-    let scanTimeout;
+    let scanner_{input_key} = null;
+    let isScanning_{input_key} = false;
     
-    function onScanSuccess(decodedText, decodedResult) {{
-        if (decodedText !== lastScan) {{
-            lastScan = decodedText;
-            clearTimeout(scanTimeout);
-            scanTimeout = setTimeout(() => {{ lastScan = ''; }}, 2000);
+    function startScanner_{input_key}() {{
+        if (isScanning_{input_key}) return;
+        
+        try {{
+            const element = document.getElementById('mobile_scanner_{input_key}');
+            element.innerHTML = '';
             
-            // البحث عن الخانة بالـ id
-            let input = window.parent.document.getElementById('{input_key}');
+            // إضافة رسالة
+            const msg = document.createElement('p');
+            msg.innerHTML = '📷 جاري تشغيل الكاميرا... انتظر قليلاً';
+            msg.style.textAlign = 'center';
+            msg.style.color = '#4CAF50';
+            msg.style.fontSize = '16px';
+            msg.style.fontWeight = 'bold';
+            element.appendChild(msg);
             
-            // إذا ما لقاها بالـ id، جرب البحث بكل الطرق
-            if (!input) {{
-                const inputs = window.parent.document.querySelectorAll('input');
-                inputs.forEach(function(el) {{
-                    if (el.id === '{input_key}' || 
-                        el.getAttribute('aria-label') === '{input_key}' ||
-                        el.name === '{input_key}') {{
-                        input = el;
+            const html5Qrcode = new Html5Qrcode('mobile_scanner_{input_key}');
+            
+            const config = {{
+                fps: 20,
+                qrbox: {{width: 280, height: 280}},
+                aspectRatio: 1.0,
+                facingMode: "environment"
+            }};
+            
+            html5Qrcode.start(
+                {{ facingMode: "environment" }},
+                config,
+                function(decodedText, decodedResult) {{
+                    if (decodedText) {{
+                        // البحث عن الخانة وكتابة الباركود فيها
+                        const inputs = window.parent.document.querySelectorAll('input');
+                        let found = false;
+                        inputs.forEach(function(input) {{
+                            if (input.id === '{input_key}' || 
+                                input.getAttribute('aria-label') === '{input_key}' ||
+                                input.name === '{input_key}') {{
+                                input.value = decodedText;
+                                input.dispatchEvent(new Event('input', {{bubbles: true}}));
+                                input.dispatchEvent(new Event('change', {{bubbles: true}}));
+                                input.style.background = '#a5d6a7';
+                                input.style.border = '3px solid #4CAF50';
+                                setTimeout(() => {{ 
+                                    input.style.background = ''; 
+                                    input.style.border = '';
+                                }}, 1000);
+                                found = true;
+                                
+                                // تحديث الرسالة
+                                const msg = document.querySelector('#mobile_scanner_{input_key} p');
+                                if (msg) {{
+                                    msg.innerHTML = '✅ تم المسح بنجاح: ' + decodedText;
+                                    msg.style.color = 'green';
+                                }}
+                                
+                                // إيقاف المسح بعد 1 ثانية
+                                setTimeout(() => {{
+                                    try {{
+                                        html5Qrcode.stop();
+                                        isScanning_{input_key} = false;
+                                        const msg2 = document.querySelector('#mobile_scanner_{input_key} p');
+                                        if (msg2) {{
+                                            msg2.innerHTML = '📸 جاهز للمسح مرة أخرى';
+                                            msg2.style.color = '#4CAF50';
+                                        }}
+                                    }} catch(e) {{}}
+                                }}, 1000);
+                            }}
+                        }});
+                        
+                        if (!found) {{
+                            const msg = document.querySelector('#mobile_scanner_{input_key} p');
+                            if (msg) {{
+                                msg.innerHTML = '⚠️ لم يتم العثور على الخانة';
+                                msg.style.color = 'orange';
+                            }}
+                        }}
                     }}
-                }});
-            }}
-            
-            // إذا لقاها، اكتب القيمة
-            if (input) {{
-                input.value = decodedText;
-                input.dispatchEvent(new Event('input', {{bubbles: true}}));
-                input.dispatchEvent(new Event('change', {{bubbles: true}}));
-                input.style.background = '#a5d6a7';
-                setTimeout(() => {{ input.style.background = ''; }}, 600);
-                
-                // تشغيل الصوت (اختياري)
-                try {{
-                    const audio = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
-                    audio.play();
-                }} catch(e) {{}}
-            }}
-        }}
-    }}
-    
-    try {{
-        let html5QrcodeScanner = new Html5QrcodeScanner(
-            "scanner_{input_key}", 
-            {{
-                fps: 10, 
-                qrbox: {{width: 250, height: 200}},
-                facingMode: "environment"
-            }}
-        );
-        html5QrcodeScanner.render(onScanSuccess);
-    }} catch(e) {{
-        console.error('Scanner error:', e);
-        document.getElementById('scanner_{input_key}').innerHTML = '❌ خطأ: ' + e.message;
-    }}
-    </script>
-    """
-    components.html(scanner_html, height=height + 50)
-
-# ==================== دالة الماسح الضوئي العامة ====================
-def barcode_scanner_for_field(target_input_key, target_input_label="barcode_input", height=300):
-    """
-    ماسح باركود عام يمكن استخدامه في أي مكان
-    target_input_key: المفتاح الفريد لحقل الإدخال (مثل "my_barcode_input")
-    target_input_label: التسمية التي ستظهر في الكود (يجب أن تكون فريدة)
-    height: ارتفاع الماسح
-    """
-    scanner_html = f"""
-    <div id="scanner_{target_input_key}" style="width:100%; min-height:{height}px;"></div>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <script>
-    let lastScan_{target_input_key} = '';
-    let scanTimeout_{target_input_key};
-    
-    function onScanSuccess_{target_input_key}(decodedText, decodedResult) {{
-        if (decodedText !== lastScan_{target_input_key}) {{
-            lastScan_{target_input_key} = decodedText;
-            clearTimeout(scanTimeout_{target_input_key});
-            scanTimeout_{target_input_key} = setTimeout(() => {{ 
-                lastScan_{target_input_key} = ''; 
-            }}, 2000);
-            
-            // البحث عن حقل الإدخال باستخدام aria-label أو name أو id
-            const inputs = window.parent.document.querySelectorAll('input');
-            inputs.forEach(function(input) {{
-                const ariaLabel = input.getAttribute('aria-label') || '';
-                const inputName = input.getAttribute('name') || '';
-                const inputId = input.getAttribute('id') || '';
-                
-                // التحقق من التطابق مع التسمية المستهدفة أو المفتاح
-                if (ariaLabel === '{target_input_label}' || 
-                    inputName === '{target_input_label}' ||
-                    inputId === '{target_input_key}') {{
-                    input.value = decodedText;
-                    input.dispatchEvent(new Event('input', {{bubbles: true}}));
-                    input.dispatchEvent(new Event('change', {{bubbles: true}}));
-                    
-                    // تأثير بصري للتأكيد
-                    input.style.background = '#a5d6a7';
-                    setTimeout(() => {{ 
-                        input.style.background = ''; 
-                    }}, 600);
+                }},
+                function(errorMessage) {{
+                    // تجاهل الأخطاء العادية
                 }}
+            ).catch(function(err) {{
+                const msg = document.querySelector('#mobile_scanner_{input_key} p');
+                if (msg) {{
+                    msg.innerHTML = '❌ خطأ: ' + err.message + ' - حاول مرة أخرى';
+                    msg.style.color = 'red';
+                }}
+                isScanning_{input_key} = false;
             }});
+            
+            isScanning_{input_key} = true;
+            
+        }} catch(e) {{
+            const msg = document.querySelector('#mobile_scanner_{input_key} p');
+            if (msg) {{
+                msg.innerHTML = '❌ خطأ: ' + e.message;
+                msg.style.color = 'red';
+            }}
         }}
     }}
     
-    try {{
-        let html5QrcodeScanner_{target_input_key} = new Html5QrcodeScanner(
-            "scanner_{target_input_key}", 
-            {{
-                fps: 10, 
-                qrbox: {{width: 250, height: 200}},
-                facingMode: "environment"
-            }}
-        );
-        html5QrcodeScanner_{target_input_key}.render(onScanSuccess_{target_input_key});
-    }} catch(e) {{
-        console.error('Scanner error:', e);
-    }}
+    // بدء الماسح مباشرة
+    setTimeout(startScanner_{input_key}, 300);
     </script>
     """
     components.html(scanner_html, height=height + 50)
@@ -1810,10 +1797,11 @@ if menu == t("pos"):
         elif mode == t("scan_qr"):
             st.subheader(t("scan_qr"))
             
-            # ماسح الباركود لـ QR باستخدام الدالة الجديدة
-            use_qr_scanner = st.checkbox("📸 تفعيل الماسح", key="qr_scanner_checkbox")
+            # ===== ماسح للهواتف =====
+            use_qr_scanner = st.checkbox("📱 تفعيل الماسح (للتلفون)", key="qr_scanner_checkbox")
             if use_qr_scanner:
-                simple_barcode_scanner("qr_code")
+                st.info("📱 امسح الباركود باستخدام كاميرا التلفون - سيتم كتابته تلقائياً")
+                mobile_barcode_scanner("qr_code")
             
             col1, col2 = st.columns(2)
             with col1:
@@ -1892,16 +1880,17 @@ if menu == t("pos"):
                 horizontal=True
             )
             
-            # ========== السلة اليدوية (طريقة قديمة) ==========
+            # ========== السلة اليدوية ==========
             if cart_mode == t("cart_manual"):
                 col1, col2 = st.columns([1, 1])
                 with col1:
                     st.subheader(t("add_to_cart"))
                     
-                    # ماسح للسلة اليدوية
-                    use_cart_scanner = st.checkbox("📸 تفعيل الماسح", key="cart_manual_scanner")
+                    # ===== ماسح للهواتف =====
+                    use_cart_scanner = st.checkbox("📱 تفعيل الماسح (للتلفون)", key="cart_manual_scanner")
                     if use_cart_scanner:
-                        simple_barcode_scanner("panier_code")
+                        st.info("📱 امسح الباركود باستخدام كاميرا التلفون - سيتم كتابته تلقائياً")
+                        mobile_barcode_scanner("panier_code")
                     
                     code = st.text_input(t("barcode"), key="panier_code")
                     qty = st.number_input(f"{t('quantity')}:", min_value=0.0, step=0.1, key="panier_qty")
@@ -1989,14 +1978,15 @@ if menu == t("pos"):
                     else:
                         st.info(t("no_data"))
             
-            # ========== السلة التلقائية (سكانير متواصل) ==========
+            # ========== السلة التلقائية ==========
             else:
                 st.success(t("cart_auto_info"))
                 
-                # ماسح الباركود للسلة التلقائية باستخدام الدالة الجديدة
-                use_auto_scanner = st.checkbox("📸 تفعيل الماسح التلقائي", key="auto_cart_scanner_checkbox")
+                # ===== ماسح للهواتف =====
+                use_auto_scanner = st.checkbox("📱 تفعيل الماسح (للتلفون)", key="auto_cart_scanner_checkbox")
                 if use_auto_scanner:
-                    simple_barcode_scanner("auto_cart_scan_input")
+                    st.info("📱 امسح الباركود باستخدام كاميرا التلفون - سيتم كتابته تلقائياً")
+                    mobile_barcode_scanner("auto_cart_scan_input")
                 
                 code_auto_cart = st.text_input(
                     "Code-barres",
@@ -2107,12 +2097,12 @@ elif menu == t("stock"):
         else:
             st.success(f"{t('search_results')} {len(df_stock)} produit(s)")
     
-    # إضافة منتج جديد مع ماسح باركود
+    # إضافة منتج جديد مع ماسح باركود للهواتف
     with st.expander(t("add_product"), expanded=True):
-        use_add_scanner = st.checkbox(t("stock_scanner_add"), key="add_scanner_checkbox")
+        use_add_scanner = st.checkbox("📱 تفعيل الماسح (للتلفون)", key="add_scanner_checkbox")
         if use_add_scanner:
-            st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-            simple_barcode_scanner("stock_barcode_new")
+            st.info("📱 امسح الباركود باستخدام كاميرا التلفون - سيتم كتابته تلقائياً")
+            mobile_barcode_scanner("stock_barcode_new")
         
         col1, col2, col3, col4 = st.columns(4)
         with col1: 
@@ -2162,10 +2152,10 @@ elif menu == t("stock"):
     
     if not df_stock.empty:
         with st.expander(t("update_product")):
-            use_update_scanner = st.checkbox(t("stock_scanner_update"), key="update_scanner_checkbox")
+            use_update_scanner = st.checkbox("📱 تفعيل الماسح (للتلفون)", key="update_scanner_checkbox")
             if use_update_scanner:
-                st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-                simple_barcode_scanner("stock_update_barcode_new")
+                st.info("📱 امسح الباركود باستخدام كاميرا التلفون - سيتم كتابته تلقائياً")
+                mobile_barcode_scanner("stock_update_barcode_new")
             
             # بحث بالباركود أولاً
             search_barcode_input = st.text_input("🔍 ابحث بالباركود", key="search_barcode_update", placeholder="امسح الباركود للبحث عن المنتج...")
@@ -2407,7 +2397,8 @@ elif menu == t("credits"):
             if 'id' in df_credits.columns:
                 credit_options = df_credits.apply(
                     lambda x: f"{x['Client']} - {x['Montant']:.2f} DH (ID: {x['id']})",
-                    axis=1                ).tolist()
+                    axis=1
+                ).tolist()
                 
                 credit_a_reduire = st.selectbox(
                     t("select_credit"),
