@@ -22,239 +22,6 @@ except Exception as e:
     st.error(f"❌ Erreur de connexion à Supabase: {e}")
     st.stop()
 
-# ==================== دالة الماسح المحسن ====================
-def mobile_barcode_scanner(session_key):
-    """
-    ماسح باركود محسن - يضمن كتابة القيمة في st.text_input
-    """
-    scanner_html = f"""
-    <div id="barcode-scanner-container" style="width:100%; min-height:350px; border:2px dashed #4CAF50; border-radius:10px; padding:15px; background:#f9f9f9;">
-        <div id="reader" style="width:100%; min-height:300px;"></div>
-        <p style="text-align:center; color:#666; font-size:14px; margin-top:10px;">📱 قرب الباركود من الكاميرا</p>
-        <div id="scan-status" style="text-align:center; font-size:14px; color:#999; margin-top:5px;">⏳ جاري تهيئة الكاميرا...</div>
-    </div>
-    
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <script>
-    (function() {{
-        'use strict';
-        
-        let html5Qrcode = null;
-        let isScanning = false;
-        let scannerStarted = false;
-        let lastScanned = '';
-        let retryCount = 0;
-        const maxRetries = 3;
-        
-        function updateStatus(message, isSuccess = false, isError = false) {{
-            const statusEl = document.getElementById('scan-status');
-            if (statusEl) {{
-                statusEl.textContent = message;
-                statusEl.style.color = isError ? '#f44336' : (isSuccess ? '#4CAF50' : '#666');
-            }}
-        }}
-        
-        function setInputValue(value) {{
-            // محاولة 1: البحث عن input بالـ id
-            let input = document.getElementById('{session_key}');
-            
-            // محاولة 2: البحث عن input بالـ name
-            if (!input) {{
-                const inputs = document.getElementsByName('{session_key}');
-                if (inputs.length > 0) input = inputs[0];
-            }}
-            
-            // محاولة 3: البحث عن input بالـ aria-label
-            if (!input) {{
-                const inputs = document.querySelectorAll('input[aria-label="{session_key}"]');
-                if (inputs.length > 0) input = inputs[0];
-            }}
-            
-            // محاولة 4: البحث عن أي input يحتوي على placeholder يشبه الباركود
-            if (!input) {{
-                const allInputs = document.querySelectorAll('input');
-                for (let el of allInputs) {{
-                    if (el.placeholder && (el.placeholder.includes('باركود') || el.placeholder.includes('barcode') || el.placeholder.includes('Code'))) {{
-                        input = el;
-                        break;
-                    }}
-                }}
-            }}
-            
-            if (input) {{
-                // تغيير القيمة
-                input.value = value;
-                
-                // إرسال الأحداث
-                input.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                input.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                
-                // تأثير بصري
-                input.style.background = '#a5d6a7';
-                input.style.border = '3px solid #4CAF50';
-                input.style.transition = 'all 0.3s';
-                setTimeout(() => {{
-                    input.style.background = '';
-                    input.style.border = '';
-                }}, 1500);
-                
-                return true;
-            }}
-            return false;
-        }}
-        
-        function sendToStreamlit(value) {{
-            // إرسال القيمة لـ Streamlit
-            window.parent.postMessage({{
-                type: 'streamlit:setComponentValue',
-                key: '{session_key}',
-                value: value
-            }}, '*');
-            
-            // إرسال مرة ثانية بعد 50ms للتأكد
-            setTimeout(() => {{
-                window.parent.postMessage({{
-                    type: 'streamlit:setComponentValue',
-                    key: '{session_key}',
-                    value: value
-                }}, '*');
-            }}, 50);
-            
-            // إرسال مرة ثالثة بعد 200ms (ضمان إضافي)
-            setTimeout(() => {{
-                window.parent.postMessage({{
-                    type: 'streamlit:setComponentValue',
-                    key: '{session_key}',
-                    value: value
-                }}, '*');
-            }}, 200);
-        }}
-        
-        function handleSuccessfulScan(decodedText) {{
-            if (decodedText === lastScanned) return;
-            lastScanned = decodedText;
-            
-            updateStatus('✅ تم المسح: ' + decodedText, true);
-            
-            // 1. كتابة القيمة في input
-            const inputUpdated = setInputValue(decodedText);
-            
-            // 2. إرسال القيمة لـ Streamlit
-            sendToStreamlit(decodedText);
-            
-            // 3. إيقاف الماسح
-            if (html5Qrcode) {{
-                html5Qrcode.stop().then(() => {{
-                    isScanning = false;
-                    scannerStarted = false;
-                    updateStatus('📸 جاهز للمسح مرة أخرى', false);
-                    
-                    // 4. إعادة تشغيل الماسح بعد 2 ثانية
-                    setTimeout(() => {{
-                        lastScanned = '';
-                        startScanner();
-                    }}, 2000);
-                }}).catch(function(err) {{
-                    console.warn('Stop error:', err);
-                    isScanning = false;
-                    scannerStarted = false;
-                    setTimeout(() => {{
-                        lastScanned = '';
-                        startScanner();
-                    }}, 2000);
-                }});
-            }}
-            
-            // 5. إرسال طلب تحديث الصفحة (rerun) - مهم لـ Stock
-            window.parent.postMessage({{
-                type: 'streamlit:setComponentValue',
-                key: '{session_key}',
-                value: decodedText
-            }}, '*');
-        }}
-        
-        function startScanner() {{
-            if (isScanning || scannerStarted) return;
-            
-            const container = document.getElementById('barcode-scanner-container');
-            if (!container) return;
-            
-            try {{
-                // إعادة تعيين المتغيرات
-                if (html5Qrcode) {{
-                    html5Qrcode.clear();
-                    html5Qrcode = null;
-                }}
-                
-                const readerElement = document.getElementById('reader');
-                if (!readerElement) return;
-                
-                html5Qrcode = new Html5Qrcode("reader");
-                scannerStarted = true;
-                
-                const config = {{
-                    fps: 15,
-                    qrbox: {{width: 280, height: 280}},
-                    aspectRatio: 1.0,
-                    facingMode: "environment"
-                }};
-                
-                updateStatus('📷 جاري تشغيل الكاميرا...', false);
-                
-                html5Qrcode.start(
-                    {{ facingMode: "environment" }},
-                    config,
-                    function(decodedText, decodedResult) {{
-                        if (decodedText) {{
-                            handleSuccessfulScan(decodedText);
-                        }}
-                    }},
-                    function(errorMessage) {{
-                        // تجاهل الأخطاء العادية
-                    }}
-                ).then(function() {{
-                    isScanning = true;
-                    updateStatus('📷 الكاميرا شغالة - امسح الباركود', false);
-                }}).catch(function(err) {{
-                    console.error('Scanner start error:', err);
-                    updateStatus('❌ خطأ: ' + err.message, false, true);
-                    scannerStarted = false;
-                    
-                    // إعادة محاولة
-                    retryCount++;
-                    if (retryCount < maxRetries) {{
-                        setTimeout(startScanner, 2000);
-                    }} else {{
-                        updateStatus('❌ تعذر تشغيل الكاميرا بعد ' + maxRetries + ' محاولات', false, true);
-                    }}
-                }});
-            }} catch(e) {{
-                console.error('Scanner error:', e);
-                updateStatus('❌ خطأ: ' + e.message, false, true);
-                scannerStarted = false;
-                
-                retryCount++;
-                if (retryCount < maxRetries) {{
-                    setTimeout(startScanner, 2000);
-                }}
-            }}
-        }}
-        
-        // بدء الماسح بعد تحميل الصفحة
-        setTimeout(startScanner, 1000);
-        
-        // إعادة المحاولة إذا كانت الصفحة مخفية ثم ظهرت
-        document.addEventListener('visibilitychange', function() {{
-            if (!document.hidden && !isScanning && !scannerStarted) {{
-                retryCount = 0;
-                setTimeout(startScanner, 500);
-            }}
-        }});
-    }})();
-    </script>
-    """
-    components.html(scanner_html, height=420)
-
 # --- نظام الترجمة (العربية، الفرنسية، الإنجليزية) ---
 if "lang" not in st.session_state:
     st.session_state.lang = "ar"
@@ -1357,36 +1124,52 @@ def play_success_sound():
 
 st.set_page_config(layout="wide", page_title="OUZOUD SERVICES")
 
+# ==================== دالة الماسح (كاميرا دايمة) ====================
 def fast_barcode_scanner_with_qty(input_label, qty_label):
     scanner_html = f"""
     <div id="reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
-    function onScanSuccess(decodedText, decodedResult) {{
-        const inputs = window.parent.document.querySelectorAll('input');
-        let codeInput = null;
-        let qtyInput = null;
-        inputs.forEach(input => {{
-            if (input.getAttribute('aria-label') === '{input_label}') {{
-                codeInput = input;
+    let html5QrcodeScanner = null;
+    let isScanning = false;
+    
+    function startScanner() {{
+        if (isScanning) return;
+        
+        html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader", 
+            {{ fps: 10, qrbox: 250, facingMode: "environment" }}
+        );
+        
+        html5QrcodeScanner.render(function(decodedText, decodedResult) {{
+            const inputs = window.parent.document.querySelectorAll('input');
+            let codeInput = null;
+            let qtyInput = null;
+            inputs.forEach(input => {{
+                if (input.getAttribute('aria-label') === '{input_label}') {{
+                    codeInput = input;
+                }}
+                if (input.getAttribute('aria-label') === '{qty_label}') {{
+                    qtyInput = input;
+                }}
+            }});
+            if (codeInput) {{
+                codeInput.value = decodedText;
+                codeInput.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                codeInput.dispatchEvent(new Event('change', {{ bubbles: true }}));
             }}
-            if (input.getAttribute('aria-label') === '{qty_label}') {{
-                qtyInput = input;
+            if (qtyInput && !qtyInput.value) {{
+                qtyInput.value = '1';
+                qtyInput.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                qtyInput.dispatchEvent(new Event('change', {{ bubbles: true }}));
             }}
         }});
-        if (codeInput) {{
-            codeInput.value = decodedText;
-            codeInput.dispatchEvent(new Event('input', {{ bubbles: true }}));
-            codeInput.dispatchEvent(new Event('change', {{ bubbles: true }}));
-        }}
-        if (qtyInput && !qtyInput.value) {{
-            qtyInput.value = '1';
-            qtyInput.dispatchEvent(new Event('input', {{ bubbles: true }}));
-            qtyInput.dispatchEvent(new Event('change', {{ bubbles: true }}));
-        }}
+        
+        isScanning = true;
     }}
-    let html5QrcodeScanner = new Html5QrcodeScanner("reader", {{ fps: 10, qrbox: 250, facingMode: "environment" }});
-    html5QrcodeScanner.render(onScanSuccess);
+    
+    // بدء الماسح مباشرة
+    setTimeout(startScanner, 500);
     </script>
     """
     components.html(scanner_html, height=400)
@@ -1396,25 +1179,39 @@ def auto_sale_scanner():
     <div id="reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
+    let html5QrcodeScanner = null;
+    let isScanning = false;
     let lastScan = '';
     let scanTimeout;
-    function onScanSuccess(decodedText, decodedResult) {
-        if (decodedText !== lastScan) {
-            lastScan = decodedText;
-            clearTimeout(scanTimeout);
-            scanTimeout = setTimeout(() => { lastScan = ''; }, 2000);
-            const inputs = window.parent.document.querySelectorAll('input');
-            inputs.forEach(input => {
-                if (input.getAttribute('aria-label') === 'Auto-Scan') {
-                    input.value = decodedText;
-                    input.dispatchEvent(new Event('input', {bubbles: true}));
-                    input.dispatchEvent(new Event('change', {bubbles: true}));
-                }
-            });
-        }
+    
+    function startScanner() {
+        if (isScanning) return;
+        
+        html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader", 
+            {fps: 10, qrbox: 250, facingMode: "environment"}
+        );
+        
+        html5QrcodeScanner.render(function(decodedText, decodedResult) {
+            if (decodedText !== lastScan) {
+                lastScan = decodedText;
+                clearTimeout(scanTimeout);
+                scanTimeout = setTimeout(() => { lastScan = ''; }, 2000);
+                const inputs = window.parent.document.querySelectorAll('input');
+                inputs.forEach(input => {
+                    if (input.getAttribute('aria-label') === 'Auto-Scan') {
+                        input.value = decodedText;
+                        input.dispatchEvent(new Event('input', {bubbles: true}));
+                        input.dispatchEvent(new Event('change', {bubbles: true}));
+                    }
+                });
+            }
+        });
+        
+        isScanning = true;
     }
-    let html5QrcodeScanner = new Html5QrcodeScanner("reader", {fps: 10, qrbox: 250, facingMode: "environment"});
-    html5QrcodeScanner.render(onScanSuccess);
+    
+    setTimeout(startScanner, 500);
     </script>
     """
     components.html(scanner_html, height=350)
@@ -1425,25 +1222,39 @@ def auto_cart_scanner():
     <div id="auto_cart_reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
+    let html5QrcodeScanner = null;
+    let isScanning = false;
     let lastCartScan = '';
     let cartScanTimeout;
-    function onScanSuccess(decodedText, decodedResult) {
-        if (decodedText !== lastCartScan) {
-            lastCartScan = decodedText;
-            clearTimeout(cartScanTimeout);
-            cartScanTimeout = setTimeout(() => { lastCartScan = ''; }, 1500);
-            const inputs = window.parent.document.querySelectorAll('input');
-            inputs.forEach(input => {
-                if (input.getAttribute('aria-label') === 'Auto-Cart-Scan') {
-                    input.value = decodedText;
-                    input.dispatchEvent(new Event('input', {bubbles: true}));
-                    input.dispatchEvent(new Event('change', {bubbles: true}));
-                }
-            });
-        }
+    
+    function startScanner() {
+        if (isScanning) return;
+        
+        html5QrcodeScanner = new Html5QrcodeScanner(
+            "auto_cart_reader", 
+            {fps: 10, qrbox: 250, facingMode: "environment"}
+        );
+        
+        html5QrcodeScanner.render(function(decodedText, decodedResult) {
+            if (decodedText !== lastCartScan) {
+                lastCartScan = decodedText;
+                clearTimeout(cartScanTimeout);
+                cartScanTimeout = setTimeout(() => { lastCartScan = ''; }, 1500);
+                const inputs = window.parent.document.querySelectorAll('input');
+                inputs.forEach(input => {
+                    if (input.getAttribute('aria-label') === 'Auto-Cart-Scan') {
+                        input.value = decodedText;
+                        input.dispatchEvent(new Event('input', {bubbles: true}));
+                        input.dispatchEvent(new Event('change', {bubbles: true}));
+                    }
+                });
+            }
+        });
+        
+        isScanning = true;
     }
-    let html5QrcodeScanner = new Html5QrcodeScanner("auto_cart_reader", {fps: 10, qrbox: 250, facingMode: "environment"});
-    html5QrcodeScanner.render(onScanSuccess);
+    
+    setTimeout(startScanner, 500);
     </script>
     """
     components.html(scanner_html, height=300)
@@ -2216,12 +2027,12 @@ elif menu == t("stock"):
         else:
             st.success(f"{t('search_results')} {len(df_stock)} produit(s)")
     
-    # إضافة منتج جديد مع ماسح باركود
+    # إضافة منتج جديد مع ماسح باركود (نفس دالة POS)
     with st.expander(t("add_product"), expanded=True):
         use_add_scanner = st.checkbox(t("stock_scanner_add"), key="add_scanner_checkbox")
         if use_add_scanner:
             st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-            mobile_barcode_scanner("stock_barcode")
+            fast_barcode_scanner_with_qty("stock_barcode", "stock_qty")
         
         col1, col2, col3, col4 = st.columns(4)
         with col1: 
@@ -2274,7 +2085,7 @@ elif menu == t("stock"):
             use_update_scanner = st.checkbox(t("stock_scanner_update"), key="update_scanner_checkbox")
             if use_update_scanner:
                 st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-                mobile_barcode_scanner("stock_update_barcode")
+                fast_barcode_scanner_with_qty("stock_update_barcode", "stock_update_qty")
             
             selected_product = st.selectbox(
                 t("select_product"), 
