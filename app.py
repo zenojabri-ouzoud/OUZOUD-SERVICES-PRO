@@ -22,7 +22,7 @@ except Exception as e:
     st.error(f"❌ Erreur de connexion à Supabase: {e}")
     st.stop()
 
-# ==================== دالة الماسح الذكي (تواصل مع session_state) ====================
+# ==================== دالة الماسح الذكي (مع session_state) ====================
 def mobile_barcode_scanner(session_key):
     """
     ماسح باركود ذكي: كيرسل القيمة لـ session_state مباشرة.
@@ -36,6 +36,7 @@ def mobile_barcode_scanner(session_key):
         let html5Qrcode = null;
         let isScanning = false;
         let scannerStarted = false;
+        let scanCount = 0;
         
         function startScanner() {{
             if (isScanning || scannerStarted) return;
@@ -59,36 +60,67 @@ def mobile_barcode_scanner(session_key):
                     config,
                     function(decodedText, decodedResult) {{
                         if (decodedText) {{
-                            // 1. إرسال القيمة لـ Streamlit عبر session_state
+                            scanCount++;
+                            
+                            // 1. كتابة القيمة في input (للمستخدم)
+                            const inputs = window.parent.document.querySelectorAll('input');
+                            let found = false;
+                            inputs.forEach(function(input) {{
+                                if (input.id === '{session_key}' || 
+                                    input.getAttribute('aria-label') === '{session_key}' ||
+                                    input.name === '{session_key}') {{
+                                    input.value = decodedText;
+                                    input.dispatchEvent(new Event('input', {{bubbles: true}}));
+                                    input.dispatchEvent(new Event('change', {{bubbles: true}}));
+                                    input.style.background = '#a5d6a7';
+                                    input.style.border = '3px solid #4CAF50';
+                                    setTimeout(() => {{ 
+                                        input.style.background = ''; 
+                                        input.style.border = '';
+                                    }}, 1000);
+                                    found = true;
+                                }}
+                            }});
+                            
+                            // 2. إرسال القيمة لـ Streamlit
                             window.parent.postMessage({{
                                 type: 'streamlit:setComponentValue',
                                 key: '{session_key}',
                                 value: decodedText
                             }}, '*');
                             
-                            // 2. تغيير الرسالة
+                            // 3. إرسال مرة أخرى بعد 100ms للتأكد
+                            setTimeout(() => {{
+                                window.parent.postMessage({{
+                                    type: 'streamlit:setComponentValue',
+                                    key: '{session_key}',
+                                    value: decodedText
+                                }}, '*');
+                            }}, 100);
+                            
+                            // 4. تغيير الرسالة
                             const msgs = document.querySelectorAll('#reader + p');
                             if (msgs.length > 0) {{
                                 msgs[0].innerHTML = '✅ تم المسح بنجاح: ' + decodedText;
                                 msgs[0].style.color = 'green';
                             }}
                             
-                            // 3. إعادة تشغيل الكاميرا بعد 2 ثانية (دايمة)
+                            // 5. إيقاف الكاميرا بعد 1.5 ثانية
                             setTimeout(() => {{
                                 if (html5Qrcode) {{
                                     html5Qrcode.stop().then(() => {{
                                         console.log('✅ Scanner stopped');
                                         isScanning = false;
                                         scannerStarted = false;
-                                        setTimeout(startScanner, 500);
+                                        setTimeout(startScanner, 2000);
                                     }}).catch(function(err) {{
                                         console.error('Stop error:', err);
                                         isScanning = false;
                                         scannerStarted = false;
-                                        setTimeout(startScanner, 500);
+                                        setTimeout(startScanner, 2000);
                                     }});
                                 }}
-                            }}, 2000);
+                            }}, 1500);
                         }}
                     }},
                     function(errorMessage) {{
@@ -119,7 +151,7 @@ def mobile_barcode_scanner(session_key):
         }}
         
         // بدء الماسح بعد تحميل الصفحة
-        setTimeout(startScanner, 800);
+        setTimeout(startScanner, 1000);
     </script>
     """
     components.html(scanner_html, height=420)
