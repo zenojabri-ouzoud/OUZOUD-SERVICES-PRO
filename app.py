@@ -22,6 +22,108 @@ except Exception as e:
     st.error(f"❌ Erreur de connexion à Supabase: {e}")
     st.stop()
 
+# ==================== دالة الماسح الذكي (تواصل مع session_state) ====================
+def mobile_barcode_scanner(session_key):
+    """
+    ماسح باركود ذكي: كيرسل القيمة لـ session_state مباشرة.
+    ما كيعتمدش على الـ input فـ DOM، يعني كاع الحقول (سواء اختيارية أو لا) غتخدم.
+    """
+    scanner_html = f"""
+    <div id="reader" style="width:100%; border:2px dashed #4CAF50; border-radius:10px; padding:10px; min-height:300px; background:#f9f9f9;"></div>
+    <p style="text-align:center; color:#666; font-size:14px; margin-top:5px;">📱 قرب الباركود من الكاميرا</p>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+        let html5Qrcode = null;
+        let isScanning = false;
+        let scannerStarted = false;
+        
+        function startScanner() {{
+            if (isScanning || scannerStarted) return;
+            
+            try {{
+                const element = document.getElementById('reader');
+                if (!element) return;
+                
+                html5Qrcode = new Html5Qrcode("reader");
+                scannerStarted = true;
+                
+                const config = {{
+                    fps: 15,
+                    qrbox: {{width: 280, height: 280}},
+                    aspectRatio: 1.0,
+                    facingMode: "environment"
+                }};
+                
+                html5Qrcode.start(
+                    {{ facingMode: "environment" }},
+                    config,
+                    function(decodedText, decodedResult) {{
+                        if (decodedText) {{
+                            // 1. إرسال القيمة لـ Streamlit عبر session_state
+                            window.parent.postMessage({{
+                                type: 'streamlit:setComponentValue',
+                                key: '{session_key}',
+                                value: decodedText
+                            }}, '*');
+                            
+                            // 2. تغيير الرسالة
+                            const msgs = document.querySelectorAll('#reader + p');
+                            if (msgs.length > 0) {{
+                                msgs[0].innerHTML = '✅ تم المسح بنجاح: ' + decodedText;
+                                msgs[0].style.color = 'green';
+                            }}
+                            
+                            // 3. إعادة تشغيل الكاميرا بعد 2 ثانية (دايمة)
+                            setTimeout(() => {{
+                                if (html5Qrcode) {{
+                                    html5Qrcode.stop().then(() => {{
+                                        console.log('✅ Scanner stopped');
+                                        isScanning = false;
+                                        scannerStarted = false;
+                                        setTimeout(startScanner, 500);
+                                    }}).catch(function(err) {{
+                                        console.error('Stop error:', err);
+                                        isScanning = false;
+                                        scannerStarted = false;
+                                        setTimeout(startScanner, 500);
+                                    }});
+                                }}
+                            }}, 2000);
+                        }}
+                    }},
+                    function(errorMessage) {{
+                        // تجاهل أخطاء المسح العادية
+                    }}
+                ).then(function() {{
+                    isScanning = true;
+                }}).catch(function(err) {{
+                    console.error('Scanner start error:', err);
+                    const msgs = document.querySelectorAll('#reader + p');
+                    if (msgs.length > 0) {{
+                        msgs[0].innerHTML = '❌ خطأ: ' + err.message;
+                        msgs[0].style.color = 'red';
+                    }}
+                    scannerStarted = false;
+                    setTimeout(startScanner, 2000);
+                }});
+            }} catch(e) {{
+                console.error('Scanner error:', e);
+                const msgs = document.querySelectorAll('#reader + p');
+                if (msgs.length > 0) {{
+                    msgs[0].innerHTML = '❌ خطأ: ' + e.message;
+                    msgs[0].style.color = 'red';
+                }}
+                scannerStarted = false;
+                setTimeout(startScanner, 2000);
+            }}
+        }}
+        
+        // بدء الماسح بعد تحميل الصفحة
+        setTimeout(startScanner, 800);
+    </script>
+    """
+    components.html(scanner_html, height=420)
+
 # --- نظام الترجمة (العربية، الفرنسية، الإنجليزية) ---
 if "lang" not in st.session_state:
     st.session_state.lang = "ar"
@@ -1988,7 +2090,7 @@ elif menu == t("stock"):
         use_add_scanner = st.checkbox(t("stock_scanner_add"), key="add_scanner_checkbox")
         if use_add_scanner:
             st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-            fast_barcode_scanner_with_qty("stock_barcode", "stock_qty")
+            stock_barcode_scanner("stock_barcode")
         
         col1, col2, col3, col4 = st.columns(4)
         with col1: 
@@ -2041,7 +2143,7 @@ elif menu == t("stock"):
             use_update_scanner = st.checkbox(t("stock_scanner_update"), key="update_scanner_checkbox")
             if use_update_scanner:
                 st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-                fast_barcode_scanner_with_qty("stock_update_barcode", "stock_update_qty")
+                stock_barcode_scanner("stock_update_barcode")
             
             selected_product = st.selectbox(
                 t("select_product"), 
