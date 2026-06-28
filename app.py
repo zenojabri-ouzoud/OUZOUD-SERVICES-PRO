@@ -22,11 +22,10 @@ except Exception as e:
     st.error(f"❌ Erreur de connexion à Supabase: {e}")
     st.stop()
 
-# ==================== دالة الماسح الذكي (مع session_state) ====================
+# ==================== دالة الماسح (كاميرا دايمة) ====================
 def mobile_barcode_scanner(session_key):
     """
-    ماسح باركود ذكي: كيرسل القيمة لـ session_state مباشرة.
-    ما كيعتمدش على الـ input فـ DOM، يعني كاع الحقول (سواء اختيارية أو لا) غتخدم.
+    ماسح باركود - كاميرا دايمة ما كتطفيش
     """
     scanner_html = f"""
     <div id="reader" style="width:100%; border:2px dashed #4CAF50; border-radius:10px; padding:10px; min-height:300px; background:#f9f9f9;"></div>
@@ -36,7 +35,6 @@ def mobile_barcode_scanner(session_key):
         let html5Qrcode = null;
         let isScanning = false;
         let scannerStarted = false;
-        let scanCount = 0;
         
         function startScanner() {{
             if (isScanning || scannerStarted) return;
@@ -60,47 +58,22 @@ def mobile_barcode_scanner(session_key):
                     config,
                     function(decodedText, decodedResult) {{
                         if (decodedText) {{
-                            scanCount++;
-                            
-                            // 1. إرسال القيمة لـ Streamlit عبر session_state
+                            // إرسال القيمة لـ Streamlit عبر session_state
                             window.parent.postMessage({{
                                 type: 'streamlit:setComponentValue',
                                 key: '{session_key}',
                                 value: decodedText
                             }}, '*');
                             
-                            // 2. إرسال مرة أخرى بعد 100ms للتأكد
-                            setTimeout(() => {{
-                                window.parent.postMessage({{
-                                    type: 'streamlit:setComponentValue',
-                                    key: '{session_key}',
-                                    value: decodedText
-                                }}, '*');
-                            }}, 100);
-                            
-                            // 3. تغيير الرسالة
+                            // تغيير الرسالة
                             const msgs = document.querySelectorAll('#reader + p');
                             if (msgs.length > 0) {{
                                 msgs[0].innerHTML = '✅ تم المسح بنجاح: ' + decodedText;
                                 msgs[0].style.color = 'green';
                             }}
                             
-                            // 4. إيقاف الكاميرا بعد 1.5 ثانية
-                            setTimeout(() => {{
-                                if (html5Qrcode) {{
-                                    html5Qrcode.stop().then(() => {{
-                                        console.log('✅ Scanner stopped');
-                                        isScanning = false;
-                                        scannerStarted = false;
-                                        setTimeout(startScanner, 2000);
-                                    }}).catch(function(err) {{
-                                        console.error('Stop error:', err);
-                                        isScanning = false;
-                                        scannerStarted = false;
-                                        setTimeout(startScanner, 2000);
-                                    }});
-                                }}
-                            }}, 1500);
+                            // ====== كاميرا دايمة (ما كتطفيش) ======
+                            // غادي تبقى شغالة باش تقدر تمسح مرة أخرى
                         }}
                     }},
                     function(errorMessage) {{
@@ -2145,7 +2118,7 @@ elif menu == t("stock"):
         else:
             st.success(f"{t('search_results')} {len(df_stock)} produit(s)")
     
-    # إضافة منتج جديد مع ماسح إلزامي
+    # ====== إضافة منتج جديد (مسح إلزامي) ======
     with st.expander(t("add_product"), expanded=True):
         # ====== ماسح إلزامي ======
         if st.session_state.scanned_barcode is None:
@@ -2164,11 +2137,12 @@ elif menu == t("stock"):
         with col3: 
             qty = st.number_input(t("quantity"), min_value=0.0, step=0.1, key="stock_qty")
         
-        # إظهار الباركود (للعلم فقط)
-        st.text_input(t("barcode_optional"), value=barcode, disabled=True, key="stock_barcode")
+        # الباركود (للعرض فقط)
+        st.text_input(t("barcode"), value=barcode, disabled=True, key="stock_barcode")
         
+        # زر الإضافة (يظهر فقط بعد ملء جميع الحقول)
         if st.button(t("add_button"), key="stock_add_btn"):
-            if name:
+            if name and price > 0 and qty > 0:
                 product_data = {
                     "Nom": name, 
                     "Prix": float(price), 
@@ -2209,6 +2183,7 @@ elif menu == t("stock"):
     else:
         st.success(t("stock_ok"))
     
+    # ====== تحديث منتج (مسح إلزامي) ======
     if not df_stock.empty:
         with st.expander(t("update_product")):
             # ====== ماسح إلزامي ======
@@ -2253,7 +2228,7 @@ elif menu == t("stock"):
                     )
                 with col3:
                     new_barcode = st.text_input(
-                        t("barcode_optional"),
+                        t("barcode"),
                         value=str(current_barcode) if current_barcode else "",
                         key="stock_update_barcode"
                     )
