@@ -22,126 +22,89 @@ except Exception as e:
     st.error(f"❌ Erreur de connexion à Supabase: {e}")
     st.stop()
 
-# ==================== دالة الماسح للهواتف ====================
-def mobile_barcode_scanner(input_key, height=350):
+# ==================== دالة الماسح المرنة للهواتف ====================
+def mobile_barcode_scanner(session_key):
     """
-    ماسح باركود مخصص للهواتف المحمولة - يكتب الباركود تلقائياً في الخانة
-    input_key: نفس الـ key ديال الخانة
+    ماسح باركود مرن للهواتف: كياخد أي key كـ parameter
+    وكيحدث الـ session_state ديال هاداك الـ key مباشرة.
     """
     scanner_html = f"""
-    <div id="mobile_scanner_{input_key}" style="width:100%; min-height:{height}px; border:2px dashed #4CAF50; border-radius:10px; padding:10px;"></div>
+    <div id="reader" style="width:100%; border:2px dashed #4CAF50; border-radius:10px; padding:10px; min-height:300px;"></div>
+    <p style="text-align:center; color:#666; font-size:14px;">📱 قرب الباركود من الكاميرا</p>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
-    let scanner_{input_key} = null;
-    let isScanning_{input_key} = false;
-    
-    function startScanner_{input_key}() {{
-        if (isScanning_{input_key}) return;
+        let html5Qrcode = null;
+        let isScanning = false;
         
-        try {{
-            const element = document.getElementById('mobile_scanner_{input_key}');
-            element.innerHTML = '';
+        function startScanner() {{
+            if (isScanning) return;
             
-            // إضافة رسالة
-            const msg = document.createElement('p');
-            msg.innerHTML = '📷 جاري تشغيل الكاميرا... انتظر قليلاً';
-            msg.style.textAlign = 'center';
-            msg.style.color = '#4CAF50';
-            msg.style.fontSize = '16px';
-            msg.style.fontWeight = 'bold';
-            element.appendChild(msg);
-            
-            const html5Qrcode = new Html5Qrcode('mobile_scanner_{input_key}');
-            
-            const config = {{
-                fps: 20,
-                qrbox: {{width: 280, height: 280}},
-                aspectRatio: 1.0,
-                facingMode: "environment"
-            }};
+            html5Qrcode = new Html5Qrcode("reader");
             
             html5Qrcode.start(
-                {{ facingMode: "environment" }},
-                config,
-                function(decodedText, decodedResult) {{
-                    if (decodedText) {{
-                        // البحث عن الخانة وكتابة الباركود فيها
-                        const inputs = window.parent.document.querySelectorAll('input');
-                        let found = false;
-                        inputs.forEach(function(input) {{
-                            if (input.id === '{input_key}' || 
-                                input.getAttribute('aria-label') === '{input_key}' ||
-                                input.name === '{input_key}') {{
-                                input.value = decodedText;
-                                input.dispatchEvent(new Event('input', {{bubbles: true}}));
-                                input.dispatchEvent(new Event('change', {{bubbles: true}}));
-                                input.style.background = '#a5d6a7';
-                                input.style.border = '3px solid #4CAF50';
-                                setTimeout(() => {{ 
-                                    input.style.background = ''; 
-                                    input.style.border = '';
-                                }}, 1000);
-                                found = true;
-                                
-                                // تحديث الرسالة
-                                const msg = document.querySelector('#mobile_scanner_{input_key} p');
-                                if (msg) {{
-                                    msg.innerHTML = '✅ تم المسح بنجاح: ' + decodedText;
-                                    msg.style.color = 'green';
-                                }}
-                                
-                                // إيقاف المسح بعد 1 ثانية
-                                setTimeout(() => {{
-                                    try {{
-                                        html5Qrcode.stop();
-                                        isScanning_{input_key} = false;
-                                        const msg2 = document.querySelector('#mobile_scanner_{input_key} p');
-                                        if (msg2) {{
-                                            msg2.innerHTML = '📸 جاهز للمسح مرة أخرى';
-                                            msg2.style.color = '#4CAF50';
-                                        }}
-                                    }} catch(e) {{}}
-                                }}, 1000);
-                            }}
-                        }});
-                        
-                        if (!found) {{
-                            const msg = document.querySelector('#mobile_scanner_{input_key} p');
-                            if (msg) {{
-                                msg.innerHTML = '⚠️ لم يتم العثور على الخانة';
-                                msg.style.color = 'orange';
-                            }}
+                {{ facingMode: "environment" }}, 
+                {{ fps: 15, qrbox: 250 }}, 
+                (decodedText) => {{
+                    // 1. كتابة القيمة فـ الخانة
+                    const inputs = window.parent.document.querySelectorAll('input');
+                    inputs.forEach(input => {{
+                        if (input.id === '{session_key}' || 
+                            input.getAttribute('aria-label') === '{session_key}' ||
+                            input.name === '{session_key}') {{
+                            input.value = decodedText;
+                            input.dispatchEvent(new Event('input', {{bubbles: true}}));
+                            input.dispatchEvent(new Event('change', {{bubbles: true}}));
+                            
+                            // 2. Visual Feedback (تأكيد بصري)
+                            input.style.background = '#a5d6a7';
+                            input.style.border = '3px solid #4CAF50';
+                            setTimeout(() => {{ 
+                                input.style.background = ''; 
+                                input.style.border = '';
+                            }}, 1000);
                         }}
+                    }});
+                    
+                    // 3. إرسال القيمة لـ Streamlit
+                    window.parent.postMessage({{
+                        type: 'streamlit:setComponentValue',
+                        key: '{session_key}',
+                        value: decodedText
+                    }}, '*');
+                    
+                    // 4. إيقاف الكاميرا مباشرة (مهم للبطارية)
+                    if (html5Qrcode) {{
+                        html5Qrcode.stop().then(() => {{
+                            console.log('✅ Scanner stopped successfully');
+                            isScanning = false;
+                        }}).catch(err => {{
+                            console.error('Error stopping scanner:', err);
+                        }});
+                    }}
+                    
+                    // 5. تغيير الرسالة
+                    const msg = document.querySelector('#reader + p');
+                    if (msg) {{
+                        msg.innerHTML = '✅ تم المسح بنجاح!';
+                        msg.style.color = 'green';
                     }}
                 }},
-                function(errorMessage) {{
-                    // تجاهل الأخطاء العادية
+                (errorMessage) => {{
+                    // تجاهل أخطاء المسح العادية
                 }}
-            ).catch(function(err) {{
-                const msg = document.querySelector('#mobile_scanner_{input_key} p');
-                if (msg) {{
-                    msg.innerHTML = '❌ خطأ: ' + err.message + ' - حاول مرة أخرى';
-                    msg.style.color = 'red';
-                }}
-                isScanning_{input_key} = false;
+            ).then(() => {{
+                isScanning = true;
+            }}).catch(err => {{
+                console.error('Scanner error:', err);
+                document.getElementById('reader').innerHTML = '❌ خطأ: ' + err.message;
             }});
-            
-            isScanning_{input_key} = true;
-            
-        }} catch(e) {{
-            const msg = document.querySelector('#mobile_scanner_{input_key} p');
-            if (msg) {{
-                msg.innerHTML = '❌ خطأ: ' + e.message;
-                msg.style.color = 'red';
-            }}
         }}
-    }}
-    
-    // بدء الماسح مباشرة
-    setTimeout(startScanner_{input_key}, 300);
+        
+        // بدء الماسح عند تحميل الصفحة
+        setTimeout(startScanner, 500);
     </script>
     """
-    components.html(scanner_html, height=height + 50)
+    components.html(scanner_html, height=400)
 
 # --- نظام الترجمة (العربية، الفرنسية، الإنجليزية) ---
 if "lang" not in st.session_state:
@@ -1800,7 +1763,7 @@ if menu == t("pos"):
             # ===== ماسح للهواتف =====
             use_qr_scanner = st.checkbox("📱 تفعيل الماسح (للتلفون)", key="qr_scanner_checkbox")
             if use_qr_scanner:
-                st.info("📱 امسح الباركود باستخدام كاميرا التلفون - سيتم كتابته تلقائياً")
+                st.info("📱 امسح الباركود باستخدام كاميرا التلفون")
                 mobile_barcode_scanner("qr_code")
             
             col1, col2 = st.columns(2)
@@ -1889,7 +1852,7 @@ if menu == t("pos"):
                     # ===== ماسح للهواتف =====
                     use_cart_scanner = st.checkbox("📱 تفعيل الماسح (للتلفون)", key="cart_manual_scanner")
                     if use_cart_scanner:
-                        st.info("📱 امسح الباركود باستخدام كاميرا التلفون - سيتم كتابته تلقائياً")
+                        st.info("📱 امسح الباركود باستخدام كاميرا التلفون")
                         mobile_barcode_scanner("panier_code")
                     
                     code = st.text_input(t("barcode"), key="panier_code")
@@ -1985,7 +1948,7 @@ if menu == t("pos"):
                 # ===== ماسح للهواتف =====
                 use_auto_scanner = st.checkbox("📱 تفعيل الماسح (للتلفون)", key="auto_cart_scanner_checkbox")
                 if use_auto_scanner:
-                    st.info("📱 امسح الباركود باستخدام كاميرا التلفون - سيتم كتابته تلقائياً")
+                    st.info("📱 امسح الباركود باستخدام كاميرا التلفون")
                     mobile_barcode_scanner("auto_cart_scan_input")
                 
                 code_auto_cart = st.text_input(
@@ -2101,7 +2064,7 @@ elif menu == t("stock"):
     with st.expander(t("add_product"), expanded=True):
         use_add_scanner = st.checkbox("📱 تفعيل الماسح (للتلفون)", key="add_scanner_checkbox")
         if use_add_scanner:
-            st.info("📱 امسح الباركود باستخدام كاميرا التلفون - سيتم كتابته تلقائياً")
+            st.info("📱 امسح الباركود باستخدام كاميرا التلفون")
             mobile_barcode_scanner("stock_barcode_new")
         
         col1, col2, col3, col4 = st.columns(4)
@@ -2154,7 +2117,7 @@ elif menu == t("stock"):
         with st.expander(t("update_product")):
             use_update_scanner = st.checkbox("📱 تفعيل الماسح (للتلفون)", key="update_scanner_checkbox")
             if use_update_scanner:
-                st.info("📱 امسح الباركود باستخدام كاميرا التلفون - سيتم كتابته تلقائياً")
+                st.info("📱 امسح الباركود باستخدام كاميرا التلفون")
                 mobile_barcode_scanner("stock_update_barcode_new")
             
             # بحث بالباركود أولاً
