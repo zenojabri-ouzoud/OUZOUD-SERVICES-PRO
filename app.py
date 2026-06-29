@@ -22,27 +22,20 @@ except Exception as e:
     st.error(f"❌ Erreur de connexion à Supabase: {e}")
     st.stop()
 
-# ==================== دالة الماسح المحسن ====================
+# ==================== دالة الماسح المحسنة لـ Stock ====================
 def mobile_barcode_scanner(session_key):
     """
-    ماسح باركود محسن - يضمن كتابة القيمة في st.text_input
+    ماسح باركود محسن لـ Stock - يضمن كتابة القيمة في session_state
     """
     scanner_html = f"""
-    <div id="barcode-scanner-container" style="width:100%; min-height:350px; border:2px dashed #4CAF50; border-radius:10px; padding:15px; background:#f9f9f9;">
-        <div id="reader" style="width:100%; min-height:300px;"></div>
-        <p style="text-align:center; color:#666; font-size:14px; margin-top:10px;">📱 قرب الباركود من الكاميرا</p>
-        <div id="scan-status" style="text-align:center; font-size:14px; color:#999; margin-top:5px;">⏳ جاري تهيئة الكاميرا...</div>
-    </div>
-    
+    <div id="reader" style="width:100%; border:2px dashed #4CAF50; border-radius:10px; padding:10px; min-height:300px; background:#f9f9f9;"></div>
+    <p style="text-align:center; color:#666; font-size:14px; margin-top:5px;">📱 قرب الباركود من الكاميرا</p>
+    <div id="scan-status" style="text-align:center; font-size:14px; color:#999; margin-top:5px;">⏳ جاري تهيئة الكاميرا...</div>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
-    (function() {{
-        'use strict';
-        
         let html5Qrcode = null;
         let isScanning = false;
         let scannerStarted = false;
-        let lastScanned = '';
         let retryCount = 0;
         const maxRetries = 3;
         
@@ -54,55 +47,6 @@ def mobile_barcode_scanner(session_key):
             }}
         }}
         
-        function setInputValue(value) {{
-            // محاولة 1: البحث عن input بالـ id
-            let input = document.getElementById('{session_key}');
-            
-            // محاولة 2: البحث عن input بالـ name
-            if (!input) {{
-                const inputs = document.getElementsByName('{session_key}');
-                if (inputs.length > 0) input = inputs[0];
-            }}
-            
-            // محاولة 3: البحث عن input بالـ aria-label
-            if (!input) {{
-                const inputs = document.querySelectorAll('input[aria-label="{session_key}"]');
-                if (inputs.length > 0) input = inputs[0];
-            }}
-            
-            // محاولة 4: البحث عن أي input يحتوي على placeholder يشبه الباركود
-            if (!input) {{
-                const allInputs = document.querySelectorAll('input');
-                for (let el of allInputs) {{
-                    if (el.placeholder && (el.placeholder.includes('باركود') || el.placeholder.includes('barcode') || el.placeholder.includes('Code'))) {{
-                        input = el;
-                        break;
-                    }}
-                }}
-            }}
-            
-            if (input) {{
-                // تغيير القيمة
-                input.value = value;
-                
-                // إرسال الأحداث
-                input.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                input.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                
-                // تأثير بصري
-                input.style.background = '#a5d6a7';
-                input.style.border = '3px solid #4CAF50';
-                input.style.transition = 'all 0.3s';
-                setTimeout(() => {{
-                    input.style.background = '';
-                    input.style.border = '';
-                }}, 1500);
-                
-                return true;
-            }}
-            return false;
-        }}
-        
         function sendToStreamlit(value) {{
             // إرسال القيمة لـ Streamlit
             window.parent.postMessage({{
@@ -111,83 +55,31 @@ def mobile_barcode_scanner(session_key):
                 value: value
             }}, '*');
             
-            // إرسال مرة ثانية بعد 50ms للتأكد
+            // إرسال مرة ثانية بعد 100ms للتأكد
             setTimeout(() => {{
                 window.parent.postMessage({{
                     type: 'streamlit:setComponentValue',
                     key: '{session_key}',
                     value: value
                 }}, '*');
-            }}, 50);
+            }}, 100);
             
-            // إرسال مرة ثالثة بعد 200ms (ضمان إضافي)
+            // إرسال مرة ثالثة بعد 300ms (ضمان إضافي لـ Stock)
             setTimeout(() => {{
                 window.parent.postMessage({{
                     type: 'streamlit:setComponentValue',
                     key: '{session_key}',
                     value: value
                 }}, '*');
-            }}, 200);
-        }}
-        
-        function handleSuccessfulScan(decodedText) {{
-            if (decodedText === lastScanned) return;
-            lastScanned = decodedText;
-            
-            updateStatus('✅ تم المسح: ' + decodedText, true);
-            
-            // 1. كتابة القيمة في input
-            const inputUpdated = setInputValue(decodedText);
-            
-            // 2. إرسال القيمة لـ Streamlit
-            sendToStreamlit(decodedText);
-            
-            // 3. إيقاف الماسح
-            if (html5Qrcode) {{
-                html5Qrcode.stop().then(() => {{
-                    isScanning = false;
-                    scannerStarted = false;
-                    updateStatus('📸 جاهز للمسح مرة أخرى', false);
-                    
-                    // 4. إعادة تشغيل الماسح بعد 2 ثانية
-                    setTimeout(() => {{
-                        lastScanned = '';
-                        startScanner();
-                    }}, 2000);
-                }}).catch(function(err) {{
-                    console.warn('Stop error:', err);
-                    isScanning = false;
-                    scannerStarted = false;
-                    setTimeout(() => {{
-                        lastScanned = '';
-                        startScanner();
-                    }}, 2000);
-                }});
-            }}
-            
-            // 5. إرسال طلب تحديث الصفحة (rerun) - مهم لـ Stock
-            window.parent.postMessage({{
-                type: 'streamlit:setComponentValue',
-                key: '{session_key}',
-                value: decodedText
-            }}, '*');
+            }}, 300);
         }}
         
         function startScanner() {{
             if (isScanning || scannerStarted) return;
             
-            const container = document.getElementById('barcode-scanner-container');
-            if (!container) return;
-            
             try {{
-                // إعادة تعيين المتغيرات
-                if (html5Qrcode) {{
-                    html5Qrcode.clear();
-                    html5Qrcode = null;
-                }}
-                
-                const readerElement = document.getElementById('reader');
-                if (!readerElement) return;
+                const element = document.getElementById('reader');
+                if (!element) return;
                 
                 html5Qrcode = new Html5Qrcode("reader");
                 scannerStarted = true;
@@ -206,11 +98,36 @@ def mobile_barcode_scanner(session_key):
                     config,
                     function(decodedText, decodedResult) {{
                         if (decodedText) {{
-                            handleSuccessfulScan(decodedText);
+                            // 1. إرسال القيمة لـ Streamlit
+                            sendToStreamlit(decodedText);
+                            
+                            // 2. تغيير الرسالة
+                            updateStatus('✅ تم المسح بنجاح: ' + decodedText, true);
+                            
+                            // 3. البحث عن الخانة وكتابة القيمة مباشرة (كإجراء إضافي)
+                            const inputs = window.parent.document.querySelectorAll('input');
+                            inputs.forEach(function(input) {{
+                                if (input.id === '{session_key}' || 
+                                    input.getAttribute('aria-label') === '{session_key}' ||
+                                    input.name === '{session_key}') {{
+                                    input.value = decodedText;
+                                    input.dispatchEvent(new Event('input', {{bubbles: true}}));
+                                    input.dispatchEvent(new Event('change', {{bubbles: true}}));
+                                    input.style.background = '#a5d6a7';
+                                    input.style.border = '3px solid #4CAF50';
+                                    setTimeout(() => {{ 
+                                        input.style.background = ''; 
+                                        input.style.border = '';
+                                    }}, 1000);
+                                }}
+                            }});
+                            
+                            // ====== كاميرا دايمة ======
+                            // غادي تبقى شغالة باش تقدر تمسح مرة أخرى
                         }}
                     }},
                     function(errorMessage) {{
-                        // تجاهل الأخطاء العادية
+                        // تجاهل أخطاء المسح العادية
                     }}
                 ).then(function() {{
                     isScanning = true;
@@ -220,7 +137,6 @@ def mobile_barcode_scanner(session_key):
                     updateStatus('❌ خطأ: ' + err.message, false, true);
                     scannerStarted = false;
                     
-                    // إعادة محاولة
                     retryCount++;
                     if (retryCount < maxRetries) {{
                         setTimeout(startScanner, 2000);
@@ -250,10 +166,162 @@ def mobile_barcode_scanner(session_key):
                 setTimeout(startScanner, 500);
             }}
         }});
-    }})();
     </script>
     """
-    components.html(scanner_html, height=420)
+    components.html(scanner_html, height=480)
+
+# ==================== نظام التحكم الصوتي ====================
+def voice_command_component():
+    """مكون التحكم الصوتي"""
+    voice_html = """
+    <div id="voice-control">
+        <button id="start-voice" style="padding:10px 20px; background:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
+            🎤 ابدأ الاستماع
+        </button>
+        <button id="stop-voice" style="padding:10px 20px; background:#f44336; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px; display:none;">
+            ⏹️ إيقاف
+        </button>
+        <p id="voice-status" style="margin-top:10px; color:#666;"></p>
+        <p id="voice-result" style="font-size:18px; font-weight:bold; color:#2196F3;"></p>
+    </div>
+    
+    <script>
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ar-MA';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    
+    let isListening = false;
+    
+    document.getElementById('start-voice').addEventListener('click', function() {
+        recognition.start();
+        isListening = true;
+        document.getElementById('start-voice').style.display = 'none';
+        document.getElementById('stop-voice').style.display = 'inline-block';
+        document.getElementById('voice-status').innerText = '🎤 جاري الاستماع...';
+    });
+    
+    document.getElementById('stop-voice').addEventListener('click', function() {
+        recognition.stop();
+        isListening = false;
+        document.getElementById('start-voice').style.display = 'inline-block';
+        document.getElementById('stop-voice').style.display = 'none';
+        document.getElementById('voice-status').innerText = '';
+    });
+    
+    recognition.onresult = function(event) {
+        const last = event.results.length - 1;
+        const command = event.results[last][0].transcript.trim();
+        document.getElementById('voice-result').innerText = '🗣️ ' + command;
+        
+        if (command.includes('ضيف') || command.includes('أضف')) {
+            const inputs = window.parent.document.querySelectorAll('input');
+            inputs.forEach(input => {
+                if (input.getAttribute('aria-label') && input.getAttribute('aria-label').includes('باركود')) {
+                    const words = command.split(' ');
+                    const qtyIndex = words.findIndex(w => w === 'كمية' || w === 'الكمية');
+                    if (qtyIndex >= 0 && words[qtyIndex + 1]) {
+                        const qtyInput = window.parent.document.querySelector('input[aria-label*="كمية"]');
+                        if (qtyInput) {
+                            qtyInput.value = words[qtyIndex + 1];
+                            qtyInput.dispatchEvent(new Event('input', {bubbles: true}));
+                        }
+                    }
+                }
+            });
+        } else if (command.includes('طبع') || command.includes('اطبع') || command.includes('فاتورة')) {
+            const buttons = window.parent.document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                if (btn.innerText.includes('فاتورة') || btn.innerText.includes('Facture') || btn.innerText.includes('طباعة')) {
+                    btn.click();
+                }
+            });
+        } else if (command.includes('تأكيد') || command.includes('بيع')) {
+            const buttons = window.parent.document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                if (btn.innerText.includes('تأكيد') || btn.innerText.includes('تسجيل')) {
+                    btn.click();
+                }
+            });
+        } else if (command.includes('سير')) {
+            const pageMap = {
+                'لوحة التحكم': '📊 لوحة التحكم',
+                'نقطة البيع': '🛒 نقطة البيع',
+                'المخزون': '📦 إدارة المخزون',
+                'الطباعة': '🖨️ الطباعة',
+                'الخزينة': '💰 الخزينة',
+                'الديون': '💳 الديون',
+                'الفواتير': '📄 الفواتير',
+                'الطلبيات': '📋 طلبيات الموردين',
+                'الخدمات': '🔧 الخدمات الإلكترونية',
+                'الأدوات': '🔗 أدوات سريعة'
+            };
+            for (const [key, value] of Object.entries(pageMap)) {
+                if (command.includes(key)) {
+                    const selects = window.parent.document.querySelectorAll('select');
+                    selects.forEach(select => {
+                        if (select.id && select.id.includes('menu_main')) {
+                            select.value = value;
+                            select.dispatchEvent(new Event('change', {bubbles: true}));
+                        }
+                    });
+                    document.getElementById('voice-result').innerText = '🗣️ ' + command + ' → ' + value;
+                    break;
+                }
+            }
+        }
+    };
+    
+    recognition.onerror = function(event) {
+        document.getElementById('voice-status').innerText = '❌ خطأ: ' + event.error;
+    };
+    </script>
+    """
+    components.html(voice_html, height=150)
+
+# ==================== دوال Excel ====================
+def to_excel(df):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Sheet1')
+    return output.getvalue()
+
+def import_excel_data(uploaded_file, table_name):
+    try:
+        df = pd.read_excel(uploaded_file)
+        for _, row in df.iterrows():
+            data_dict = row.to_dict()
+            if 'id' in data_dict:
+                del data_dict['id']
+            supabase.table(table_name).insert(data_dict).execute()
+        return True
+    except Exception as e:
+        st.error(f"Erreur import: {str(e)}")
+        return False
+
+def export_import_buttons(table_name, data_df):
+    """أزرار تصدير واستيراد Excel"""
+    col_exp, col_imp = st.columns(2)
+    with col_exp:
+        if not data_df.empty:
+            st.download_button(
+                label=f"{t('export_excel')} ({len(data_df)} rows)",
+                data=to_excel(data_df),
+                file_name=f"{table_name}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+    with col_imp:
+        uploaded_file = st.file_uploader(
+            t('import_excel'),
+            type=["xlsx"],
+            key=f"import_{table_name}"
+        )
+        if uploaded_file is not None:
+            if st.button(f"✅ {t('import_excel')}", key=f"confirm_import_{table_name}"):
+                if import_excel_data(uploaded_file, table_name):
+                    st.success(t('import_success'))
+                    st.rerun()
 
 # --- نظام الترجمة (العربية، الفرنسية، الإنجليزية) ---
 if "lang" not in st.session_state:
@@ -1025,99 +1093,11 @@ translations = {
         "fr": "Afficher Google intégré",
         "en": "Show Embedded Google"
     },
-    "voice_command": {
-        "ar": "🎤 تحكم صوتي",
-        "fr": "🎤 Commande Vocale",
-        "en": "🎤 Voice Command"
-    },
-    "voice_listening": {
-        "ar": "🎤 جاري الاستماع...",
-        "fr": "🎤 Écoute en cours...",
-        "en": "🎤 Listening..."
-    },
-    "voice_start": {
-        "ar": "🎤 ابدأ الاستماع",
-        "fr": "🎤 Commencer l'écoute",
-        "en": "🎤 Start Listening"
-    },
-    "voice_stop": {
-        "ar": "⏹️ إيقاف الاستماع",
-        "fr": "⏹️ Arrêter l'écoute",
-        "en": "⏹️ Stop Listening"
-    },
-    "invoice_number": {
-        "ar": "رقم الفاتورة",
-        "fr": "Numéro de facture",
-        "en": "Invoice Number"
-    },
-    "top_products": {
-        "ar": "🏆 المنتجات الأكثر ربحية",
-        "fr": "🏆 Produits les plus rentables",
-        "en": "🏆 Most Profitable Products"
-    },
-    "compare_periods": {
-        "ar": "📊 مقارنة الفترات",
-        "fr": "📊 Comparer les périodes",
-        "en": "📊 Compare Periods"
-    },
-    "sales_chart": {
-        "ar": "📈 رسم بياني للمبيعات",
-        "fr": "📈 Graphique des ventes",
-        "en": "📈 Sales Chart"
-    },
-    "sales_prediction": {
-        "ar": "🔮 توقعات المبيعات",
-        "fr": "🔮 Prévisions des ventes",
-        "en": "🔮 Sales Prediction"
-    },
 }
 
 def t(key):
     """ترجمة المفتاح إلى اللغة المختارة"""
     return translations.get(key, {}).get(st.session_state.lang, key)
-
-# --- دوال Excel ---
-def to_excel(df):
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Sheet1')
-    return output.getvalue()
-
-def import_excel_data(uploaded_file, table_name):
-    try:
-        df = pd.read_excel(uploaded_file)
-        for _, row in df.iterrows():
-            data_dict = row.to_dict()
-            if 'id' in data_dict:
-                del data_dict['id']
-            supabase.table(table_name).insert(data_dict).execute()
-        return True
-    except Exception as e:
-        st.error(f"Erreur import: {str(e)}")
-        return False
-
-def export_import_buttons(table_name, data_df):
-    """أزرار تصدير واستيراد Excel"""
-    col_exp, col_imp = st.columns(2)
-    with col_exp:
-        if not data_df.empty:
-            st.download_button(
-                label=f"{t('export_excel')} ({len(data_df)} rows)",
-                data=to_excel(data_df),
-                file_name=f"{table_name}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-    with col_imp:
-        uploaded_file = st.file_uploader(
-            t('import_excel'),
-            type=["xlsx"],
-            key=f"import_{table_name}"
-        )
-        if uploaded_file is not None:
-            if st.button(f"✅ {t('import_excel')}", key=f"confirm_import_{table_name}"):
-                if import_excel_data(uploaded_file, table_name):
-                    st.success(t('import_success'))
-                    st.rerun()
 
 # --- الدوال الأساسية ---
 def get_df(table_name):
@@ -1357,6 +1337,7 @@ def play_success_sound():
 
 st.set_page_config(layout="wide", page_title="OUZOUD SERVICES")
 
+# --- دوال الماسح القديمة (مبقيين للتوافق) ---
 def fast_barcode_scanner_with_qty(input_label, qty_label):
     scanner_html = f"""
     <div id="reader" style="width:100%"></div>
@@ -1488,116 +1469,6 @@ def stock_barcode_scanner(target_input_label):
     """
     components.html(scanner_html, height=300)
 
-# ==================== نظام التحكم الصوتي ====================
-def voice_command_component():
-    """مكون التحكم الصوتي"""
-    voice_html = """
-    <div id="voice-control">
-        <button id="start-voice" style="padding:10px 20px; background:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
-            🎤 ابدأ الاستماع
-        </button>
-        <button id="stop-voice" style="padding:10px 20px; background:#f44336; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px; display:none;">
-            ⏹️ إيقاف
-        </button>
-        <p id="voice-status" style="margin-top:10px; color:#666;"></p>
-        <p id="voice-result" style="font-size:18px; font-weight:bold; color:#2196F3;"></p>
-    </div>
-    
-    <script>
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'ar-MA';
-    recognition.continuous = true;
-    recognition.interimResults = false;
-    
-    let isListening = false;
-    
-    document.getElementById('start-voice').addEventListener('click', function() {
-        recognition.start();
-        isListening = true;
-        document.getElementById('start-voice').style.display = 'none';
-        document.getElementById('stop-voice').style.display = 'inline-block';
-        document.getElementById('voice-status').innerText = '🎤 جاري الاستماع...';
-    });
-    
-    document.getElementById('stop-voice').addEventListener('click', function() {
-        recognition.stop();
-        isListening = false;
-        document.getElementById('start-voice').style.display = 'inline-block';
-        document.getElementById('stop-voice').style.display = 'none';
-        document.getElementById('voice-status').innerText = '';
-    });
-    
-    recognition.onresult = function(event) {
-        const last = event.results.length - 1;
-        const command = event.results[last][0].transcript.trim();
-        document.getElementById('voice-result').innerText = '🗣️ ' + command;
-        
-        if (command.includes('ضيف') || command.includes('أضف')) {
-            const inputs = window.parent.document.querySelectorAll('input');
-            inputs.forEach(input => {
-                if (input.getAttribute('aria-label') && input.getAttribute('aria-label').includes('باركود')) {
-                    const words = command.split(' ');
-                    const qtyIndex = words.findIndex(w => w === 'كمية' || w === 'الكمية');
-                    if (qtyIndex >= 0 && words[qtyIndex + 1]) {
-                        const qtyInput = window.parent.document.querySelector('input[aria-label*="كمية"]');
-                        if (qtyInput) {
-                            qtyInput.value = words[qtyIndex + 1];
-                            qtyInput.dispatchEvent(new Event('input', {bubbles: true}));
-                        }
-                    }
-                }
-            });
-        } else if (command.includes('طبع') || command.includes('اطبع') || command.includes('فاتورة')) {
-            const buttons = window.parent.document.querySelectorAll('button');
-            buttons.forEach(btn => {
-                if (btn.innerText.includes('فاتورة') || btn.innerText.includes('Facture') || btn.innerText.includes('طباعة')) {
-                    btn.click();
-                }
-            });
-        } else if (command.includes('تأكيد') || command.includes('بيع')) {
-            const buttons = window.parent.document.querySelectorAll('button');
-            buttons.forEach(btn => {
-                if (btn.innerText.includes('تأكيد') || btn.innerText.includes('تسجيل')) {
-                    btn.click();
-                }
-            });
-        } else if (command.includes('سير')) {
-            const pageMap = {
-                'لوحة التحكم': '📊 لوحة التحكم',
-                'نقطة البيع': '🛒 نقطة البيع',
-                'المخزون': '📦 إدارة المخزون',
-                'الطباعة': '🖨️ الطباعة',
-                'الخزينة': '💰 الخزينة',
-                'الديون': '💳 الديون',
-                'الفواتير': '📄 الفواتير',
-                'الطلبيات': '📋 طلبيات الموردين',
-                'الخدمات': '🔧 الخدمات الإلكترونية',
-                'الأدوات': '🔗 أدوات سريعة'
-            };
-            for (const [key, value] of Object.entries(pageMap)) {
-                if (command.includes(key)) {
-                    const selects = window.parent.document.querySelectorAll('select');
-                    selects.forEach(select => {
-                        if (select.id && select.id.includes('menu_main')) {
-                            select.value = value;
-                            select.dispatchEvent(new Event('change', {bubbles: true}));
-                        }
-                    });
-                    document.getElementById('voice-result').innerText = '🗣️ ' + command + ' → ' + value;
-                    break;
-                }
-            }
-        }
-    };
-    
-    recognition.onerror = function(event) {
-        document.getElementById('voice-status').innerText = '❌ خطأ: ' + event.error;
-    };
-    </script>
-    """
-    components.html(voice_html, height=150)
-
 # --- الحالة والتسجيل ---
 if "authenticated" not in st.session_state: st.session_state.authenticated = False
 if "cart" not in st.session_state: st.session_state.cart = []
@@ -1610,6 +1481,8 @@ if "selected_service" not in st.session_state: st.session_state.selected_service
 if "selected_service_price" not in st.session_state: st.session_state.selected_service_price = 0.0
 if "selected_service_unit" not in st.session_state: st.session_state.selected_service_unit = ""
 if "invoice_counter" not in st.session_state: st.session_state.invoice_counter = 0
+if "scanned_barcode" not in st.session_state:
+    st.session_state.scanned_barcode = None
 
 # --- صفحة تسجيل الدخول ---
 if not st.session_state.authenticated:
@@ -1934,13 +1807,21 @@ if menu == t("pos"):
         
         elif mode == t("scan_qr"):
             st.subheader(t("scan_qr"))
+            
+            # ===== ماسح محسن لـ QR =====
+            if st.session_state.scanned_barcode is None:
+                st.warning("⚠️ يرجى مسح الباركود للمتابعة")
+                mobile_barcode_scanner("scanned_barcode")
+                st.stop()
+            
+            barcode = st.session_state.scanned_barcode
+            st.success(f"✅ تم مسح الباركود بنجاح: {barcode}")
+            
             col1, col2 = st.columns(2)
             with col1:
-                code_qr = st.text_input(f"{t('barcode')} (auto)", key="qr_code")
+                code_qr = st.text_input(f"{t('barcode')} (auto)", value=barcode, disabled=True)
             with col2:
                 qty_qr = st.number_input(t("quantity"), min_value=0.0, step=0.1, value=1.0, key="qr_qty")
-            
-            fast_barcode_scanner_with_qty(f"{t('barcode')} (auto)", t("quantity"))
             
             if st.button(t("confirm_sale"), key="qr_sale"):
                 if code_qr and qty_qr > 0:
@@ -1969,11 +1850,19 @@ if menu == t("pos"):
                             supabase.table("stock").update({"Quantité": q_old - qty_qr}).eq("id", doc_id).execute()
                             play_success_sound()
                             st.success(f"{t('sale_success')} {nom} - {qty_qr} x {prix} = {total:.2f} DH | Facture: {invoice_number}")
+                            # إعادة تعيين الماسح
+                            st.session_state.scanned_barcode = None
                             st.rerun()
                         else:
                             st.error(f"{t('low_stock_warning')} {q_old}")
                     else:
                         st.error(t("product_not_found"))
+                else:
+                    st.error(t("fill_all_fields"))
+            
+            if st.button("🔄 مسح جديد"):
+                st.session_state.scanned_barcode = None
+                st.rerun()
         
         elif mode == t("free_sale"):
             col1, col2 = st.columns(2)
@@ -2011,12 +1900,22 @@ if menu == t("pos"):
                 horizontal=True
             )
             
-            # ========== السلة اليدوية (طريقة قديمة) ==========
+            # ========== السلة اليدوية ==========
             if cart_mode == t("cart_manual"):
                 col1, col2 = st.columns([1, 1])
                 with col1:
                     st.subheader(t("add_to_cart"))
-                    code = st.text_input(t("barcode"), key="panier_code")
+                    
+                    # ===== ماسح محسن =====
+                    if st.session_state.scanned_barcode is None:
+                        st.warning("⚠️ يرجى مسح الباركود للمتابعة")
+                        mobile_barcode_scanner("scanned_barcode")
+                        st.stop()
+                    
+                    barcode = st.session_state.scanned_barcode
+                    st.success(f"✅ تم مسح الباركود: {barcode}")
+                    
+                    code = st.text_input(t("barcode"), value=barcode, disabled=True)
                     qty = st.number_input(f"{t('quantity')}:", min_value=0.0, step=0.1, key="panier_qty")
                     
                     product = get_product_info(code) if code else None
@@ -2028,7 +1927,6 @@ if menu == t("pos"):
                     
                     if st.button(t("add_to_cart")):
                         if code and qty > 0 and prix_u > 0:
-                            # التحقق إذا كان المنتج موجوداً مسبقاً في السلة
                             found = False
                             for item in st.session_state.cart:
                                 if item['Code'] == code:
@@ -2045,7 +1943,13 @@ if menu == t("pos"):
                                     "Nom": nom_produit
                                 })
                             st.success(f"{t('add_to_cart')}: {nom_produit} x {qty}")
+                            # إعادة تعيين الماسح
+                            st.session_state.scanned_barcode = None
                             st.rerun()
+                    
+                    if st.button("🔄 مسح جديد"):
+                        st.session_state.scanned_barcode = None
+                        st.rerun()
                 
                 with col2:
                     st.subheader(t("cart"))
@@ -2102,23 +2006,30 @@ if menu == t("pos"):
                     else:
                         st.info(t("no_data"))
             
-            # ========== السلة التلقائية (سكانير متواصل) ==========
+            # ========== السلة التلقائية ==========
             else:
                 st.success(t("cart_auto_info"))
-                auto_cart_scanner()
+                
+                # ===== ماسح محسن =====
+                if st.session_state.scanned_barcode is None:
+                    st.warning("⚠️ يرجى مسح الباركود للمتابعة")
+                    mobile_barcode_scanner("scanned_barcode")
+                    st.stop()
+                
+                barcode = st.session_state.scanned_barcode
+                st.success(f"✅ تم مسح الباركود: {barcode}")
                 
                 code_auto_cart = st.text_input(
                     "Code-barres",
-                    key="auto_cart_scan_input",
-                    label_visibility="collapsed",
-                    placeholder="📸 Scannez vos produits ici..."
+                    value=barcode,
+                    disabled=True,
+                    key="auto_cart_scan_input"
                 )
                 
                 if code_auto_cart:
                     product = get_product_info(code_auto_cart)
                     if product:
                         if float(product['Quantité']) >= 1:
-                            # التعرف على المنتج الجديد تلقائياً
                             found = False
                             for item in st.session_state.cart:
                                 if item['Code'] == code_auto_cart:
@@ -2138,11 +2049,17 @@ if menu == t("pos"):
                                 })
                             play_success_sound()
                             st.success(f"✅ {product.get('Nom', code_auto_cart)} - {float(product['Prix']):.2f} DH ajouté au panier!")
+                            # إعادة تعيين الماسح
+                            st.session_state.scanned_barcode = None
                             st.rerun()
                         else:
                             st.error(f"❌ Stock insuffisant pour {product.get('Nom', code_auto_cart)}")
                     else:
                         st.error(t("product_not_found"))
+                
+                if st.button("🔄 مسح جديد"):
+                    st.session_state.scanned_barcode = None
+                    st.rerun()
                 
                 st.divider()
                 st.subheader(f"🛒 {t('cart')} ({len(st.session_state.cart)} {t('cart_products_count')})")
@@ -2216,39 +2133,51 @@ elif menu == t("stock"):
         else:
             st.success(f"{t('search_results')} {len(df_stock)} produit(s)")
     
-    # إضافة منتج جديد مع ماسح باركود
+    # ====== إضافة منتج جديد (ماسح محسن) ======
     with st.expander(t("add_product"), expanded=True):
-        use_add_scanner = st.checkbox(t("stock_scanner_add"), key="add_scanner_checkbox")
-        if use_add_scanner:
-            st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-            mobile_barcode_scanner("stock_barcode")
+        # ===== ماسح محسن =====
+        if st.session_state.scanned_barcode is None:
+            st.warning("⚠️ يرجى مسح الباركود لإضافة منتج جديد")
+            mobile_barcode_scanner("scanned_barcode")
+            st.stop()
         
-        col1, col2, col3, col4 = st.columns(4)
+        barcode = st.session_state.scanned_barcode
+        st.success(f"✅ الباركود الممسوح: **{barcode}**")
+        
+        col1, col2, col3 = st.columns(3)
         with col1: 
             name = st.text_input(t("product_name"), key="stock_name")
         with col2: 
             price = st.number_input(t("price"), min_value=0.0, key="stock_price")
         with col3: 
             qty = st.number_input(t("quantity"), min_value=0.0, step=0.1, key="stock_qty")
-        with col4: 
-            barcode = st.text_input(t("barcode_optional"), key="stock_barcode")
         
+        # الباركود (للعرض فقط)
+        st.text_input(t("barcode"), value=barcode, disabled=True, key="stock_barcode")
+        
+        # زر الإضافة
         if st.button(t("add_button"), key="stock_add_btn"):
-            if name:
+            if name and price > 0 and qty > 0:
                 product_data = {
                     "Nom": name, 
                     "Prix": float(price), 
                     "Quantité": float(qty), 
-                    "Code-barres": barcode if barcode else ""
+                    "Code-barres": barcode
                 }
                 try:
                     supabase.table("stock").insert(product_data).execute()
                     st.success(t("product_added"))
+                    # إعادة تعيين الماسح
+                    st.session_state.scanned_barcode = None
                     st.rerun()
                 except Exception as e:
                     st.error(f"{t('error_generic')}: {str(e)}")
             else:
                 st.error(t("fill_all_fields"))
+        
+        if st.button("🔄 مسح جديد"):
+            st.session_state.scanned_barcode = None
+            st.rerun()
     
     st.subheader(t("current_stock"))
     if not df_stock.empty:
@@ -2269,18 +2198,28 @@ elif menu == t("stock"):
     else:
         st.success(t("stock_ok"))
     
+    # ====== تحديث منتج (ماسح محسن) ======
     if not df_stock.empty:
         with st.expander(t("update_product")):
-            use_update_scanner = st.checkbox(t("stock_scanner_update"), key="update_scanner_checkbox")
-            if use_update_scanner:
-                st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-                mobile_barcode_scanner("stock_update_barcode")
+            # ===== ماسح محسن =====
+            if st.session_state.scanned_barcode is None:
+                st.warning("⚠️ يرجى مسح الباركود للبحث عن المنتج")
+                mobile_barcode_scanner("scanned_barcode")
+                st.stop()
             
-            selected_product = st.selectbox(
-                t("select_product"), 
-                df_stock['Nom'].tolist(),
-                key="stock_update_select"
-            )
+            barcode = st.session_state.scanned_barcode
+            st.success(f"✅ الباركود الممسوح: **{barcode}**")
+            
+            # البحث عن المنتج
+            found_product = get_product_info(barcode)
+            
+            if found_product:
+                st.success(f"✅ تم العثور على: **{found_product.get('Nom', '')}**")
+                selected_product = found_product.get('Nom', '')
+            else:
+                st.error("❌ لم يتم العثور على منتج بهذا الباركود")
+                st.session_state.scanned_barcode = None
+                st.rerun()
             
             if selected_product:
                 product_data = df_stock[df_stock['Nom'] == selected_product].iloc[0]
@@ -2304,7 +2243,7 @@ elif menu == t("stock"):
                     )
                 with col3:
                     new_barcode = st.text_input(
-                        t("barcode_optional"),
+                        t("barcode"),
                         value=str(current_barcode) if current_barcode else "",
                         key="stock_update_barcode"
                     )
@@ -2318,9 +2257,15 @@ elif menu == t("stock"):
                     try:
                         supabase.table("stock").update(update_data).eq("id", product_data['id']).execute()
                         st.success(t("product_updated"))
+                        # إعادة تعيين الماسح
+                        st.session_state.scanned_barcode = None
                         st.rerun()
                     except Exception as e:
                         st.error(f"{t('error_generic')}: {str(e)}")
+            
+            if st.button("🔄 مسح جديد"):
+                st.session_state.scanned_barcode = None
+                st.rerun()
 
 elif menu == t("impression"):
     st.header(t("impression"))
