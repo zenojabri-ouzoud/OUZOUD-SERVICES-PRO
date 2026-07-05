@@ -22,29 +22,17 @@ except Exception as e:
     st.error(f"❌ Erreur de connexion à Supabase: {e}")
     st.stop()
 
-# ==================== دالة الماسح المحسن ====================
+# ==================== دالة الماسح الموحدة ====================
 def mobile_barcode_scanner(session_key):
-    """
-    ماسح باركود محسن - يضمن كتابة القيمة في st.text_input
-    """
     scanner_html = f"""
-    <div id="barcode-scanner-container" style="width:100%; min-height:350px; border:2px dashed #4CAF50; border-radius:10px; padding:15px; background:#f9f9f9;">
-        <div id="reader" style="width:100%; min-height:300px;"></div>
-        <p style="text-align:center; color:#666; font-size:14px; margin-top:10px;">📱 قرب الباركود من الكاميرا</p>
-        <div id="scan-status" style="text-align:center; font-size:14px; color:#999; margin-top:5px;">⏳ جاري تهيئة الكاميرا...</div>
-    </div>
-    
+    <div id="reader" style="width:100%; border:2px dashed #4CAF50; border-radius:10px; padding:10px; min-height:300px; background:#f9f9f9;"></div>
+    <p style="text-align:center; color:#666; font-size:14px; margin-top:5px;">📱 قرب الباركود من الكاميرا</p>
+    <div id="scan-status" style="text-align:center; font-size:14px; color:#999; margin-top:5px;">⏳ جاري تهيئة الكاميرا...</div>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
-    (function() {{
-        'use strict';
-        
         let html5Qrcode = null;
         let isScanning = false;
         let scannerStarted = false;
-        let lastScanned = '';
-        let retryCount = 0;
-        const maxRetries = 3;
         
         function updateStatus(message, isSuccess = false, isError = false) {{
             const statusEl = document.getElementById('scan-status');
@@ -54,140 +42,34 @@ def mobile_barcode_scanner(session_key):
             }}
         }}
         
-        function setInputValue(value) {{
-            // محاولة 1: البحث عن input بالـ id
-            let input = document.getElementById('{session_key}');
-            
-            // محاولة 2: البحث عن input بالـ name
-            if (!input) {{
-                const inputs = document.getElementsByName('{session_key}');
-                if (inputs.length > 0) input = inputs[0];
-            }}
-            
-            // محاولة 3: البحث عن input بالـ aria-label
-            if (!input) {{
-                const inputs = document.querySelectorAll('input[aria-label="{session_key}"]');
-                if (inputs.length > 0) input = inputs[0];
-            }}
-            
-            // محاولة 4: البحث عن أي input يحتوي على placeholder يشبه الباركود
-            if (!input) {{
-                const allInputs = document.querySelectorAll('input');
-                for (let el of allInputs) {{
-                    if (el.placeholder && (el.placeholder.includes('باركود') || el.placeholder.includes('barcode') || el.placeholder.includes('Code'))) {{
-                        input = el;
-                        break;
-                    }}
-                }}
-            }}
-            
-            if (input) {{
-                // تغيير القيمة
-                input.value = value;
-                
-                // إرسال الأحداث
-                input.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                input.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                
-                // تأثير بصري
-                input.style.background = '#a5d6a7';
-                input.style.border = '3px solid #4CAF50';
-                input.style.transition = 'all 0.3s';
-                setTimeout(() => {{
-                    input.style.background = '';
-                    input.style.border = '';
-                }}, 1500);
-                
-                return true;
-            }}
-            return false;
-        }}
-        
         function sendToStreamlit(value) {{
-            // إرسال القيمة لـ Streamlit
             window.parent.postMessage({{
                 type: 'streamlit:setComponentValue',
                 key: '{session_key}',
                 value: value
             }}, '*');
-            
-            // إرسال مرة ثانية بعد 50ms للتأكد
             setTimeout(() => {{
                 window.parent.postMessage({{
                     type: 'streamlit:setComponentValue',
                     key: '{session_key}',
                     value: value
                 }}, '*');
-            }}, 50);
-            
-            // إرسال مرة ثالثة بعد 200ms (ضمان إضافي)
+            }}, 100);
             setTimeout(() => {{
                 window.parent.postMessage({{
                     type: 'streamlit:setComponentValue',
                     key: '{session_key}',
                     value: value
                 }}, '*');
-            }}, 200);
-        }}
-        
-        function handleSuccessfulScan(decodedText) {{
-            if (decodedText === lastScanned) return;
-            lastScanned = decodedText;
-            
-            updateStatus('✅ تم المسح: ' + decodedText, true);
-            
-            // 1. كتابة القيمة في input
-            const inputUpdated = setInputValue(decodedText);
-            
-            // 2. إرسال القيمة لـ Streamlit
-            sendToStreamlit(decodedText);
-            
-            // 3. إيقاف الماسح
-            if (html5Qrcode) {{
-                html5Qrcode.stop().then(() => {{
-                    isScanning = false;
-                    scannerStarted = false;
-                    updateStatus('📸 جاهز للمسح مرة أخرى', false);
-                    
-                    // 4. إعادة تشغيل الماسح بعد 2 ثانية
-                    setTimeout(() => {{
-                        lastScanned = '';
-                        startScanner();
-                    }}, 2000);
-                }}).catch(function(err) {{
-                    console.warn('Stop error:', err);
-                    isScanning = false;
-                    scannerStarted = false;
-                    setTimeout(() => {{
-                        lastScanned = '';
-                        startScanner();
-                    }}, 2000);
-                }});
-            }}
-            
-            // 5. إرسال طلب تحديث الصفحة (rerun) - مهم لـ Stock
-            window.parent.postMessage({{
-                type: 'streamlit:setComponentValue',
-                key: '{session_key}',
-                value: decodedText
-            }}, '*');
+            }}, 300);
         }}
         
         function startScanner() {{
             if (isScanning || scannerStarted) return;
             
-            const container = document.getElementById('barcode-scanner-container');
-            if (!container) return;
-            
             try {{
-                // إعادة تعيين المتغيرات
-                if (html5Qrcode) {{
-                    html5Qrcode.clear();
-                    html5Qrcode = null;
-                }}
-                
-                const readerElement = document.getElementById('reader');
-                if (!readerElement) return;
+                const element = document.getElementById('reader');
+                if (!element) return;
                 
                 html5Qrcode = new Html5Qrcode("reader");
                 scannerStarted = true;
@@ -206,11 +88,31 @@ def mobile_barcode_scanner(session_key):
                     config,
                     function(decodedText, decodedResult) {{
                         if (decodedText) {{
-                            handleSuccessfulScan(decodedText);
+                            sendToStreamlit(decodedText);
+                            updateStatus('✅ تم المسح: ' + decodedText, true);
+                            
+                            const inputs = window.parent.document.querySelectorAll('input');
+                            inputs.forEach(function(input) {{
+                                if (input.id === '{session_key}' || 
+                                    input.getAttribute('aria-label') === '{session_key}' ||
+                                    input.name === '{session_key}') {{
+                                    input.value = decodedText;
+                                    input.dispatchEvent(new Event('input', {{bubbles: true}}));
+                                    input.dispatchEvent(new Event('change', {{bubbles: true}}));
+                                    input.style.background = '#a5d6a7';
+                                    input.style.border = '3px solid #4CAF50';
+                                    setTimeout(() => {{ 
+                                        input.style.background = ''; 
+                                        input.style.border = '';
+                                    }}, 1000);
+                                }}
+                            }});
+                            
+                            // ====== كاميرا دايمة ======
                         }}
                     }},
                     function(errorMessage) {{
-                        // تجاهل الأخطاء العادية
+                        // تجاهل أخطاء المسح العادية
                     }}
                 ).then(function() {{
                     isScanning = true;
@@ -219,43 +121,28 @@ def mobile_barcode_scanner(session_key):
                     console.error('Scanner start error:', err);
                     updateStatus('❌ خطأ: ' + err.message, false, true);
                     scannerStarted = false;
-                    
-                    // إعادة محاولة
-                    retryCount++;
-                    if (retryCount < maxRetries) {{
-                        setTimeout(startScanner, 2000);
-                    }} else {{
-                        updateStatus('❌ تعذر تشغيل الكاميرا بعد ' + maxRetries + ' محاولات', false, true);
-                    }}
+                    setTimeout(startScanner, 2000);
                 }});
             }} catch(e) {{
                 console.error('Scanner error:', e);
                 updateStatus('❌ خطأ: ' + e.message, false, true);
                 scannerStarted = false;
-                
-                retryCount++;
-                if (retryCount < maxRetries) {{
-                    setTimeout(startScanner, 2000);
-                }}
+                setTimeout(startScanner, 2000);
             }}
         }}
         
-        // بدء الماسح بعد تحميل الصفحة
         setTimeout(startScanner, 1000);
         
-        // إعادة المحاولة إذا كانت الصفحة مخفية ثم ظهرت
         document.addEventListener('visibilitychange', function() {{
             if (!document.hidden && !isScanning && !scannerStarted) {{
-                retryCount = 0;
                 setTimeout(startScanner, 500);
             }}
         }});
-    }})();
     </script>
     """
-    components.html(scanner_html, height=420)
+    components.html(scanner_html, height=480)
 
-# --- نظام الترجمة (العربية، الفرنسية، الإنجليزية) ---
+# ==================== نظام الترجمة (واحدة تحت واحدة) ====================
 if "lang" not in st.session_state:
     st.session_state.lang = "ar"
 
@@ -1073,7 +960,6 @@ translations = {
 }
 
 def t(key):
-    """ترجمة المفتاح إلى اللغة المختارة"""
     return translations.get(key, {}).get(st.session_state.lang, key)
 
 # --- دوال Excel ---
@@ -1097,7 +983,6 @@ def import_excel_data(uploaded_file, table_name):
         return False
 
 def export_import_buttons(table_name, data_df):
-    """أزرار تصدير واستيراد Excel"""
     col_exp, col_imp = st.columns(2)
     with col_exp:
         if not data_df.empty:
@@ -1137,7 +1022,6 @@ def check_stock_levels():
     return pd.DataFrame()
 
 def get_product_info(code_or_name):
-    """البحث عن منتج بالباركود أو الاسم"""
     if code_or_name:
         stocks = supabase.table("stock").select("*").eq("Code-barres", code_or_name).execute()
         if stocks.data:
@@ -1158,7 +1042,7 @@ def confirm_purchase(cmd_id):
         st.error(f"Erreur confirmation: {str(e)}")
 
 def reset_caisse():
-    """تصفير الخزينة وحفظ ملخص اليوم - ثم مسح جميع بيانات اليوم"""
+    """تصفير الخزينة - كلشي يرجع للصفر (الديون أيضاً)"""
     date_aujourdhui = datetime.now().strftime('%d/%m/%Y')
     df_ventes = get_df("ventes")
     df_impressions = get_df("impressions")
@@ -1166,7 +1050,6 @@ def reset_caisse():
     total_impressions = df_impressions['Total'].sum() if not df_impressions.empty and 'Total' in df_impressions.columns else 0
     total_jour = total_ventes + total_impressions
     
-    # حفظ ملخص اليوم في التاريخ
     supabase.table("historique_caisse").insert({
         "Date": date_aujourdhui,
         "Total_Ventes": float(total_ventes),
@@ -1209,10 +1092,11 @@ def reduce_credit(credit_id, montant_reduction):
         "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
         "Type": "Paiement"
     }).execute()
+    if nouveau_montant == 0:
+        supabase.table("credits").delete().eq("id", int(credit_id)).execute()
     return nouveau_montant
 
 def add_to_credit(credit_id, montant_addition):
-    """إضافة مبلغ للدين (زيادة الدين)"""
     credit_actuel = supabase.table("credits").select("*").eq("id", int(credit_id)).execute().data[0]
     nouveau_montant = float(credit_actuel['Montant']) + float(montant_addition)
     supabase.table("credits").update({"Montant": nouveau_montant}).eq("id", int(credit_id)).execute()
@@ -1226,35 +1110,25 @@ def add_to_credit(credit_id, montant_addition):
     }).execute()
     return nouveau_montant
 
-# ==================== دالة الفاتورة الموحدة 80mm مع رقم تسلسلي ====================
+# ==================== فاتورة موحدة ====================
 def get_next_invoice_number():
-    """الحصول على رقم الفاتورة التالي"""
     df_ventes = get_df("ventes")
     if df_ventes.empty:
         return "FACT-0001"
-    
-    # البحث عن آخر رقم فاتورة
     if 'Facture' in df_ventes.columns:
         last_invoices = df_ventes[df_ventes['Facture'].notna()]['Facture'].tolist()
         if last_invoices:
             last_num = max([int(inv.replace("FACT-", "")) for inv in last_invoices if "FACT-" in str(inv)])
             return f"FACT-{last_num + 1:04d}"
-    
-    # إذا لم يكن هناك أرقام فواتير، ابدأ من 1
     return f"FACT-{len(df_ventes) + 1:04d}"
 
 def generate_facture_80mm(cart_data, titre="FACTURE"):
-    """
-    فاتورة موحدة 80mm لجميع العمليات (بيع، طباعة، خدمات، طلبيات)
-    مع رقم فاتورة تسلسلي تلقائي
-    """
     invoice_number = get_next_invoice_number()
     
     pdf = FPDF('P', 'mm', (80, 297))
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=5)
     
-    # ========== الرأس ==========
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(70, 8, "OUZOUD SERVICES", ln=True, align='C')
     pdf.set_font("Arial", 'B', 10)
@@ -1265,14 +1139,12 @@ def generate_facture_80mm(cart_data, titre="FACTURE"):
     pdf.cell(70, 4, "maaridprint@gmail.com", ln=True, align='C')
     pdf.cell(70, 4, "-" * 40, ln=True, align='C')
     
-    # ========== التاريخ والوقت ==========
     now = datetime.now(pytz.timezone("Africa/Casablanca"))
     pdf.set_font("Arial", size=8)
     pdf.cell(70, 4, f"Date: {now.strftime('%d/%m/%Y')}", ln=True, align='L')
     pdf.cell(70, 4, f"Heure: {now.strftime('%H:%M:%S')}", ln=True, align='L')
     pdf.cell(70, 4, "-" * 40, ln=True, align='C')
     
-    # ========== جدول المنتجات ==========
     pdf.set_font("Arial", 'B', 8)
     pdf.cell(35, 5, "Produit", 1, 0, 'C')
     pdf.cell(10, 5, "Qte", 1, 0, 'C')
@@ -1294,13 +1166,11 @@ def generate_facture_80mm(cart_data, titre="FACTURE"):
         pdf.cell(13, 4, f"{tot:.2f}", 1, 0, 'C')
         pdf.ln(4)
     
-    # ========== المجموع الكلي ==========
     pdf.set_font("Arial", 'B', 10)
     pdf.cell(70, 6, "-" * 40, ln=True, align='C')
     pdf.cell(70, 6, f"TOTAL: {tg:.2f} DH", ln=True, align='R')
     pdf.cell(70, 4, "-" * 40, ln=True, align='C')
     
-    # ========== التذييل ==========
     pdf.set_font("Arial", 'I', 7)
     pdf.cell(70, 4, "Merci pour votre visite!", ln=True, align='C')
     pdf.cell(70, 4, "A bientot!", ln=True, align='C')
@@ -1309,16 +1179,7 @@ def generate_facture_80mm(cart_data, titre="FACTURE"):
     pdf.output(file_path)
     return file_path, invoice_number
 
-
-# ==================== الدوال المعدلة لاستخدام الفاتورة الموحدة ====================
-
-def generate_pdf_80mm(cart_data):
-    """فاتورة البيع والخدمات"""
-    return generate_facture_80mm(cart_data, "FACTURE DE VENTE")
-
-
 def generate_impression_pdf(prix_page, nombre):
-    """فاتورة الطباعة - تستخدم نفس التصميم الموحد"""
     cart_data = [{
         "Nom": "Impression",
         "Quantité": nombre,
@@ -1328,9 +1189,7 @@ def generate_impression_pdf(prix_page, nombre):
     }]
     return generate_facture_80mm(cart_data, "FACTURE IMPRESSION")
 
-
 def generate_commande_pdf(commandes_data):
-    """فاتورة الطلبية - تستخدم نفس التصميم الموحد"""
     cart_data = []
     for item in commandes_data:
         cart_data.append({
@@ -1342,11 +1201,6 @@ def generate_commande_pdf(commandes_data):
         })
     return generate_facture_80mm(cart_data, "BON DE COMMANDE")
 
-
-def generate_pdf(cart_data):
-    """دالة عامة للفاتورة"""
-    return generate_facture_80mm(cart_data, "FACTURE")
-
 def play_success_sound():
     sound_html = """
     <audio autoplay>
@@ -1357,6 +1211,7 @@ def play_success_sound():
 
 st.set_page_config(layout="wide", page_title="OUZOUD SERVICES")
 
+# --- دوال الماسح القديمة (مبقيين) ---
 def fast_barcode_scanner_with_qty(input_label, qty_label):
     scanner_html = f"""
     <div id="reader" style="width:100%"></div>
@@ -1420,7 +1275,6 @@ def auto_sale_scanner():
     components.html(scanner_html, height=350)
 
 def auto_cart_scanner():
-    """سكانير السلة التلقائية - يضيف المنتج للسلة تلقائياً مع التعرف على المنتج الجديد"""
     scanner_html = """
     <div id="auto_cart_reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -1449,7 +1303,6 @@ def auto_cart_scanner():
     components.html(scanner_html, height=300)
 
 def stock_barcode_scanner(target_input_label):
-    """ماسح باركود يملأ خانة محددة فقط - يعمل بشكل صحيح"""
     scanner_html = f"""
     <div id="stock_reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -1463,15 +1316,12 @@ def stock_barcode_scanner(target_input_label):
             clearTimeout(stockScanTimeout);
             stockScanTimeout = setTimeout(() => {{ lastStockScan = ''; }}, 2000);
             
-            // البحث عن خانة الباركود الصحيحة
             const inputs = window.parent.document.querySelectorAll('input');
             inputs.forEach(function(input) {{
                 if (input.getAttribute('aria-label') === '{target_input_label}') {{
                     input.value = decodedText;
                     input.dispatchEvent(new Event('input', {{bubbles: true}}));
                     input.dispatchEvent(new Event('change', {{bubbles: true}}));
-                    
-                    // تأكيد بصري
                     input.style.background = '#e8f5e9';
                     setTimeout(() => {{ input.style.background = ''; }}, 500);
                 }}
@@ -1490,7 +1340,6 @@ def stock_barcode_scanner(target_input_label):
 
 # ==================== نظام التحكم الصوتي ====================
 def voice_command_component():
-    """مكون التحكم الصوتي"""
     voice_html = """
     <div id="voice-control">
         <button id="start-voice" style="padding:10px 20px; background:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
@@ -1610,6 +1459,8 @@ if "selected_service" not in st.session_state: st.session_state.selected_service
 if "selected_service_price" not in st.session_state: st.session_state.selected_service_price = 0.0
 if "selected_service_unit" not in st.session_state: st.session_state.selected_service_unit = ""
 if "invoice_counter" not in st.session_state: st.session_state.invoice_counter = 0
+if "scanned_barcode" not in st.session_state:
+    st.session_state.scanned_barcode = None
 
 # --- صفحة تسجيل الدخول ---
 if not st.session_state.authenticated:
@@ -1675,7 +1526,6 @@ with st.sidebar:
     
     st.divider()
     
-    # زر المزامنة المباشرة
     if st.button(t("live_sync_label")):
         st.session_state.live_sync_active = not st.session_state.live_sync_active
     if st.session_state.live_sync_active:
@@ -1706,7 +1556,6 @@ with st.sidebar:
 if menu == t("dashboard"):
     st.header(t("dashboard"))
     
-    # إحصائيات سريعة
     df_v = get_df("ventes")
     df_s = get_df("stock")
     df_i = get_df("impressions")
@@ -1729,7 +1578,6 @@ if menu == t("dashboard"):
     
     st.divider()
     
-    # ========== المنتجات الأكثر ربحية ==========
     st.subheader(t("top_products"))
     if not df_v.empty:
         top_products = df_v.groupby('Nom')['Total'].sum().sort_values(ascending=False).head(10)
@@ -1739,7 +1587,6 @@ if menu == t("dashboard"):
     
     st.divider()
     
-    # ========== مقارنة الفترات ==========
     st.subheader(t("compare_periods"))
     col_p1, col_p2 = st.columns(2)
     with col_p1:
@@ -1765,19 +1612,16 @@ if menu == t("dashboard"):
     
     st.divider()
     
-    # ========== رسم بياني للمبيعات ==========
     st.subheader(t("sales_chart"))
     if not df_v.empty:
         df_v['Date_dt'] = pd.to_datetime(df_v['Date'], format='%d/%m/%Y %H:%M', errors='coerce')
         daily_sales = df_v.groupby(df_v['Date_dt'].dt.date)['Total'].sum().reset_index()
         daily_sales.columns = ['التاريخ', 'المبيعات']
-        
         fig = px.line(daily_sales.tail(30), x='التاريخ', y='المبيعات', title="تطور المبيعات (آخر 30 يوم)")
         st.plotly_chart(fig, use_container_width=True)
     
     st.divider()
     
-    # ========== توقعات المبيعات ==========
     st.subheader(t("sales_prediction"))
     if not df_v.empty:
         df_v['Date_dt'] = pd.to_datetime(df_v['Date'], format='%d/%m/%Y %H:%M', errors='coerce')
@@ -1803,14 +1647,13 @@ if menu == t("dashboard"):
     else:
         st.info(t("no_data"))
 
+# ==================== POS (نقطة البيع) ====================
 if menu == t("pos"):
     st.header(t("pos"))
     
-    # ========== نظام التحكم الصوتي ==========
     with st.expander(t("voice_command"), expanded=False):
         voice_command_component()
     
-    # Mode Auto Sale
     st.session_state.auto_sale_mode = st.checkbox(
         t("auto_sale_mode"),
         value=st.session_state.auto_sale_mode
@@ -1836,7 +1679,6 @@ if menu == t("pos"):
                 if float(product['Quantité']) >= 1:
                     total = float(product['Prix'])
                     
-                    # حفظ رقم الفاتورة
                     facture_result = generate_facture_80mm([{"Nom": product.get('Nom', code_auto), "Quantité": 1, "Prix": float(product['Prix']), "Total": total}], "FACTURE DE VENTE")
                     facture_path, invoice_number = facture_result
                     
@@ -1878,6 +1720,7 @@ if menu == t("pos"):
             [t("normal_sale"), t("scan_qr"), t("free_sale"), t("cart")]
         )
         
+        # ====== 1. Normal Sale ======
         if mode == t("normal_sale"):
             col1, col2 = st.columns(2)
             with col1:
@@ -1908,7 +1751,6 @@ if menu == t("pos"):
                         if q_old >= qty:
                             total = prix * qty
                             
-                            # رقم الفاتورة
                             facture_result = generate_facture_80mm([{"Nom": nom, "Quantité": qty, "Prix": prix, "Total": total}], "FACTURE DE VENTE")
                             facture_path, invoice_number = facture_result
                             
@@ -1932,15 +1774,23 @@ if menu == t("pos"):
                 else:
                     st.error(t("fill_all_fields"))
         
+        # ====== 2. Scan QR ======
         elif mode == t("scan_qr"):
             st.subheader(t("scan_qr"))
+            
+            if st.session_state.scanned_barcode is None:
+                st.warning("⚠️ يرجى مسح الباركود للمتابعة")
+                mobile_barcode_scanner("scanned_barcode")
+                st.stop()
+            
+            barcode = st.session_state.scanned_barcode
+            st.success(f"✅ تم مسح الباركود بنجاح: {barcode}")
+            
             col1, col2 = st.columns(2)
             with col1:
-                code_qr = st.text_input(f"{t('barcode')} (auto)", key="qr_code")
+                code_qr = st.text_input(f"{t('barcode')} (auto)", value=barcode, disabled=True)
             with col2:
                 qty_qr = st.number_input(t("quantity"), min_value=0.0, step=0.1, value=1.0, key="qr_qty")
-            
-            fast_barcode_scanner_with_qty(f"{t('barcode')} (auto)", t("quantity"))
             
             if st.button(t("confirm_sale"), key="qr_sale"):
                 if code_qr and qty_qr > 0:
@@ -1969,12 +1819,20 @@ if menu == t("pos"):
                             supabase.table("stock").update({"Quantité": q_old - qty_qr}).eq("id", doc_id).execute()
                             play_success_sound()
                             st.success(f"{t('sale_success')} {nom} - {qty_qr} x {prix} = {total:.2f} DH | Facture: {invoice_number}")
+                            st.session_state.scanned_barcode = None
                             st.rerun()
                         else:
                             st.error(f"{t('low_stock_warning')} {q_old}")
                     else:
                         st.error(t("product_not_found"))
+                else:
+                    st.error(t("fill_all_fields"))
+            
+            if st.button("🔄 مسح جديد"):
+                st.session_state.scanned_barcode = None
+                st.rerun()
         
+        # ====== 3. Free Sale ======
         elif mode == t("free_sale"):
             col1, col2 = st.columns(2)
             with col1:
@@ -2003,20 +1861,29 @@ if menu == t("pos"):
                     st.success(f"{t('sale_success')} {name} - {qty_libre} x {price} = {total_libre:.2f} DH | Facture: {invoice_number}")
                     st.rerun()
         
+        # ====== 4. Cart ======
         elif mode == t("cart"):
-            # اختيار نوع السلة: يدوي أو تلقائي
             cart_mode = st.radio(
                 t("cart_mode_label"),
                 [t("cart_manual"), t("cart_auto")],
                 horizontal=True
             )
             
-            # ========== السلة اليدوية (طريقة قديمة) ==========
+            # ====== Cart Manual ======
             if cart_mode == t("cart_manual"):
                 col1, col2 = st.columns([1, 1])
                 with col1:
                     st.subheader(t("add_to_cart"))
-                    code = st.text_input(t("barcode"), key="panier_code")
+                    
+                    if st.session_state.scanned_barcode is None:
+                        st.warning("⚠️ يرجى مسح الباركود للمتابعة")
+                        mobile_barcode_scanner("scanned_barcode")
+                        st.stop()
+                    
+                    barcode = st.session_state.scanned_barcode
+                    st.success(f"✅ تم مسح الباركود: {barcode}")
+                    
+                    code = st.text_input(t("barcode"), value=barcode, disabled=True)
                     qty = st.number_input(f"{t('quantity')}:", min_value=0.0, step=0.1, key="panier_qty")
                     
                     product = get_product_info(code) if code else None
@@ -2028,7 +1895,6 @@ if menu == t("pos"):
                     
                     if st.button(t("add_to_cart")):
                         if code and qty > 0 and prix_u > 0:
-                            # التحقق إذا كان المنتج موجوداً مسبقاً في السلة
                             found = False
                             for item in st.session_state.cart:
                                 if item['Code'] == code:
@@ -2045,7 +1911,12 @@ if menu == t("pos"):
                                     "Nom": nom_produit
                                 })
                             st.success(f"{t('add_to_cart')}: {nom_produit} x {qty}")
+                            st.session_state.scanned_barcode = None
                             st.rerun()
+                    
+                    if st.button("🔄 مسح جديد"):
+                        st.session_state.scanned_barcode = None
+                        st.rerun()
                 
                 with col2:
                     st.subheader(t("cart"))
@@ -2102,7 +1973,7 @@ if menu == t("pos"):
                     else:
                         st.info(t("no_data"))
             
-            # ========== السلة التلقائية (سكانير متواصل) ==========
+            # ====== Cart Auto ======
             else:
                 st.success(t("cart_auto_info"))
                 auto_cart_scanner()
@@ -2118,7 +1989,6 @@ if menu == t("pos"):
                     product = get_product_info(code_auto_cart)
                     if product:
                         if float(product['Quantité']) >= 1:
-                            # التعرف على المنتج الجديد تلقائياً
                             found = False
                             for item in st.session_state.cart:
                                 if item['Code'] == code_auto_cart:
@@ -2193,10 +2063,10 @@ if menu == t("pos"):
         st.metric(t("total_sales"), f"{total_ventes:.2f} DH")
     export_import_buttons("ventes", df_ventes)
 
+# ==================== Stock (المخزون) ====================
 elif menu == t("stock"):
     st.header(t("stock"))
     
-    # خانة البحث
     st.subheader(t("search_stock"))
     search_term = st.text_input(
         t("search_placeholder"),
@@ -2216,39 +2086,47 @@ elif menu == t("stock"):
         else:
             st.success(f"{t('search_results')} {len(df_stock)} produit(s)")
     
-    # إضافة منتج جديد مع ماسح باركود
+    # ====== Add Product ======
     with st.expander(t("add_product"), expanded=True):
-        use_add_scanner = st.checkbox(t("stock_scanner_add"), key="add_scanner_checkbox")
-        if use_add_scanner:
-            st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-            mobile_barcode_scanner("stock_barcode")
+        if st.session_state.scanned_barcode is None:
+            st.warning("⚠️ يرجى مسح الباركود لإضافة منتج جديد")
+            mobile_barcode_scanner("scanned_barcode")
+            st.stop()
         
-        col1, col2, col3, col4 = st.columns(4)
+        barcode = st.session_state.scanned_barcode
+        st.success(f"✅ الباركود الممسوح: **{barcode}**")
+        
+        col1, col2, col3 = st.columns(3)
         with col1: 
             name = st.text_input(t("product_name"), key="stock_name")
         with col2: 
             price = st.number_input(t("price"), min_value=0.0, key="stock_price")
         with col3: 
             qty = st.number_input(t("quantity"), min_value=0.0, step=0.1, key="stock_qty")
-        with col4: 
-            barcode = st.text_input(t("barcode_optional"), key="stock_barcode")
+        
+        st.text_input(t("barcode"), value=barcode, disabled=True, key="stock_barcode")
         
         if st.button(t("add_button"), key="stock_add_btn"):
-            if name:
+            if name and price > 0 and qty > 0:
                 product_data = {
                     "Nom": name, 
                     "Prix": float(price), 
                     "Quantité": float(qty), 
-                    "Code-barres": barcode if barcode else ""
+                    "Code-barres": barcode
                 }
                 try:
                     supabase.table("stock").insert(product_data).execute()
                     st.success(t("product_added"))
+                    st.session_state.scanned_barcode = None
                     st.rerun()
                 except Exception as e:
                     st.error(f"{t('error_generic')}: {str(e)}")
             else:
                 st.error(t("fill_all_fields"))
+        
+        if st.button("🔄 مسح جديد"):
+            st.session_state.scanned_barcode = None
+            st.rerun()
     
     st.subheader(t("current_stock"))
     if not df_stock.empty:
@@ -2269,18 +2147,26 @@ elif menu == t("stock"):
     else:
         st.success(t("stock_ok"))
     
+    # ====== Update Product ======
     if not df_stock.empty:
         with st.expander(t("update_product")):
-            use_update_scanner = st.checkbox(t("stock_scanner_update"), key="update_scanner_checkbox")
-            if use_update_scanner:
-                st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-                mobile_barcode_scanner("stock_update_barcode")
+            if st.session_state.scanned_barcode is None:
+                st.warning("⚠️ يرجى مسح الباركود للبحث عن المنتج")
+                mobile_barcode_scanner("scanned_barcode")
+                st.stop()
             
-            selected_product = st.selectbox(
-                t("select_product"), 
-                df_stock['Nom'].tolist(),
-                key="stock_update_select"
-            )
+            barcode = st.session_state.scanned_barcode
+            st.success(f"✅ الباركود الممسوح: **{barcode}**")
+            
+            found_product = get_product_info(barcode)
+            
+            if found_product:
+                st.success(f"✅ تم العثور على: **{found_product.get('Nom', '')}**")
+                selected_product = found_product.get('Nom', '')
+            else:
+                st.error("❌ لم يتم العثور على منتج بهذا الباركود")
+                st.session_state.scanned_barcode = None
+                st.rerun()
             
             if selected_product:
                 product_data = df_stock[df_stock['Nom'] == selected_product].iloc[0]
@@ -2304,7 +2190,7 @@ elif menu == t("stock"):
                     )
                 with col3:
                     new_barcode = st.text_input(
-                        t("barcode_optional"),
+                        t("barcode"),
                         value=str(current_barcode) if current_barcode else "",
                         key="stock_update_barcode"
                     )
@@ -2318,10 +2204,16 @@ elif menu == t("stock"):
                     try:
                         supabase.table("stock").update(update_data).eq("id", product_data['id']).execute()
                         st.success(t("product_updated"))
+                        st.session_state.scanned_barcode = None
                         st.rerun()
                     except Exception as e:
                         st.error(f"{t('error_generic')}: {str(e)}")
+            
+            if st.button("🔄 مسح جديد"):
+                st.session_state.scanned_barcode = None
+                st.rerun()
 
+# ==================== Impression (الطباعة) ====================
 elif menu == t("impression"):
     st.header(t("impression"))
     col1, col2 = st.columns(2)
@@ -2363,6 +2255,7 @@ elif menu == t("impression"):
     
     export_import_buttons("impressions", df_imp)
 
+# ==================== Caisse (الخزينة) ====================
 elif menu == t("caisse"):
     st.header(t("caisse"))
     
@@ -2401,7 +2294,7 @@ elif menu == t("caisse"):
             if st.button(t("yes_reset")):
                 try:
                     total_jour = reset_caisse()
-                    st.success(f"✅ {t('reset_success')} {total_jour:.2f} DH - تم مسح جميع بيانات اليوم")
+                    st.success(f"✅ {t('reset_success')} {total_jour:.2f} DH - تم مسح جميع بيانات اليوم (مبيعات، طباعة، ديون)")
                     st.session_state.caisse_reset_confirmed = False
                     st.balloons()
                     time.sleep(2)
@@ -2432,10 +2325,10 @@ elif menu == t("caisse"):
     else:
         st.info(t("no_data"))
 
+# ==================== Credits (الديون) ====================
 elif menu == t("credits"):
     st.header(t("credits"))
     
-    # ========== زر إضافة دين جديد (فوق) ==========
     with st.expander(t("add_credit"), expanded=True):
         col1, col2 = st.columns(2)
         with col1:
@@ -2461,7 +2354,6 @@ elif menu == t("credits"):
     
     st.divider()
     
-    # ========== بحث في الديون ==========
     st.subheader("🔍 بحث عن دين")
     search_credit = st.text_input(
         "ابحث باسم العميل:",
@@ -2469,10 +2361,8 @@ elif menu == t("credits"):
         key="credit_search_input"
     )
     
-    # جلب البيانات
     df_credits = get_df("credits")
     
-    # تصفية حسب البحث
     if search_credit and not df_credits.empty:
         df_credits = df_credits[df_credits['Client'].str.contains(search_credit, case=False, na=False)]
         if df_credits.empty:
@@ -2492,7 +2382,6 @@ elif menu == t("credits"):
         
         st.divider()
         
-        # ========== إدارة الدين ==========
         st.subheader("💳 إدارة الدين")
         
         col_credit1, col_credit2 = st.columns(2)
@@ -2516,10 +2405,8 @@ elif menu == t("credits"):
                 key="credit_operation_amount"
             )
         
-        # ========== 3 أزرار: إضافة / تسديد / حذف ==========
         col_add, col_pay, col_delete = st.columns(3)
         
-        # زر إضافة للدين (يزيد المبلغ)
         with col_add:
             if st.button(t("add_to_credit"), use_container_width=True, key="add_to_existing_credit_btn"):
                 if credit_a_reduire and montant_operation > 0:
@@ -2534,7 +2421,6 @@ elif menu == t("credits"):
                 else:
                     st.error(t("fill_all_fields"))
         
-        # زر تسديد (ينقص المبلغ)
         with col_pay:
             if st.button(t("pay_button"), use_container_width=True, key="pay_existing_credit_btn"):
                 if credit_a_reduire and montant_operation > 0:
@@ -2548,7 +2434,6 @@ elif menu == t("credits"):
                             nouveau = reduce_credit(credit_id, montant_operation)
                             if nouveau == 0:
                                 st.success(f"✅ Crédit entièrement remboursé!")
-                                supabase.table("credits").delete().eq("id", credit_id).execute()
                             else:
                                 st.success(f"✅ Payé: {montant_operation:.2f} DH | Reste: {nouveau:.2f} DH")
                             play_success_sound()
@@ -2558,7 +2443,6 @@ elif menu == t("credits"):
                 else:
                     st.error(t("fill_all_fields"))
         
-        # زر حذف الدين نهائياً
         with col_delete:
             if st.button(t("delete_credit"), use_container_width=True, key="delete_existing_credit_btn"):
                 if credit_a_reduire:
@@ -2595,6 +2479,7 @@ elif menu == t("credits"):
     else:
         st.info(t("no_credits"))
 
+# ==================== Factures (الفواتير) ====================
 elif menu == t("factures"):
     st.header(t("factures"))
     
@@ -2631,6 +2516,7 @@ elif menu == t("factures"):
     else:
         st.info(t("no_data"))
 
+# ==================== Commandes (الطلبيات) ====================
 elif menu == t("commandes"):
     st.header(t("commandes"))
     
@@ -2726,12 +2612,11 @@ elif menu == t("commandes"):
             else:
                 st.info(t("no_pending_orders"))
 
-# ==================== SERVICES ====================
+# ==================== Services (الخدمات) ====================
 elif menu == t("services"):
     st.header(t("services"))
     st.markdown("---")
     
-    # ========== إضافة خدمة جديدة ==========
     with st.expander(t("add_service"), expanded=True):
         st.markdown("### ➕ إضافة خدمة جديدة")
         col_add1, col_add2, col_add3 = st.columns([3, 2, 2])
@@ -2768,10 +2653,8 @@ elif menu == t("services"):
     
     st.markdown("---")
     
-    # جلب الخدمات من قاعدة البيانات
     df_services_db = get_df("services_electroniques")
     
-    # عرض الخدمات في شبكة
     st.subheader(t("service_select"))
     
     if not df_services_db.empty:
@@ -2782,7 +2665,6 @@ elif menu == t("services"):
             service_name = row['Nom']
             service_price = row['Prix']
             
-            # اختيار أيقونة حسب الاسم
             if "copie" in service_name.lower() or "نسخ" in service_name:
                 icon = "📄"
                 unit = "page"
@@ -2832,7 +2714,6 @@ elif menu == t("services"):
                     st.session_state.selected_service_price = service_price
                     st.session_state.selected_service_unit = unit
         
-        # عرض قائمة الخدمات
         with st.expander(t("service_list"), expanded=False):
             st.dataframe(df_services_db, use_container_width=True, hide_index=True)
             export_import_buttons("services_electroniques", df_services_db)
@@ -2842,7 +2723,6 @@ elif menu == t("services"):
     
     st.markdown("---")
     
-    # نموذج الخدمة المختارة
     if "selected_service" in st.session_state and st.session_state.selected_service:
         st.subheader(f"{t('service_selected')} {st.session_state.selected_service}")
         
@@ -2869,14 +2749,11 @@ elif menu == t("services"):
         if total_service > 0:
             st.metric(t("total"), f"{total_service:.2f} DH")
         
-        # معلومات العميل (اختياري)
         with st.expander(t("service_client_info"), expanded=False):
             client_name = st.text_input(t("service_client_name"), key="service_client_name_input")
             client_tel = st.text_input(t("service_client_tel"), key="service_client_tel_input")
         
-        # زر إتمام الخدمة وطباعة الفاتورة
         if st.button(t("service_confirm"), type="primary", use_container_width=True, key="service_confirm_btn"):
-            # تحضير بيانات الفاتورة
             service_cart = [{
                 "Code": st.session_state.selected_service,
                 "Nom": st.session_state.selected_service,
@@ -2885,11 +2762,9 @@ elif menu == t("services"):
                 "Total": total_service
             }]
             
-            # رقم الفاتورة
             facture_result = generate_facture_80mm(service_cart, "FACTURE SERVICE")
             facture_path, invoice_number = facture_result
             
-            # تسجيل الخدمة في المبيعات
             supabase.table("ventes").insert({
                 "Code": st.session_state.selected_service,
                 "Quantité": float(quantity),
@@ -2900,14 +2775,11 @@ elif menu == t("services"):
                 "Facture": invoice_number
             }).execute()
             
-            # صوت النجاح
             play_success_sound()
             
-            # رسالة نجاح
             st.success(f"✅ تم إتمام الخدمة: {st.session_state.selected_service} - {total_service:.2f} DH | Facture: {invoice_number}")
             st.balloons()
             
-            # عرض الفاتورة للتحميل
             if os.path.exists("facture_80mm.pdf"):
                 with open("facture_80mm.pdf", "rb") as f:
                     st.download_button(
@@ -2920,7 +2792,6 @@ elif menu == t("services"):
     
     st.markdown("---")
     
-    # سجل الخدمات السابقة
     st.subheader(t("service_history"))
     df_services = get_df("ventes")
     if not df_services.empty and not df_services_db.empty:
@@ -2935,12 +2806,11 @@ elif menu == t("services"):
     else:
         st.info(t("no_data"))
 
-# ==================== OUTILS RAPIDES ====================
+# ==================== Outils (الأدوات السريعة) ====================
 elif menu == t("outils"):
     st.header(t("outils"))
     st.markdown("---")
     
-    # ========== تطبيقات Office Online ==========
     st.subheader(t("office_label"))
     st.info("🌐 فتح التطبيقات في المتصفح (Online)")
     
@@ -2984,7 +2854,6 @@ elif menu == t("outils"):
     
     st.markdown("---")
     
-    # ========== WhatsApp ==========
     st.subheader(t("whatsapp_label"))
     
     col_w1, col_w2 = st.columns(2)
@@ -3012,7 +2881,6 @@ elif menu == t("outils"):
     
     st.markdown("---")
     
-    # ========== بحث Google ==========
     st.subheader(t("google_search"))
     
     google_query = st.text_input(
@@ -3030,7 +2898,6 @@ elif menu == t("outils"):
         """)
         st.success(f"✅ تم البحث عن: {google_query}")
     
-    # ========== Google مدمج في الصفحة ==========
     st.markdown("---")
     st.subheader(t("google_embedded"))
     
