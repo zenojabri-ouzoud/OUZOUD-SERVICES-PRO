@@ -293,7 +293,7 @@ def mobile_barcode_scanner(session_key):
     scanner_html = f"""
     <div id="barcode-scanner-container" style="width:100%; min-height:350px; border:2px dashed #4CAF50; border-radius:10px; padding:15px; background:#f9f9f9;">
         <div id="reader" style="width:100%; min-height:300px;"></div>
-        <p style="text-align:center; color:#666; font-size:14px; margin-top:10px;">📱 قرب الباركود من الكاميرا</p>
+        <p style="text-align:center; color:#666; font-size:14px; margin-top:10px;">'📱' قرب الباركود من الكاميرا</p>
         <div id="scan-status" style="text-align:center; font-size:14px; color:#999; margin-top:5px;">⏳ جاري تهيئة الكاميرا...</div>
     </div>
     
