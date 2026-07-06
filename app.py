@@ -142,821 +142,173 @@ def mobile_barcode_scanner(session_key):
     """
     components.html(scanner_html, height=480)
 
-# ==================== نظام الترجمة (واحدة تحت واحدة) ====================
+# ==================== نظام الترجمة ====================
 if "lang" not in st.session_state:
     st.session_state.lang = "ar"
 
 translations = {
-    "login_title": {
-        "ar": "🔐 تسجيل الدخول",
-        "fr": "🔐 Connexion",
-        "en": "🔐 Login"
-    },
-    "password_label": {
-        "ar": "كلمة المرور:",
-        "fr": "Mot de passe:",
-        "en": "Password:"
-    },
-    "login_button": {
-        "ar": "دخول",
-        "fr": "Connexion",
-        "en": "Login"
-    },
-    "wrong_password": {
-        "ar": "❌ كلمة المرور خاطئة!",
-        "fr": "❌ Mot de passe incorrect!",
-        "en": "❌ Wrong password!"
-    },
-    "menu_main": {
-        "ar": "القائمة الرئيسية",
-        "fr": "Menu Principal",
-        "en": "Main Menu"
-    },
-    "dashboard": {
-        "ar": "📊 لوحة التحكم",
-        "fr": "📊 Tableau de Bord",
-        "en": "📊 Dashboard"
-    },
-    "pos": {
-        "ar": "🛒 نقطة البيع",
-        "fr": "🛒 Point de Vente",
-        "en": "🛒 Point of Sale"
-    },
-    "stock": {
-        "ar": "📦 إدارة المخزون",
-        "fr": "📦 Gestion Stock",
-        "en": "📦 Stock Management"
-    },
-    "impression": {
-        "ar": "🖨️ الطباعة",
-        "fr": "🖨️ Impression",
-        "en": "🖨️ Printing"
-    },
-    "caisse": {
-        "ar": "💰 الخزينة",
-        "fr": "💰 Caisse",
-        "en": "💰 Cash Register"
-    },
-    "credits": {
-        "ar": "💳 الديون",
-        "fr": "💳 Crédits",
-        "en": "💳 Credits"
-    },
-    "factures": {
-        "ar": "📄 الفواتير",
-        "fr": "📄 Factures",
-        "en": "📄 Invoices"
-    },
-    "commandes": {
-        "ar": "📋 طلبيات الموردين",
-        "fr": "📋 Commandes Fournisseur",
-        "en": "📋 Supplier Orders"
-    },
-    "services": {
-        "ar": "🔧 الخدمات الإلكترونية",
-        "fr": "🔧 Services Électroniques",
-        "en": "🔧 Electronic Services"
-    },
-    "outils": {
-        "ar": "🔗 أدوات سريعة",
-        "fr": "🔗 Outils Rapides",
-        "en": "🔗 Quick Tools"
-    },
-    "google_search": {
-        "ar": "🔍 بحث Google",
-        "fr": "🔍 Recherche Google",
-        "en": "🔍 Google Search"
-    },
-    "activate_scanner": {
-        "ar": "📸 تفعيل الماسح الضوئي السريع",
-        "fr": "📸 Activer le scanner rapide",
-        "en": "📸 Activate Fast Scanner"
-    },
-    "auto_sale_mode": {
-        "ar": "⚡ البيع التلقائي (سكانير = بيع مباشر + فاتورة 80mm)",
-        "fr": "⚡ Vente Auto (Scan = Vente Directe + Facture 80mm)",
-        "en": "⚡ Auto Sale (Scan = Direct Sale + 80mm Invoice)"
-    },
-    "sale_type": {
-        "ar": "نوع البيع:",
-        "fr": "Type de vente:",
-        "en": "Sale Type:"
-    },
-    "normal_sale": {
-        "ar": "بيع عادي",
-        "fr": "Vente Normale",
-        "en": "Normal Sale"
-    },
-    "scan_qr": {
-        "ar": "مسح QR",
-        "fr": "Scan QR",
-        "en": "QR Scan"
-    },
-    "free_sale": {
-        "ar": "بيع حر",
-        "fr": "Vente Libre",
-        "en": "Free Sale"
-    },
-    "cart": {
-        "ar": "سلة المشتريات",
-        "fr": "Panier",
-        "en": "Cart"
-    },
-    "cart_mode_label": {
-        "ar": "🚀 نوع السلة:",
-        "fr": "🚀 Type de panier:",
-        "en": "🚀 Cart type:"
-    },
-    "cart_manual": {
-        "ar": "✋ يدوي (إضافة منتج منتج)",
-        "fr": "✋ Manuel (Ajout produit par produit)",
-        "en": "✋ Manual (Add one by one)"
-    },
-    "cart_auto": {
-        "ar": "⚡ تلقائي (سكانير متواصل)",
-        "fr": "⚡ Auto (Scan continu)",
-        "en": "⚡ Auto (Continuous scan)"
-    },
-    "cart_auto_info": {
-        "ar": "⚡ الماسح التلقائي: امسح الباركود = يضاف للسلة تلقائياً | امسح باركود آخر = يضاف أيضاً | اضغط إنهاء = فاتورة",
-        "fr": "⚡ Scanner auto: Scannez = Ajouté au panier | Scannez autre = Ajouté aussi | Terminer = Facture",
-        "en": "⚡ Auto scanner: Scan = Added to cart | Scan another = Added too | Finish = Invoice"
-    },
-    "cart_empty": {
-        "ar": "السلة فارغة - امسح الباركود للإضافة",
-        "fr": "Panier vide - Scannez pour ajouter",
-        "en": "Empty cart - Scan to add"
-    },
-    "cart_products_count": {
-        "ar": "منتجات",
-        "fr": "produits",
-        "en": "products"
-    },
-    "barcode": {
-        "ar": "الباركود",
-        "fr": "Code-barres",
-        "en": "Barcode"
-    },
-    "barcode_optional": {
-        "ar": "الباركود (اختياري)",
-        "fr": "Code-barres (Optionnel)",
-        "en": "Barcode (Optional)"
-    },
-    "quantity": {
-        "ar": "الكمية",
-        "fr": "Quantité",
-        "en": "Quantity"
-    },
-    "price": {
-        "ar": "السعر",
-        "fr": "Prix",
-        "en": "Price"
-    },
-    "total": {
-        "ar": "المجموع",
-        "fr": "Total",
-        "en": "Total"
-    },
-    "confirm_sale": {
-        "ar": "✅ تأكيد البيع",
-        "fr": "✅ Confirmer la Vente",
-        "en": "✅ Confirm Sale"
-    },
-    "add_to_cart": {
-        "ar": "✅ أضف إلى السلة",
-        "fr": "✅ Ajouter au Panier",
-        "en": "✅ Add to Cart"
-    },
-    "validate_cart": {
-        "ar": "🖨️ تأكيد وتسجيل الكل",
-        "fr": "🖨️ Valider et Enregistrer Tout",
-        "en": "🖨️ Validate and Save All"
-    },
-    "clear_cart": {
-        "ar": "🗑️ تفريغ السلة",
-        "fr": "🗑️ Vider le Panier",
-        "en": "🗑️ Clear Cart"
-    },
-    "finish_cart": {
-        "ar": "🧾 إنهاء وإصدار الفاتورة",
-        "fr": "🧾 Terminer et Imprimer la Facture",
-        "en": "🧾 Finish & Print Invoice"
-    },
-    "sale_success": {
-        "ar": "✅ تم تسجيل البيع بنجاح!",
-        "fr": "✅ Vente enregistrée avec succès!",
-        "en": "✅ Sale recorded successfully!"
-    },
-    "low_stock_warning": {
-        "ar": "⚠️ المخزون غير كافي! المتوفر:",
-        "fr": "⚠️ Stock insuffisant! Disponible:",
-        "en": "⚠️ Insufficient stock! Available:"
-    },
-    "product_not_found": {
-        "ar": "⚠️ المنتج غير موجود في المخزون",
-        "fr": "⚠️ Produit introuvable dans le stock",
-        "en": "⚠️ Product not found in stock"
-    },
-    "add_product": {
-        "ar": "➕ إضافة منتج",
-        "fr": "➕ Ajouter un Produit",
-        "en": "➕ Add Product"
-    },
-    "product_name": {
-        "ar": "اسم المنتج",
-        "fr": "Nom du Produit",
-        "en": "Product Name"
-    },
-    "add_button": {
-        "ar": "➕ إضافة",
-        "fr": "➕ Ajouter",
-        "en": "➕ Add"
-    },
-    "update_product": {
-        "ar": "✏️ تحديث منتج",
-        "fr": "✏️ Modifier Produit",
-        "en": "✏️ Update Product"
-    },
-    "current_stock": {
-        "ar": "📋 المخزون الحالي",
-        "fr": "📋 Stock Actuel",
-        "en": "📋 Current Stock"
-    },
-    "stock_alert": {
-        "ar": "⚠️ تنبيهات المخزون",
-        "fr": "⚠️ Alertes Stock",
-        "en": "⚠️ Stock Alerts"
-    },
-    "low_stock_products": {
-        "ar": "منتجات بمخزون منخفض!",
-        "fr": "produits avec stock bas!",
-        "en": "products with low stock!"
-    },
-    "stock_ok": {
-        "ar": "✅ جميع المنتجات بمخزون جيد",
-        "fr": "✅ Tous les produits sont bien stockés",
-        "en": "✅ All products are well stocked"
-    },
-    "select_product": {
-        "ar": "اختر المنتج",
-        "fr": "Choisir le produit",
-        "en": "Select product"
-    },
-    "or_choose_name": {
-        "ar": "أو اختر بالاسم:",
-        "fr": "Ou choisir par nom:",
-        "en": "Or choose by name:"
-    },
-    "search_stock": {
-        "ar": "🔍 بحث في المخزون (بالاسم أو الباركود)",
-        "fr": "🔍 Rechercher dans le stock (par nom ou code-barres)",
-        "en": "🔍 Search Stock (by name or barcode)"
-    },
-    "search_placeholder": {
-        "ar": "اكتب اسم المنتج أو الباركود للبحث...",
-        "fr": "Tapez le nom du produit ou le code-barres pour rechercher...",
-        "en": "Type product name or barcode to search..."
-    },
-    "search_results": {
-        "ar": "نتائج البحث:",
-        "fr": "Résultats de recherche:",
-        "en": "Search results:"
-    },
-    "no_results": {
-        "ar": "لا توجد نتائج مطابقة",
-        "fr": "Aucun résultat trouvé",
-        "en": "No matching results"
-    },
-    "new_quantity": {
-        "ar": "الكمية الجديدة",
-        "fr": "Nouvelle Quantité",
-        "en": "New Quantity"
-    },
-    "new_price": {
-        "ar": "السعر الجديد",
-        "fr": "Nouveau Prix",
-        "en": "New Price"
-    },
-    "update_button": {
-        "ar": "✏️ تحديث",
-        "fr": "✏️ Modifier",
-        "en": "✏️ Update"
-    },
-    "price_per_page": {
-        "ar": "سعر الصفحة",
-        "fr": "Prix/Page",
-        "en": "Price/Page"
-    },
-    "number_of_pages": {
-        "ar": "عدد الصفحات",
-        "fr": "Nombre de Pages",
-        "en": "Number of Pages"
-    },
-    "save_print": {
-        "ar": "💾 حفظ وطباعة",
-        "fr": "💾 Enregistrer et Imprimer",
-        "en": "💾 Save and Print"
-    },
-    "print_history": {
-        "ar": "📊 سجل الطباعة",
-        "fr": "📊 Historique d'Impression",
-        "en": "📊 Print History"
-    },
-    "total_sales": {
-        "ar": "💰 إجمالي المبيعات",
-        "fr": "💰 Total des Ventes",
-        "en": "💰 Total Sales"
-    },
-    "total_printing": {
-        "ar": "🖨️ إجمالي الطباعة",
-        "fr": "🖨️ Total Impressions",
-        "en": "🖨️ Total Printing"
-    },
-    "total_credits": {
-        "ar": "💳 إجمالي الديون",
-        "fr": "💳 Total Crédits",
-        "en": "💳 Total Credits"
-    },
-    "grand_total": {
-        "ar": "🏦 المجموع العام",
-        "fr": "🏦 Total Général",
-        "en": "🏦 Grand Total"
-    },
-    "reset_caisse": {
-        "ar": "🔄 تصفير الخزينة (نهاية اليوم)",
-        "fr": "🔄 Réinitialiser la Caisse (Fin de journée)",
-        "en": "🔄 Reset Cash Register (End of Day)"
-    },
-    "reset_warning": {
-        "ar": "⚠️ هذا الزر سيحفظ ملخص اليوم ويصفر العداد. استخدمه فقط في نهاية اليوم!",
-        "fr": "⚠️ Ce bouton enregistrera le résumé du jour et remettra le compteur à zéro. À utiliser uniquement en fin de journée!",
-        "en": "⚠️ This button will save today's summary and reset the counter. Use only at end of day!"
-    },
-    "reset_button": {
-        "ar": "🔄 تصفير الخزينة لليوم",
-        "fr": "🔄 Réinitialiser la Caisse du Jour",
-        "en": "🔄 Reset Today's Cash Register"
-    },
-    "confirm_reset": {
-        "ar": "❌ هل أنت متأكد من تصفير الخزينة؟ سيتم حفظ ملخص اليوم في السجل.",
-        "fr": "❌ Êtes-vous sûr de vouloir réinitialiser la caisse? Le résumé du jour sera sauvegardé.",
-        "en": "❌ Are you sure you want to reset the cash register? Today's summary will be saved."
-    },
-    "yes_reset": {
-        "ar": "✅ نعم، صفر الخزينة",
-        "fr": "✅ Oui, réinitialiser",
-        "en": "✅ Yes, reset"
-    },
-    "cancel": {
-        "ar": "❌ إلغاء",
-        "fr": "❌ Annuler",
-        "en": "❌ Cancel"
-    },
-    "reset_success": {
-        "ar": "✅ تم تصفير الخزينة بنجاح! إجمالي اليوم:",
-        "fr": "✅ Caisse réinitialisée avec succès! Total du jour:",
-        "en": "✅ Cash register reset successfully! Daily total:"
-    },
-    "history": {
-        "ar": "📅 سجل الأيام السابقة",
-        "fr": "📅 Historique des Jours Précédents",
-        "en": "📅 Previous Days History"
-    },
-    "recent_sales": {
-        "ar": "📋 المبيعات الأخيرة",
-        "fr": "📋 Ventes Récentes",
-        "en": "📋 Recent Sales"
-    },
-    "add_credit": {
-        "ar": "➕ إضافة دين جديد",
-        "fr": "➕ Ajouter un Crédit",
-        "en": "➕ Add New Credit"
-    },
-    "client_name": {
-        "ar": "اسم العميل",
-        "fr": "Nom du Client",
-        "en": "Client Name"
-    },
-    "amount": {
-        "ar": "المبلغ",
-        "fr": "Montant",
-        "en": "Amount"
-    },
-    "add_credit_button": {
-        "ar": "➕ إضافة دين",
-        "fr": "➕ Ajouter Crédit",
-        "en": "➕ Add Credit"
-    },
-    "credit_list": {
-        "ar": "📋 قائمة الديون",
-        "fr": "📋 Liste des Crédits",
-        "en": "📋 Credit List"
-    },
-    "reduce_credit": {
-        "ar": "🔽 تقليل مبلغ الدين",
-        "fr": "🔽 Réduire le Crédit",
-        "en": "🔽 Reduce Credit"
-    },
-    "reduce_credit_info": {
-        "ar": "هذا الزر يقلل من مبلغ الدين بدون حذفه كاملاً",
-        "fr": "Ce bouton réduit le montant du crédit sans le supprimer complètement",
-        "en": "This button reduces the credit amount without deleting it completely"
-    },
-    "select_credit": {
-        "ar": "اختر الدين لتقليله",
-        "fr": "Choisir le crédit à réduire",
-        "en": "Select credit to reduce"
-    },
-    "payment_amount": {
-        "ar": "المبلغ المدفوع",
-        "fr": "Montant Payé",
-        "en": "Amount Paid"
-    },
-    "pay_button": {
-        "ar": "💵 تسديد جزء من الدين",
-        "fr": "💵 Payer une Partie du Crédit",
-        "en": "💵 Pay Part of Credit"
-    },
-    "payment_history": {
-        "ar": "📋 سجل المدفوعات",
-        "fr": "📋 Historique des Paiements",
-        "en": "📋 Payment History"
-    },
-    "no_credits": {
-        "ar": "لا توجد ديون حالياً",
-        "fr": "Aucun crédit pour le moment",
-        "en": "No credits currently"
-    },
-    "delete_credit": {
-        "ar": "🗑️ حذف الدين نهائياً",
-        "fr": "🗑️ Supprimer le crédit",
-        "en": "🗑️ Delete Credit Permanently"
-    },
-    "add_to_credit": {
-        "ar": "🔼 إضافة للدين",
-        "fr": "🔼 Ajouter au crédit",
-        "en": "🔼 Add to Credit"
-    },
-    "last_sale": {
-        "ar": "🛒 آخر عملية بيع",
-        "fr": "🛒 Dernière Vente",
-        "en": "🛒 Last Sale"
-    },
-    "print_invoice": {
-        "ar": "🖨️ طباعة آخر فاتورة",
-        "fr": "🖨️ Imprimer la Dernière Facture",
-        "en": "🖨️ Print Last Invoice"
-    },
-    "download_sale_invoice": {
-        "ar": "📥 تحميل فاتورة البيع",
-        "fr": "📥 Télécharger Facture de Vente",
-        "en": "📥 Download Sale Invoice"
-    },
-    "download_print_invoice": {
-        "ar": "📥 تحميل فاتورة الطباعة",
-        "fr": "📥 Télécharger Facture d'Impression",
-        "en": "📥 Download Print Invoice"
-    },
-    "download_order": {
-        "ar": "📥 تحميل الطلبية",
-        "fr": "📥 Télécharger la Commande",
-        "en": "📥 Download Order"
-    },
-    "all_sales": {
-        "ar": "📊 جميع المبيعات (للفوترة)",
-        "fr": "📊 Toutes les Ventes (pour facturation)",
-        "en": "📊 All Sales (for invoicing)"
-    },
-    "new_order": {
-        "ar": "➕ إضافة طلبية جديدة",
-        "fr": "➕ Nouvelle Commande",
-        "en": "➕ New Order"
-    },
-    "requested_qty": {
-        "ar": "الكمية المطلوبة",
-        "fr": "Quantité Demandée",
-        "en": "Requested Quantity"
-    },
-    "unit_price_est": {
-        "ar": "سعر الوحدة (تقديري)",
-        "fr": "Prix Unitaire (Estimé)",
-        "en": "Unit Price (Estimated)"
-    },
-    "add_to_order": {
-        "ar": "➕ أضف للطلبية",
-        "fr": "➕ Ajouter à la Commande",
-        "en": "➕ Add to Order"
-    },
-    "current_order": {
-        "ar": "📋 الطلبية الحالية",
-        "fr": "📋 Commande Actuelle",
-        "en": "📋 Current Order"
-    },
-    "estimated_total": {
-        "ar": "المجموع التقديري",
-        "fr": "Total Estimé",
-        "en": "Estimated Total"
-    },
-    "save_order": {
-        "ar": "💾 حفظ الطلبية",
-        "fr": "💾 Sauvegarder la Commande",
-        "en": "💾 Save Order"
-    },
-    "print_order": {
-        "ar": "🖨️ طباعة الطلبية",
-        "fr": "🖨️ Imprimer la Commande",
-        "en": "🖨️ Print Order"
-    },
-    "clear_order": {
-        "ar": "🗑️ تفريغ الطلبية",
-        "fr": "🗑️ Vider la Commande",
-        "en": "🗑️ Clear Order"
-    },
-    "previous_orders": {
-        "ar": "📦 الطلبيات السابقة",
-        "fr": "📦 Commandes Précédentes",
-        "en": "📦 Previous Orders"
-    },
-    "confirm_reception": {
-        "ar": "✅ تأكيد استلام طلبية",
-        "fr": "✅ Confirmer Réception Commande",
-        "en": "✅ Confirm Order Reception"
-    },
-    "select_order_confirm": {
-        "ar": "اختر الطلبية لتأكيد استلامها",
-        "fr": "Choisir la commande à confirmer",
-        "en": "Select order to confirm"
-    },
-    "confirm_button": {
-        "ar": "✅ تأكيد الاستلام",
-        "fr": "✅ Confirmer la Réception",
-        "en": "✅ Confirm Reception"
-    },
-    "no_pending_orders": {
-        "ar": "لا توجد طلبيات قيد الانتظار",
-        "fr": "Aucune commande en attente",
-        "en": "No pending orders"
-    },
-    "order_saved": {
-        "ar": "✅ تم حفظ الطلبية بنجاح!",
-        "fr": "✅ Commande sauvegardée avec succès!",
-        "en": "✅ Order saved successfully!"
-    },
-    "order_received": {
-        "ar": "✅ تم تأكيد الاستلام وتحديث المخزون!",
-        "fr": "✅ Réception confirmée et stock mis à jour!",
-        "en": "✅ Reception confirmed and stock updated!"
-    },
-    "quick_stats": {
-        "ar": "📊 إحصائيات سريعة",
-        "fr": "📊 Statistiques Rapides",
-        "en": "📊 Quick Stats"
-    },
-    "products_count": {
-        "ar": "📦 المنتجات",
-        "fr": "📦 Produits",
-        "en": "📦 Products"
-    },
-    "sales_count": {
-        "ar": "💰 المبيعات",
-        "fr": "💰 Ventes",
-        "en": "💰 Sales"
-    },
-    "orders_count": {
-        "ar": "📋 الطلبيات",
-        "fr": "📋 Commandes",
-        "en": "📋 Orders"
-    },
-    "error_generic": {
-        "ar": "❌ حدث خطأ. الرجاء المحاولة مرة أخرى.",
-        "fr": "❌ Une erreur est survenue. Veuillez réessayer.",
-        "en": "❌ An error occurred. Please try again."
-    },
-    "fill_all_fields": {
-        "ar": "⚠️ الرجاء ملء جميع الحقول",
-        "fr": "⚠️ Veuillez remplir tous les champs",
-        "en": "⚠️ Please fill all fields"
-    },
-    "product_added": {
-        "ar": "✅ تم إضافة المنتج بنجاح!",
-        "fr": "✅ Produit ajouté avec succès!",
-        "en": "✅ Product added successfully!"
-    },
-    "product_updated": {
-        "ar": "✅ تم تحديث المنتج بنجاح!",
-        "fr": "✅ Produit mis à jour avec succès!",
-        "en": "✅ Product updated successfully!"
-    },
-    "export_excel": {
-        "ar": "📥 تصدير Excel",
-        "fr": "📥 Exporter Excel",
-        "en": "📥 Export Excel"
-    },
-    "import_excel": {
-        "ar": "📤 استيراد Excel",
-        "fr": "📤 Importer Excel",
-        "en": "📤 Import Excel"
-    },
-    "import_success": {
-        "ar": "✅ تم الاستيراد بنجاح!",
-        "fr": "✅ Import réussi!",
-        "en": "✅ Import successful!"
-    },
-    "lang_select": {
-        "ar": "🌐 اللغة",
-        "fr": "🌐 Langue",
-        "en": "🌐 Language"
-    },
-    "no_data": {
-        "ar": "لا توجد بيانات",
-        "fr": "Aucune donnée",
-        "en": "No data"
-    },
-    "invoice_printed": {
-        "ar": "🧾 تمت طباعة الفاتورة تلقائياً",
-        "fr": "🧾 Facture imprimée automatiquement",
-        "en": "🧾 Invoice printed automatically"
-    },
-    "scan_success_sound": {
-        "ar": "✅ تم المسح بنجاح! 🔔",
-        "fr": "✅ Scan réussi! 🔔",
-        "en": "✅ Scan successful! 🔔"
-    },
-    "live_sync_label": {
-        "ar": "🔄 مزامنة مباشرة",
-        "fr": "🔄 Synchro Live",
-        "en": "🔄 Live Sync"
-    },
-    "live_sync_active_msg": {
-        "ar": "🔄 المزامنة المباشرة نشطة - تحديث كل 5 ثواني",
-        "fr": "🔄 Synchro Live active - Mise à jour toutes les 5 secondes",
-        "en": "🔄 Live Sync active - Updating every 5 seconds"
-    },
-    "stock_scanner_add": {
-        "ar": "📸 مسح الباركود للإضافة",
-        "fr": "📸 Scanner pour ajouter",
-        "en": "📸 Scan barcode to add"
-    },
-    "stock_scanner_update": {
-        "ar": "📸 مسح الباركود للتحديث",
-        "fr": "📸 Scanner pour modifier",
-        "en": "📸 Scan barcode to update"
-    },
-    "service_select": {
-        "ar": "اختر الخدمة المطلوبة:",
-        "fr": "Choisissez le service:",
-        "en": "Select service:"
-    },
-    "service_selected": {
-        "ar": "الخدمة المختارة:",
-        "fr": "Service sélectionné:",
-        "en": "Selected service:"
-    },
-    "service_quantity": {
-        "ar": "الكمية / العدد",
-        "fr": "Quantité / Nombre",
-        "en": "Quantity / Number"
-    },
-    "service_confirm": {
-        "ar": "✅ إتمام الخدمة وطباعة الفاتورة",
-        "fr": "✅ Terminer le service et imprimer la facture",
-        "en": "✅ Complete service and print invoice"
-    },
-    "service_history": {
-        "ar": "📋 سجل الخدمات",
-        "fr": "📋 Historique des services",
-        "en": "📋 Service History"
-    },
-    "service_total": {
-        "ar": "💰 إجمالي الخدمات",
-        "fr": "💰 Total des services",
-        "en": "💰 Total Services"
-    },
-    "service_client_info": {
-        "ar": "📝 معلومات العميل (اختياري)",
-        "fr": "📝 Informations client (Optionnel)",
-        "en": "📝 Client Information (Optional)"
-    },
-    "service_client_name": {
-        "ar": "اسم العميل",
-        "fr": "Nom du client",
-        "en": "Client Name"
-    },
-    "service_client_tel": {
-        "ar": "رقم الهاتف",
-        "fr": "Numéro de téléphone",
-        "en": "Phone Number"
-    },
-    "service_no_history": {
-        "ar": "لا توجد خدمات سابقة",
-        "fr": "Aucun service précédent",
-        "en": "No previous services"
-    },
-    "add_service": {
-        "ar": "➕ إضافة خدمة جديدة",
-        "fr": "➕ Ajouter un service",
-        "en": "➕ Add New Service"
-    },
-    "service_name_input": {
-        "ar": "اسم الخدمة",
-        "fr": "Nom du service",
-        "en": "Service Name"
-    },
-    "service_price_input_label": {
-        "ar": "السعر (DH)",
-        "fr": "Prix (DH)",
-        "en": "Price (DH)"
-    },
-    "save_service": {
-        "ar": "💾 حفظ الخدمة",
-        "fr": "💾 Sauvegarder le service",
-        "en": "💾 Save Service"
-    },
-    "service_list": {
-        "ar": "📋 قائمة الخدمات",
-        "fr": "📋 Liste des services",
-        "en": "📋 Service List"
-    },
-    "whatsapp_label": {
-        "ar": "📞 واتساب",
-        "fr": "📞 WhatsApp",
-        "en": "📞 WhatsApp"
-    },
-    "whatsapp_number": {
-        "ar": "رقم الهاتف (مع رمز البلد):",
-        "fr": "Numéro de téléphone (avec code pays):",
-        "en": "Phone Number (with country code):"
-    },
-    "whatsapp_message": {
-        "ar": "الرسالة:",
-        "fr": "Message:",
-        "en": "Message:"
-    },
-    "whatsapp_open": {
-        "ar": "💬 فتح WhatsApp",
-        "fr": "💬 Ouvrir WhatsApp",
-        "en": "💬 Open WhatsApp"
-    },
-    "office_label": {
-        "ar": "📂 تطبيقات Microsoft Office",
-        "fr": "📂 Applications Microsoft Office",
-        "en": "📂 Microsoft Office Apps"
-    },
-    "google_embedded": {
-        "ar": "🌐 Google مدمج",
-        "fr": "🌐 Google intégré",
-        "en": "🌐 Embedded Google"
-    },
-    "show_google": {
-        "ar": "إظهار Google مدمج",
-        "fr": "Afficher Google intégré",
-        "en": "Show Embedded Google"
-    },
-    "voice_command": {
-        "ar": "🎤 تحكم صوتي",
-        "fr": "🎤 Commande Vocale",
-        "en": "🎤 Voice Command"
-    },
-    "voice_listening": {
-        "ar": "🎤 جاري الاستماع...",
-        "fr": "🎤 Écoute en cours...",
-        "en": "🎤 Listening..."
-    },
-    "voice_start": {
-        "ar": "🎤 ابدأ الاستماع",
-        "fr": "🎤 Commencer l'écoute",
-        "en": "🎤 Start Listening"
-    },
-    "voice_stop": {
-        "ar": "⏹️ إيقاف الاستماع",
-        "fr": "⏹️ Arrêter l'écoute",
-        "en": "⏹️ Stop Listening"
-    },
-    "invoice_number": {
-        "ar": "رقم الفاتورة",
-        "fr": "Numéro de facture",
-        "en": "Invoice Number"
-    },
-    "top_products": {
-        "ar": "🏆 المنتجات الأكثر ربحية",
-        "fr": "🏆 Produits les plus rentables",
-        "en": "🏆 Most Profitable Products"
-    },
-    "compare_periods": {
-        "ar": "📊 مقارنة الفترات",
-        "fr": "📊 Comparer les périodes",
-        "en": "📊 Compare Periods"
-    },
-    "sales_chart": {
-        "ar": "📈 رسم بياني للمبيعات",
-        "fr": "📈 Graphique des ventes",
-        "en": "📈 Sales Chart"
-    },
-    "sales_prediction": {
-        "ar": "🔮 توقعات المبيعات",
-        "fr": "🔮 Prévisions des ventes",
-        "en": "🔮 Sales Prediction"
-    },
+    "login_title": {"ar": "🔐 تسجيل الدخول", "fr": "🔐 Connexion", "en": "🔐 Login"},
+    "password_label": {"ar": "كلمة المرور:", "fr": "Mot de passe:", "en": "Password:"},
+    "login_button": {"ar": "دخول", "fr": "Connexion", "en": "Login"},
+    "wrong_password": {"ar": "❌ كلمة المرور خاطئة!", "fr": "❌ Mot de passe incorrect!", "en": "❌ Wrong password!"},
+    "menu_main": {"ar": "القائمة الرئيسية", "fr": "Menu Principal", "en": "Main Menu"},
+    "dashboard": {"ar": "📊 لوحة التحكم", "fr": "📊 Tableau de Bord", "en": "📊 Dashboard"},
+    "pos": {"ar": "🛒 نقطة البيع", "fr": "🛒 Point de Vente", "en": "🛒 Point of Sale"},
+    "stock": {"ar": "📦 إدارة المخزون", "fr": "📦 Gestion Stock", "en": "📦 Stock Management"},
+    "impression": {"ar": "🖨️ الطباعة", "fr": "🖨️ Impression", "en": "🖨️ Printing"},
+    "caisse": {"ar": "💰 الخزينة", "fr": "💰 Caisse", "en": "💰 Cash Register"},
+    "credits": {"ar": "💳 الديون", "fr": "💳 Crédits", "en": "💳 Credits"},
+    "factures": {"ar": "📄 الفواتير", "fr": "📄 Factures", "en": "📄 Invoices"},
+    "commandes": {"ar": "📋 طلبيات الموردين", "fr": "📋 Commandes Fournisseur", "en": "📋 Supplier Orders"},
+    "services": {"ar": "🔧 الخدمات الإلكترونية", "fr": "🔧 Services Électroniques", "en": "🔧 Electronic Services"},
+    "outils": {"ar": "🔗 أدوات سريعة", "fr": "🔗 Outils Rapides", "en": "🔗 Quick Tools"},
+    "google_search": {"ar": "🔍 بحث Google", "fr": "🔍 Recherche Google", "en": "🔍 Google Search"},
+    "activate_scanner": {"ar": "📸 تفعيل الماسح الضوئي السريع", "fr": "📸 Activer le scanner rapide", "en": "📸 Activate Fast Scanner"},
+    "auto_sale_mode": {"ar": "⚡ البيع التلقائي (سكانير = بيع مباشر + فاتورة 80mm)", "fr": "⚡ Vente Auto (Scan = Vente Directe + Facture 80mm)", "en": "⚡ Auto Sale (Scan = Direct Sale + 80mm Invoice)"},
+    "sale_type": {"ar": "نوع البيع:", "fr": "Type de vente:", "en": "Sale Type:"},
+    "normal_sale": {"ar": "بيع عادي", "fr": "Vente Normale", "en": "Normal Sale"},
+    "scan_qr": {"ar": "مسح QR", "fr": "Scan QR", "en": "QR Scan"},
+    "free_sale": {"ar": "بيع حر", "fr": "Vente Libre", "en": "Free Sale"},
+    "cart": {"ar": "سلة المشتريات", "fr": "Panier", "en": "Cart"},
+    "cart_mode_label": {"ar": "🚀 نوع السلة:", "fr": "🚀 Type de panier:", "en": "🚀 Cart type:"},
+    "cart_manual": {"ar": "✋ يدوي (إضافة منتج منتج)", "fr": "✋ Manuel (Ajout produit par produit)", "en": "✋ Manual (Add one by one)"},
+    "cart_auto": {"ar": "⚡ تلقائي (سكانير متواصل)", "fr": "⚡ Auto (Scan continu)", "en": "⚡ Auto (Continuous scan)"},
+    "cart_auto_info": {"ar": "⚡ الماسح التلقائي: امسح الباركود = يضاف للسلة تلقائياً | امسح باركود آخر = يضاف أيضاً | اضغط إنهاء = فاتورة", "fr": "⚡ Scanner auto: Scannez = Ajouté au panier | Scannez autre = Ajouté aussi | Terminer = Facture", "en": "⚡ Auto scanner: Scan = Added to cart | Scan another = Added too | Finish = Invoice"},
+    "cart_empty": {"ar": "السلة فارغة - امسح الباركود للإضافة", "fr": "Panier vide - Scannez pour ajouter", "en": "Empty cart - Scan to add"},
+    "cart_products_count": {"ar": "منتجات", "fr": "produits", "en": "products"},
+    "barcode": {"ar": "الباركود", "fr": "Code-barres", "en": "Barcode"},
+    "barcode_optional": {"ar": "الباركود (اختياري)", "fr": "Code-barres (Optionnel)", "en": "Barcode (Optional)"},
+    "quantity": {"ar": "الكمية", "fr": "Quantité", "en": "Quantity"},
+    "price": {"ar": "السعر", "fr": "Prix", "en": "Price"},
+    "total": {"ar": "المجموع", "fr": "Total", "en": "Total"},
+    "confirm_sale": {"ar": "✅ تأكيد البيع", "fr": "✅ Confirmer la Vente", "en": "✅ Confirm Sale"},
+    "add_to_cart": {"ar": "✅ أضف إلى السلة", "fr": "✅ Ajouter au Panier", "en": "✅ Add to Cart"},
+    "validate_cart": {"ar": "🖨️ تأكيد وتسجيل الكل", "fr": "🖨️ Valider et Enregistrer Tout", "en": "🖨️ Validate and Save All"},
+    "clear_cart": {"ar": "🗑️ تفريغ السلة", "fr": "🗑️ Vider le Panier", "en": "🗑️ Clear Cart"},
+    "finish_cart": {"ar": "🧾 إنهاء وإصدار الفاتورة", "fr": "🧾 Terminer et Imprimer la Facture", "en": "🧾 Finish & Print Invoice"},
+    "sale_success": {"ar": "✅ تم تسجيل البيع بنجاح!", "fr": "✅ Vente enregistrée avec succès!", "en": "✅ Sale recorded successfully!"},
+    "low_stock_warning": {"ar": "⚠️ المخزون غير كافي! المتوفر:", "fr": "⚠️ Stock insuffisant! Disponible:", "en": "⚠️ Insufficient stock! Available:"},
+    "product_not_found": {"ar": "⚠️ المنتج غير موجود في المخزون", "fr": "⚠️ Produit introuvable dans le stock", "en": "⚠️ Product not found in stock"},
+    "add_product": {"ar": "➕ إضافة منتج", "fr": "➕ Ajouter un Produit", "en": "➕ Add Product"},
+    "product_name": {"ar": "اسم المنتج", "fr": "Nom du Produit", "en": "Product Name"},
+    "add_button": {"ar": "➕ إضافة", "fr": "➕ Ajouter", "en": "➕ Add"},
+    "update_product": {"ar": "✏️ تحديث منتج", "fr": "✏️ Modifier Produit", "en": "✏️ Update Product"},
+    "current_stock": {"ar": "📋 المخزون الحالي", "fr": "📋 Stock Actuel", "en": "📋 Current Stock"},
+    "stock_alert": {"ar": "⚠️ تنبيهات المخزون", "fr": "⚠️ Alertes Stock", "en": "⚠️ Stock Alerts"},
+    "low_stock_products": {"ar": "منتجات بمخزون منخفض!", "fr": "produits avec stock bas!", "en": "products with low stock!"},
+    "stock_ok": {"ar": "✅ جميع المنتجات بمخزون جيد", "fr": "✅ Tous les produits sont bien stockés", "en": "✅ All products are well stocked"},
+    "select_product": {"ar": "اختر المنتج", "fr": "Choisir le produit", "en": "Select product"},
+    "or_choose_name": {"ar": "أو اختر بالاسم:", "fr": "Ou choisir par nom:", "en": "Or choose by name:"},
+    "search_stock": {"ar": "🔍 بحث في المخزون (بالاسم أو الباركود)", "fr": "🔍 Rechercher dans le stock (par nom ou code-barres)", "en": "🔍 Search Stock (by name or barcode)"},
+    "search_placeholder": {"ar": "اكتب اسم المنتج أو الباركود للبحث...", "fr": "Tapez le nom du produit ou le code-barres pour rechercher...", "en": "Type product name or barcode to search..."},
+    "search_results": {"ar": "نتائج البحث:", "fr": "Résultats de recherche:", "en": "Search results:"},
+    "no_results": {"ar": "لا توجد نتائج مطابقة", "fr": "Aucun résultat trouvé", "en": "No matching results"},
+    "new_quantity": {"ar": "الكمية الجديدة", "fr": "Nouvelle Quantité", "en": "New Quantity"},
+    "new_price": {"ar": "السعر الجديد", "fr": "Nouveau Prix", "en": "New Price"},
+    "update_button": {"ar": "✏️ تحديث", "fr": "✏️ Modifier", "en": "✏️ Update"},
+    "price_per_page": {"ar": "سعر الصفحة", "fr": "Prix/Page", "en": "Price/Page"},
+    "number_of_pages": {"ar": "عدد الصفحات", "fr": "Nombre de Pages", "en": "Number of Pages"},
+    "save_print": {"ar": "💾 حفظ وطباعة", "fr": "💾 Enregistrer et Imprimer", "en": "💾 Save and Print"},
+    "print_history": {"ar": "📊 سجل الطباعة", "fr": "📊 Historique d'Impression", "en": "📊 Print History"},
+    "total_sales": {"ar": "💰 إجمالي المبيعات", "fr": "💰 Total des Ventes", "en": "💰 Total Sales"},
+    "total_printing": {"ar": "🖨️ إجمالي الطباعة", "fr": "🖨️ Total Impressions", "en": "🖨️ Total Printing"},
+    "total_credits": {"ar": "💳 إجمالي الديون", "fr": "💳 Total Crédits", "en": "💳 Total Credits"},
+    "grand_total": {"ar": "🏦 المجموع العام", "fr": "🏦 Total Général", "en": "🏦 Grand Total"},
+    "reset_caisse": {"ar": "🔄 تصفير الخزينة (نهاية اليوم)", "fr": "🔄 Réinitialiser la Caisse (Fin de journée)", "en": "🔄 Reset Cash Register (End of Day)"},
+    "reset_warning": {"ar": "⚠️ هذا الزر سيحفظ ملخص اليوم ويصفر العداد. استخدمه فقط في نهاية اليوم!", "fr": "⚠️ Ce bouton enregistrera le résumé du jour et remettra le compteur à zéro. À utiliser uniquement en fin de journée!", "en": "⚠️ This button will save today's summary and reset the counter. Use only at end of day!"},
+    "reset_button": {"ar": "🔄 تصفير الخزينة لليوم", "fr": "🔄 Réinitialiser la Caisse du Jour", "en": "🔄 Reset Today's Cash Register"},
+    "confirm_reset": {"ar": "❌ هل أنت متأكد من تصفير الخزينة؟ سيتم حفظ ملخص اليوم في السجل.", "fr": "❌ Êtes-vous sûr de vouloir réinitialiser la caisse? Le résumé du jour sera sauvegardé.", "en": "❌ Are you sure you want to reset the cash register? Today's summary will be saved."},
+    "yes_reset": {"ar": "✅ نعم، صفر الخزينة", "fr": "✅ Oui, réinitialiser", "en": "✅ Yes, reset"},
+    "cancel": {"ar": "❌ إلغاء", "fr": "❌ Annuler", "en": "❌ Cancel"},
+    "reset_success": {"ar": "✅ تم تصفير الخزينة بنجاح! إجمالي اليوم:", "fr": "✅ Caisse réinitialisée avec succès! Total du jour:", "en": "✅ Cash register reset successfully! Daily total:"},
+    "history": {"ar": "📅 سجل الأيام السابقة", "fr": "📅 Historique des Jours Précédents", "en": "📅 Previous Days History"},
+    "recent_sales": {"ar": "📋 المبيعات الأخيرة", "fr": "📋 Ventes Récentes", "en": "📋 Recent Sales"},
+    "add_credit": {"ar": "➕ إضافة دين جديد", "fr": "➕ Ajouter un Crédit", "en": "➕ Add New Credit"},
+    "client_name": {"ar": "اسم العميل", "fr": "Nom du Client", "en": "Client Name"},
+    "amount": {"ar": "المبلغ", "fr": "Montant", "en": "Amount"},
+    "add_credit_button": {"ar": "➕ إضافة دين", "fr": "➕ Ajouter Crédit", "en": "➕ Add Credit"},
+    "credit_list": {"ar": "📋 قائمة الديون", "fr": "📋 Liste des Crédits", "en": "📋 Credit List"},
+    "reduce_credit": {"ar": "🔽 تقليل مبلغ الدين", "fr": "🔽 Réduire le Crédit", "en": "🔽 Reduce Credit"},
+    "reduce_credit_info": {"ar": "هذا الزر يقلل من مبلغ الدين بدون حذفه كاملاً", "fr": "Ce bouton réduit le montant du crédit sans le supprimer complètement", "en": "This button reduces the credit amount without deleting it completely"},
+    "select_credit": {"ar": "اختر الدين لتقليله", "fr": "Choisir le crédit à réduire", "en": "Select credit to reduce"},
+    "payment_amount": {"ar": "المبلغ المدفوع", "fr": "Montant Payé", "en": "Amount Paid"},
+    "pay_button": {"ar": "💵 تسديد جزء من الدين", "fr": "💵 Payer une Partie du Crédit", "en": "💵 Pay Part of Credit"},
+    "payment_history": {"ar": "📋 سجل المدفوعات", "fr": "📋 Historique des Paiements", "en": "📋 Payment History"},
+    "no_credits": {"ar": "لا توجد ديون حالياً", "fr": "Aucun crédit pour le moment", "en": "No credits currently"},
+    "delete_credit": {"ar": "🗑️ حذف الدين نهائياً", "fr": "🗑️ Supprimer le crédit", "en": "🗑️ Delete Credit Permanently"},
+    "add_to_credit": {"ar": "🔼 إضافة للدين", "fr": "🔼 Ajouter au crédit", "en": "🔼 Add to Credit"},
+    "last_sale": {"ar": "🛒 آخر عملية بيع", "fr": "🛒 Dernière Vente", "en": "🛒 Last Sale"},
+    "print_invoice": {"ar": "🖨️ طباعة آخر فاتورة", "fr": "🖨️ Imprimer la Dernière Facture", "en": "🖨️ Print Last Invoice"},
+    "download_sale_invoice": {"ar": "📥 تحميل فاتورة البيع", "fr": "📥 Télécharger Facture de Vente", "en": "📥 Download Sale Invoice"},
+    "download_print_invoice": {"ar": "📥 تحميل فاتورة الطباعة", "fr": "📥 Télécharger Facture d'Impression", "en": "📥 Download Print Invoice"},
+    "download_order": {"ar": "📥 تحميل الطلبية", "fr": "📥 Télécharger la Commande", "en": "📥 Download Order"},
+    "all_sales": {"ar": "📊 جميع المبيعات (للفوترة)", "fr": "📊 Toutes les Ventes (pour facturation)", "en": "📊 All Sales (for invoicing)"},
+    "new_order": {"ar": "➕ إضافة طلبية جديدة", "fr": "➕ Nouvelle Commande", "en": "➕ New Order"},
+    "requested_qty": {"ar": "الكمية المطلوبة", "fr": "Quantité Demandée", "en": "Requested Quantity"},
+    "unit_price_est": {"ar": "سعر الوحدة (تقديري)", "fr": "Prix Unitaire (Estimé)", "en": "Unit Price (Estimated)"},
+    "add_to_order": {"ar": "➕ أضف للطلبية", "fr": "➕ Ajouter à la Commande", "en": "➕ Add to Order"},
+    "current_order": {"ar": "📋 الطلبية الحالية", "fr": "📋 Commande Actuelle", "en": "📋 Current Order"},
+    "estimated_total": {"ar": "المجموع التقديري", "fr": "Total Estimé", "en": "Estimated Total"},
+    "save_order": {"ar": "💾 حفظ الطلبية", "fr": "💾 Sauvegarder la Commande", "en": "💾 Save Order"},
+    "print_order": {"ar": "🖨️ طباعة الطلبية", "fr": "🖨️ Imprimer la Commande", "en": "🖨️ Print Order"},
+    "clear_order": {"ar": "🗑️ تفريغ الطلبية", "fr": "🗑️ Vider la Commande", "en": "🗑️ Clear Order"},
+    "previous_orders": {"ar": "📦 الطلبيات السابقة", "fr": "📦 Commandes Précédentes", "en": "📦 Previous Orders"},
+    "confirm_reception": {"ar": "✅ تأكيد استلام طلبية", "fr": "✅ Confirmer Réception Commande", "en": "✅ Confirm Order Reception"},
+    "select_order_confirm": {"ar": "اختر الطلبية لتأكيد استلامها", "fr": "Choisir la commande à confirmer", "en": "Select order to confirm"},
+    "confirm_button": {"ar": "✅ تأكيد الاستلام", "fr": "✅ Confirmer la Réception", "en": "✅ Confirm Reception"},
+    "no_pending_orders": {"ar": "لا توجد طلبيات قيد الانتظار", "fr": "Aucune commande en attente", "en": "No pending orders"},
+    "order_saved": {"ar": "✅ تم حفظ الطلبية بنجاح!", "fr": "✅ Commande sauvegardée avec succès!", "en": "✅ Order saved successfully!"},
+    "order_received": {"ar": "✅ تم تأكيد الاستلام وتحديث المخزون!", "fr": "✅ Réception confirmée et stock mis à jour!", "en": "✅ Reception confirmed and stock updated!"},
+    "quick_stats": {"ar": "📊 إحصائيات سريعة", "fr": "📊 Statistiques Rapides", "en": "📊 Quick Stats"},
+    "products_count": {"ar": "📦 المنتجات", "fr": "📦 Produits", "en": "📦 Products"},
+    "sales_count": {"ar": "💰 المبيعات", "fr": "💰 Ventes", "en": "💰 Sales"},
+    "orders_count": {"ar": "📋 الطلبيات", "fr": "📋 Commandes", "en": "📋 Orders"},
+    "error_generic": {"ar": "❌ حدث خطأ. الرجاء المحاولة مرة أخرى.", "fr": "❌ Une erreur est survenue. Veuillez réessayer.", "en": "❌ An error occurred. Please try again."},
+    "fill_all_fields": {"ar": "⚠️ الرجاء ملء جميع الحقول", "fr": "⚠️ Veuillez remplir tous les champs", "en": "⚠️ Please fill all fields"},
+    "product_added": {"ar": "✅ تم إضافة المنتج بنجاح!", "fr": "✅ Produit ajouté avec succès!", "en": "✅ Product added successfully!"},
+    "product_updated": {"ar": "✅ تم تحديث المنتج بنجاح!", "fr": "✅ Produit mis à jour avec succès!", "en": "✅ Product updated successfully!"},
+    "export_excel": {"ar": "📥 تصدير Excel", "fr": "📥 Exporter Excel", "en": "📥 Export Excel"},
+    "import_excel": {"ar": "📤 استيراد Excel", "fr": "📤 Importer Excel", "en": "📤 Import Excel"},
+    "import_success": {"ar": "✅ تم الاستيراد بنجاح!", "fr": "✅ Import réussi!", "en": "✅ Import successful!"},
+    "lang_select": {"ar": "🌐 اللغة", "fr": "🌐 Langue", "en": "🌐 Language"},
+    "no_data": {"ar": "لا توجد بيانات", "fr": "Aucune donnée", "en": "No data"},
+    "invoice_printed": {"ar": "🧾 تمت طباعة الفاتورة تلقائياً", "fr": "🧾 Facture imprimée automatiquement", "en": "🧾 Invoice printed automatically"},
+    "scan_success_sound": {"ar": "✅ تم المسح بنجاح! 🔔", "fr": "✅ Scan réussi! 🔔", "en": "✅ Scan successful! 🔔"},
+    "live_sync_label": {"ar": "🔄 مزامنة مباشرة", "fr": "🔄 Synchro Live", "en": "🔄 Live Sync"},
+    "live_sync_active_msg": {"ar": "🔄 المزامنة المباشرة نشطة - تحديث كل 5 ثواني", "fr": "🔄 Synchro Live active - Mise à jour toutes les 5 secondes", "en": "🔄 Live Sync active - Updating every 5 seconds"},
+    "stock_scanner_add": {"ar": "📸 مسح الباركود للإضافة", "fr": "📸 Scanner pour ajouter", "en": "📸 Scan barcode to add"},
+    "stock_scanner_update": {"ar": "📸 مسح الباركود للتحديث", "fr": "📸 Scanner pour modifier", "en": "📸 Scan barcode to update"},
+    "service_select": {"ar": "اختر الخدمة المطلوبة:", "fr": "Choisissez le service:", "en": "Select service:"},
+    "service_selected": {"ar": "الخدمة المختارة:", "fr": "Service sélectionné:", "en": "Selected service:"},
+    "service_quantity": {"ar": "الكمية / العدد", "fr": "Quantité / Nombre", "en": "Quantity / Number"},
+    "service_confirm": {"ar": "✅ إتمام الخدمة وطباعة الفاتورة", "fr": "✅ Terminer le service et imprimer la facture", "en": "✅ Complete service and print invoice"},
+    "service_history": {"ar": "📋 سجل الخدمات", "fr": "📋 Historique des services", "en": "📋 Service History"},
+    "service_total": {"ar": "💰 إجمالي الخدمات", "fr": "💰 Total des services", "en": "💰 Total Services"},
+    "service_client_info": {"ar": "📝 معلومات العميل (اختياري)", "fr": "📝 Informations client (Optionnel)", "en": "📝 Client Information (Optional)"},
+    "service_client_name": {"ar": "اسم العميل", "fr": "Nom du client", "en": "Client Name"},
+    "service_client_tel": {"ar": "رقم الهاتف", "fr": "Numéro de téléphone", "en": "Phone Number"},
+    "service_no_history": {"ar": "لا توجد خدمات سابقة", "fr": "Aucun service précédent", "en": "No previous services"},
+    "add_service": {"ar": "➕ إضافة خدمة جديدة", "fr": "➕ Ajouter un service", "en": "➕ Add New Service"},
+    "service_name_input": {"ar": "اسم الخدمة", "fr": "Nom du service", "en": "Service Name"},
+    "service_price_input_label": {"ar": "السعر (DH)", "fr": "Prix (DH)", "en": "Price (DH)"},
+    "save_service": {"ar": "💾 حفظ الخدمة", "fr": "💾 Sauvegarder le service", "en": "💾 Save Service"},
+    "service_list": {"ar": "📋 قائمة الخدمات", "fr": "📋 Liste des services", "en": "📋 Service List"},
+    "whatsapp_label": {"ar": "📞 واتساب", "fr": "📞 WhatsApp", "en": "📞 WhatsApp"},
+    "whatsapp_number": {"ar": "رقم الهاتف (مع رمز البلد):", "fr": "Numéro de téléphone (avec code pays):", "en": "Phone Number (with country code):"},
+    "whatsapp_message": {"ar": "الرسالة:", "fr": "Message:", "en": "Message:"},
+    "whatsapp_open": {"ar": "💬 فتح WhatsApp", "fr": "💬 Ouvrir WhatsApp", "en": "💬 Open WhatsApp"},
+    "office_label": {"ar": "📂 تطبيقات Microsoft Office", "fr": "📂 Applications Microsoft Office", "en": "📂 Microsoft Office Apps"},
+    "google_embedded": {"ar": "🌐 Google مدمج", "fr": "🌐 Google intégré", "en": "🌐 Embedded Google"},
+    "show_google": {"ar": "إظهار Google مدمج", "fr": "Afficher Google intégré", "en": "Show Embedded Google"},
+    "voice_command": {"ar": "🎤 تحكم صوتي", "fr": "🎤 Commande Vocale", "en": "🎤 Voice Command"},
+    "voice_listening": {"ar": "🎤 جاري الاستماع...", "fr": "🎤 Écoute en cours...", "en": "🎤 Listening..."},
+    "voice_start": {"ar": "🎤 ابدأ الاستماع", "fr": "🎤 Commencer l'écoute", "en": "🎤 Start Listening"},
+    "voice_stop": {"ar": "⏹️ إيقاف الاستماع", "fr": "⏹️ Arrêter l'écoute", "en": "⏹️ Stop Listening"},
+    "invoice_number": {"ar": "رقم الفاتورة", "fr": "Numéro de facture", "en": "Invoice Number"},
+    "top_products": {"ar": "🏆 المنتجات الأكثر ربحية", "fr": "🏆 Produits les plus rentables", "en": "🏆 Most Profitable Products"},
+    "compare_periods": {"ar": "📊 مقارنة الفترات", "fr": "📊 Comparer les périodes", "en": "📊 Compare Periods"},
+    "sales_chart": {"ar": "📈 رسم بياني للمبيعات", "fr": "📈 Graphique des ventes", "en": "📈 Sales Chart"},
+    "sales_prediction": {"ar": "🔮 توقعات المبيعات", "fr": "🔮 Prévisions des ventes", "en": "🔮 Sales Prediction"},
 }
 
 def t(key):
@@ -1211,7 +563,7 @@ def play_success_sound():
 
 st.set_page_config(layout="wide", page_title="OUZOUD SERVICES")
 
-# --- دوال الماسح القديمة (مبقيين) ---
+# --- دوال الماسح القديمة ---
 def fast_barcode_scanner_with_qty(input_label, qty_label):
     scanner_html = f"""
     <div id="reader" style="width:100%"></div>
@@ -1647,7 +999,7 @@ if menu == t("dashboard"):
     else:
         st.info(t("no_data"))
 
-# ==================== POS (نقطة البيع) ====================
+# ==================== POS ====================
 if menu == t("pos"):
     st.header(t("pos"))
     
@@ -1720,7 +1072,7 @@ if menu == t("pos"):
             [t("normal_sale"), t("scan_qr"), t("free_sale"), t("cart")]
         )
         
-        # ====== 1. Normal Sale ======
+        # ====== Normal Sale ======
         if mode == t("normal_sale"):
             col1, col2 = st.columns(2)
             with col1:
@@ -1774,7 +1126,7 @@ if menu == t("pos"):
                 else:
                     st.error(t("fill_all_fields"))
         
-        # ====== 2. Scan QR ======
+        # ====== Scan QR ======
         elif mode == t("scan_qr"):
             st.subheader(t("scan_qr"))
             
@@ -1832,7 +1184,7 @@ if menu == t("pos"):
                 st.session_state.scanned_barcode = None
                 st.rerun()
         
-        # ====== 3. Free Sale ======
+        # ====== Free Sale ======
         elif mode == t("free_sale"):
             col1, col2 = st.columns(2)
             with col1:
@@ -1861,7 +1213,7 @@ if menu == t("pos"):
                     st.success(f"{t('sale_success')} {name} - {qty_libre} x {price} = {total_libre:.2f} DH | Facture: {invoice_number}")
                     st.rerun()
         
-        # ====== 4. Cart ======
+        # ====== Cart ======
         elif mode == t("cart"):
             cart_mode = st.radio(
                 t("cart_mode_label"),
@@ -2063,7 +1415,7 @@ if menu == t("pos"):
         st.metric(t("total_sales"), f"{total_ventes:.2f} DH")
     export_import_buttons("ventes", df_ventes)
 
-# ==================== Stock (المخزون) ====================
+# ==================== Stock ====================
 elif menu == t("stock"):
     st.header(t("stock"))
     
@@ -2086,7 +1438,7 @@ elif menu == t("stock"):
         else:
             st.success(f"{t('search_results')} {len(df_stock)} produit(s)")
     
-    # ====== Add Product ======
+    # ====== Add Product (باستخدام mobile_barcode_scanner) ======
     with st.expander(t("add_product"), expanded=True):
         if st.session_state.scanned_barcode is None:
             st.warning("⚠️ يرجى مسح الباركود لإضافة منتج جديد")
@@ -2147,7 +1499,7 @@ elif menu == t("stock"):
     else:
         st.success(t("stock_ok"))
     
-    # ====== Update Product ======
+    # ====== Update Product (باستخدام mobile_barcode_scanner) ======
     if not df_stock.empty:
         with st.expander(t("update_product")):
             if st.session_state.scanned_barcode is None:
@@ -2213,7 +1565,7 @@ elif menu == t("stock"):
                 st.session_state.scanned_barcode = None
                 st.rerun()
 
-# ==================== Impression (الطباعة) ====================
+# ==================== Impression ====================
 elif menu == t("impression"):
     st.header(t("impression"))
     col1, col2 = st.columns(2)
@@ -2255,7 +1607,7 @@ elif menu == t("impression"):
     
     export_import_buttons("impressions", df_imp)
 
-# ==================== Caisse (الخزينة) ====================
+# ==================== Caisse ====================
 elif menu == t("caisse"):
     st.header(t("caisse"))
     
@@ -2325,7 +1677,7 @@ elif menu == t("caisse"):
     else:
         st.info(t("no_data"))
 
-# ==================== Credits (الديون) ====================
+# ==================== Credits ====================
 elif menu == t("credits"):
     st.header(t("credits"))
     
@@ -2479,7 +1831,7 @@ elif menu == t("credits"):
     else:
         st.info(t("no_credits"))
 
-# ==================== Factures (الفواتير) ====================
+# ==================== Factures ====================
 elif menu == t("factures"):
     st.header(t("factures"))
     
@@ -2516,7 +1868,7 @@ elif menu == t("factures"):
     else:
         st.info(t("no_data"))
 
-# ==================== Commandes (الطلبيات) ====================
+# ==================== Commandes ====================
 elif menu == t("commandes"):
     st.header(t("commandes"))
     
@@ -2612,7 +1964,7 @@ elif menu == t("commandes"):
             else:
                 st.info(t("no_pending_orders"))
 
-# ==================== Services (الخدمات) ====================
+# ==================== Services ====================
 elif menu == t("services"):
     st.header(t("services"))
     st.markdown("---")
@@ -2806,7 +2158,7 @@ elif menu == t("services"):
     else:
         st.info(t("no_data"))
 
-# ==================== Outils (الأدوات السريعة) ====================
+# ==================== Outils ====================
 elif menu == t("outils"):
     st.header(t("outils"))
     st.markdown("---")
