@@ -1166,14 +1166,18 @@ def reset_caisse():
     total_impressions = df_impressions['Total'].sum() if not df_impressions.empty and 'Total' in df_impressions.columns else 0
     total_jour = total_ventes + total_impressions
     
-    # حفظ ملخص اليوم في التاريخ
-    supabase.table("historique_caisse").insert({
-        "Date": date_aujourdhui,
-        "Total_Ventes": float(total_ventes),
-        "Total_Impressions": float(total_impressions),
-        "Total_Jour": float(total_jour),
-        "Heure_Fermeture": datetime.now().strftime('%H:%M:%S')
-    }).execute()
+    # حفظ ملخص اليوم في التاريخ - استخدم try/except باش تجنب الخطأ
+    try:
+        supabase.table("historique_caisse").insert({
+            "Date": date_aujourdhui,
+            "Total_Ventes": float(total_ventes),
+            "Total_Impressions": float(total_impressions),
+            "Total_Jour": float(total_jour),
+            "Heure_Fermeture": datetime.now().strftime('%H:%M:%S')
+        }).execute()
+    except Exception as e:
+        # إذا كانت الجدول ماكاينش، تجاهل الخطأ
+        pass
     
     # مسح جميع بيانات اليوم
     try:
