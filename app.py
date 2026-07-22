@@ -338,6 +338,48 @@ def generate_facture_80mm(cart_data, titre="FACTURE"):
     pdf.output(file_path)
     return file_path, invoice_number
 
+# ==================== الدوال المعدلة لاستخدام الفاتورة الموحدة ====================
+
+def generate_pdf_80mm(cart_data):
+    """فاتورة البيع والخدمات"""
+    return generate_facture_80mm(cart_data, "FACTURE DE VENTE")
+
+def generate_impression_pdf(prix_page, nombre):
+    """فاتورة الطباعة - تستخدم نفس التصميم الموحد"""
+    cart_data = [{
+        "Nom": "Impression",
+        "Quantité": nombre,
+        "Prix": prix_page,
+        "Total": prix_page * nombre,
+        "Code": "IMPRESSION"
+    }]
+    return generate_facture_80mm(cart_data, "FACTURE IMPRESSION")
+
+def generate_commande_pdf(commandes_data):
+    """فاتورة الطلبية - تستخدم نفس التصميم الموحد"""
+    cart_data = []
+    for item in commandes_data:
+        cart_data.append({
+            "Nom": item.get('Nom', ''),
+            "Quantité": float(item.get('Qté', 0)),
+            "Prix": float(item.get('Prix_U', 0)),
+            "Total": float(item.get('Qté', 0)) * float(item.get('Prix_U', 0)),
+            "Code": item.get('Nom', '')
+        })
+    return generate_facture_80mm(cart_data, "BON DE COMMANDE")
+
+def generate_pdf(cart_data):
+    """دالة عامة للفاتورة"""
+    return generate_facture_80mm(cart_data, "FACTURE")
+
+def play_success_sound():
+    sound_html = """
+    <audio autoplay>
+        <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=">
+    </audio>
+    """
+    components.html(sound_html, height=0)
+
 # --- نظام الترجمة (العربية، الفرنسية، الإنجليزية) ---
 if "lang" not in st.session_state:
     st.session_state.lang = "ar"
@@ -1156,6 +1198,7 @@ translations = {
 }
 
 def t(key):
+    """ترجمة المفتاح إلى اللغة المختارة"""
     return translations.get(key, {}).get(st.session_state.lang, key)
 
 # --- دوال Excel ---
@@ -1179,6 +1222,7 @@ def import_excel_data(uploaded_file, table_name):
         return False
 
 def export_import_buttons(table_name, data_df):
+    """أزرار تصدير واستيراد Excel"""
     col_exp, col_imp = st.columns(2)
     with col_exp:
         if not data_df.empty:
@@ -1218,6 +1262,7 @@ def check_stock_levels():
     return pd.DataFrame()
 
 def get_product_info(code_or_name):
+    """البحث عن منتج بالباركود أو الاسم"""
     if code_or_name:
         stocks = supabase.table("stock").select("*").eq("Code-barres", code_or_name).execute()
         if stocks.data:
@@ -1238,56 +1283,40 @@ def confirm_purchase(cmd_id):
         st.error(f"Erreur confirmation: {str(e)}")
 
 def reset_caisse():
-    """
-    تصفير الخزينة - كلشي يرجع للصفر
-    - يحفظ ملخص اليوم
-    - يمسح ventes, impressions, credits, paiements_credits
-    """
+    """تصفير الخزينة وحفظ ملخص اليوم - ثم مسح جميع بيانات اليوم"""
     date_aujourdhui = datetime.now().strftime('%d/%m/%Y')
+    df_ventes = get_df("ventes")
+    df_impressions = get_df("impressions")
+    total_ventes = df_ventes['Total'].sum() if not df_ventes.empty and 'Total' in df_ventes.columns else 0
+    total_impressions = df_impressions['Total'].sum() if not df_impressions.empty and 'Total' in df_impressions.columns else 0
+    total_jour = total_ventes + total_impressions
     
+    # حفظ ملخص اليوم في التاريخ - استخدم try/except باش تجنب الخطأ
     try:
-        # حساب المجاميع قبل التصفير
-        df_ventes = get_df("ventes")
-        df_impressions = get_df("impressions")
-        total_ventes = df_ventes['Total'].sum() if not df_ventes.empty and 'Total' in df_ventes.columns else 0
-        total_impressions = df_impressions['Total'].sum() if not df_impressions.empty and 'Total' in df_impressions.columns else 0
-        total_jour = total_ventes + total_impressions
-        
-        # حفظ ملخص اليوم
-        try:
-            supabase.table("historique_caisse").insert({
-                "Date": date_aujourdhui,
-                "Total_Ventes": float(total_ventes),
-                "Total_Impressions": float(total_impressions),
-                "Total_Jour": float(total_jour),
-                "Heure_Fermeture": datetime.now().strftime('%H:%M:%S')
-            }).execute()
-        except:
-            pass
-    except:
+        supabase.table("historique_caisse").insert({
+            "Date": date_aujourdhui,
+            "Total_Ventes": float(total_ventes),
+            "Total_Impressions": float(total_impressions),
+            "Total_Jour": float(total_jour),
+            "Heure_Fermeture": datetime.now().strftime('%H:%M:%S')
+        }).execute()
+    except Exception as e:
+        # إذا كانت الجدول ماكاينش، تجاهل الخطأ
         pass
     
-    # ===== مسح جميع بيانات اليوم =====
-    
-    # 1. مسح المبيعات
+    # مسح جميع بيانات اليوم
     try:
         supabase.table("ventes").delete().like("Date", f"{date_aujourdhui}%").execute()
     except:
         pass
-    
-    # 2. مسح الطباعة
     try:
         supabase.table("impressions").delete().like("Date", f"{date_aujourdhui}%").execute()
     except:
         pass
-    
-    # 3. مسح الديون
     try:
         supabase.table("credits").delete().like("Date", f"{date_aujourdhui}%").execute()
     except:
         pass
-    
-    # 4. مسح سجل المدفوعات
     try:
         supabase.table("paiements_credits").delete().like("Date", f"{date_aujourdhui}%").execute()
     except:
@@ -1309,11 +1338,10 @@ def reduce_credit(credit_id, montant_reduction):
         "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
         "Type": "Paiement"
     }).execute()
-    if nouveau_montant == 0:
-        supabase.table("credits").delete().eq("id", int(credit_id)).execute()
     return nouveau_montant
 
 def add_to_credit(credit_id, montant_addition):
+    """إضافة مبلغ للدين (زيادة الدين)"""
     credit_actuel = supabase.table("credits").select("*").eq("id", int(credit_id)).execute().data[0]
     nouveau_montant = float(credit_actuel['Montant']) + float(montant_addition)
     supabase.table("credits").update({"Montant": nouveau_montant}).eq("id", int(credit_id)).execute()
@@ -1392,6 +1420,7 @@ def auto_sale_scanner():
     components.html(scanner_html, height=350)
 
 def auto_cart_scanner():
+    """سكانير السلة التلقائية - يضيف المنتج للسلة تلقائياً مع التعرف على المنتج الجديد"""
     scanner_html = """
     <div id="auto_cart_reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -1420,6 +1449,7 @@ def auto_cart_scanner():
     components.html(scanner_html, height=300)
 
 def stock_barcode_scanner(target_input_label):
+    """ماسح باركود يملأ خانة محددة فقط - يعمل بشكل صحيح"""
     scanner_html = f"""
     <div id="stock_reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -1433,12 +1463,15 @@ def stock_barcode_scanner(target_input_label):
             clearTimeout(stockScanTimeout);
             stockScanTimeout = setTimeout(() => {{ lastStockScan = ''; }}, 2000);
             
+            // البحث عن خانة الباركود الصحيحة
             const inputs = window.parent.document.querySelectorAll('input');
             inputs.forEach(function(input) {{
                 if (input.getAttribute('aria-label') === '{target_input_label}') {{
                     input.value = decodedText;
                     input.dispatchEvent(new Event('input', {{bubbles: true}}));
                     input.dispatchEvent(new Event('change', {{bubbles: true}}));
+                    
+                    // تأكيد بصري
                     input.style.background = '#e8f5e9';
                     setTimeout(() => {{ input.style.background = ''; }}, 500);
                 }}
@@ -1457,6 +1490,7 @@ def stock_barcode_scanner(target_input_label):
 
 # ==================== نظام التحكم الصوتي ====================
 def voice_command_component():
+    """مكون التحكم الصوتي"""
     voice_html = """
     <div id="voice-control">
         <button id="start-voice" style="padding:10px 20px; background:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
@@ -2205,45 +2239,37 @@ elif menu == t("stock"):
     
     # ====== Add Product ======
     with st.expander(t("add_product"), expanded=True):
-        if st.session_state.scanned_barcode is None:
-            st.warning("⚠️ يرجى مسح الباركود لإضافة منتج جديد")
-            mobile_barcode_scanner("scanned_barcode")
-            st.stop()
+        use_add_scanner = st.checkbox(t("stock_scanner_add"), key="add_scanner_checkbox")
+        if use_add_scanner:
+            st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
+            mobile_barcode_scanner("stock_barcode")
         
-        barcode = st.session_state.scanned_barcode
-        st.success(f"✅ الباركود الممسوح: **{barcode}**")
-        
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         with col1: 
             name = st.text_input(t("product_name"), key="stock_name")
         with col2: 
             price = st.number_input(t("price"), min_value=0.0, key="stock_price")
         with col3: 
             qty = st.number_input(t("quantity"), min_value=0.0, step=0.1, key="stock_qty")
-        
-        st.text_input(t("barcode"), value=barcode, disabled=True, key="stock_barcode")
+        with col4: 
+            barcode = st.text_input(t("barcode_optional"), key="stock_barcode")
         
         if st.button(t("add_button"), key="stock_add_btn"):
-            if name and price > 0 and qty > 0:
+            if name:
                 product_data = {
                     "Nom": name, 
                     "Prix": float(price), 
                     "Quantité": float(qty), 
-                    "Code-barres": barcode
+                    "Code-barres": barcode if barcode else ""
                 }
                 try:
                     supabase.table("stock").insert(product_data).execute()
                     st.success(t("product_added"))
-                    st.session_state.scanned_barcode = None
                     st.rerun()
                 except Exception as e:
                     st.error(f"{t('error_generic')}: {str(e)}")
             else:
                 st.error(t("fill_all_fields"))
-        
-        if st.button("🔄 مسح جديد"):
-            st.session_state.scanned_barcode = None
-            st.rerun()
     
     st.subheader(t("current_stock"))
     if not df_stock.empty:
@@ -2267,23 +2293,16 @@ elif menu == t("stock"):
     # ====== Update Product ======
     if not df_stock.empty:
         with st.expander(t("update_product")):
-            if st.session_state.scanned_barcode is None:
-                st.warning("⚠️ يرجى مسح الباركود للبحث عن المنتج")
-                mobile_barcode_scanner("scanned_barcode")
-                st.stop()
+            use_update_scanner = st.checkbox(t("stock_scanner_update"), key="update_scanner_checkbox")
+            if use_update_scanner:
+                st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
+                mobile_barcode_scanner("stock_update_barcode")
             
-            barcode = st.session_state.scanned_barcode
-            st.success(f"✅ الباركود الممسوح: **{barcode}**")
-            
-            found_product = get_product_info(barcode)
-            
-            if found_product:
-                st.success(f"✅ تم العثور على: **{found_product.get('Nom', '')}**")
-                selected_product = found_product.get('Nom', '')
-            else:
-                st.error("❌ لم يتم العثور على منتج بهذا الباركود")
-                st.session_state.scanned_barcode = None
-                st.rerun()
+            selected_product = st.selectbox(
+                t("select_product"), 
+                df_stock['Nom'].tolist(),
+                key="stock_update_select"
+            )
             
             if selected_product:
                 product_data = df_stock[df_stock['Nom'] == selected_product].iloc[0]
@@ -2307,7 +2326,7 @@ elif menu == t("stock"):
                     )
                 with col3:
                     new_barcode = st.text_input(
-                        t("barcode"),
+                        t("barcode_optional"),
                         value=str(current_barcode) if current_barcode else "",
                         key="stock_update_barcode"
                     )
@@ -2321,14 +2340,9 @@ elif menu == t("stock"):
                     try:
                         supabase.table("stock").update(update_data).eq("id", product_data['id']).execute()
                         st.success(t("product_updated"))
-                        st.session_state.scanned_barcode = None
                         st.rerun()
                     except Exception as e:
                         st.error(f"{t('error_generic')}: {str(e)}")
-            
-            if st.button("🔄 مسح جديد"):
-                st.session_state.scanned_barcode = None
-                st.rerun()
 
 # ==================== Impression ====================
 elif menu == t("impression"):
@@ -2730,7 +2744,7 @@ elif menu == t("commandes"):
             else:
                 st.info(t("no_pending_orders"))
 
-# ==================== Services ====================
+# ==================== SERVICES ====================
 elif menu == t("services"):
     st.header(t("services"))
     st.markdown("---")
@@ -2749,7 +2763,7 @@ elif menu == t("services"):
                 t("service_price_input_label"),
                 min_value=0.0,
                 value=0.0,
-                step=0.1,
+                step=1.0,  # ← Hna bdalt mn 0.5 l 1.0
                 key="new_service_price"
             )
         with col_add3:
@@ -2856,9 +2870,9 @@ elif menu == t("services"):
                 t("price"),
                 min_value=0.0,
                 value=st.session_state.selected_service_price,
-                step=0.1,
-                key="service_price_input",
-                format="%.2f"
+                step=1.0,  # ← Hna bdalt mn 0.5 l 1.0
+                format="%.2f",  # ← Hna zidt format
+                key="service_price_input"
             )
         
         total_service = quantity * prix_unitaire
