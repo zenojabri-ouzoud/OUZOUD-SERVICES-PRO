@@ -1610,8 +1610,6 @@ if "selected_service" not in st.session_state: st.session_state.selected_service
 if "selected_service_price" not in st.session_state: st.session_state.selected_service_price = 0.0
 if "selected_service_unit" not in st.session_state: st.session_state.selected_service_unit = ""
 if "invoice_counter" not in st.session_state: st.session_state.invoice_counter = 0
-if "scanned_barcode" not in st.session_state:
-    st.session_state.scanned_barcode = None
 
 # --- صفحة تسجيل الدخول ---
 if not st.session_state.authenticated:
@@ -1677,6 +1675,7 @@ with st.sidebar:
     
     st.divider()
     
+    # زر المزامنة المباشرة
     if st.button(t("live_sync_label")):
         st.session_state.live_sync_active = not st.session_state.live_sync_active
     if st.session_state.live_sync_active:
@@ -1707,6 +1706,7 @@ with st.sidebar:
 if menu == t("dashboard"):
     st.header(t("dashboard"))
     
+    # إحصائيات سريعة
     df_v = get_df("ventes")
     df_s = get_df("stock")
     df_i = get_df("impressions")
@@ -1729,6 +1729,7 @@ if menu == t("dashboard"):
     
     st.divider()
     
+    # ========== المنتجات الأكثر ربحية ==========
     st.subheader(t("top_products"))
     if not df_v.empty:
         top_products = df_v.groupby('Nom')['Total'].sum().sort_values(ascending=False).head(10)
@@ -1738,6 +1739,7 @@ if menu == t("dashboard"):
     
     st.divider()
     
+    # ========== مقارنة الفترات ==========
     st.subheader(t("compare_periods"))
     col_p1, col_p2 = st.columns(2)
     with col_p1:
@@ -1763,16 +1765,19 @@ if menu == t("dashboard"):
     
     st.divider()
     
+    # ========== رسم بياني للمبيعات ==========
     st.subheader(t("sales_chart"))
     if not df_v.empty:
         df_v['Date_dt'] = pd.to_datetime(df_v['Date'], format='%d/%m/%Y %H:%M', errors='coerce')
         daily_sales = df_v.groupby(df_v['Date_dt'].dt.date)['Total'].sum().reset_index()
         daily_sales.columns = ['التاريخ', 'المبيعات']
+        
         fig = px.line(daily_sales.tail(30), x='التاريخ', y='المبيعات', title="تطور المبيعات (آخر 30 يوم)")
         st.plotly_chart(fig, use_container_width=True)
     
     st.divider()
     
+    # ========== توقعات المبيعات ==========
     st.subheader(t("sales_prediction"))
     if not df_v.empty:
         df_v['Date_dt'] = pd.to_datetime(df_v['Date'], format='%d/%m/%Y %H:%M', errors='coerce')
@@ -1798,13 +1803,14 @@ if menu == t("dashboard"):
     else:
         st.info(t("no_data"))
 
-# ==================== POS ====================
 if menu == t("pos"):
     st.header(t("pos"))
     
+    # ========== نظام التحكم الصوتي ==========
     with st.expander(t("voice_command"), expanded=False):
         voice_command_component()
     
+    # Mode Auto Sale
     st.session_state.auto_sale_mode = st.checkbox(
         t("auto_sale_mode"),
         value=st.session_state.auto_sale_mode
@@ -1830,6 +1836,7 @@ if menu == t("pos"):
                 if float(product['Quantité']) >= 1:
                     total = float(product['Prix'])
                     
+                    # حفظ رقم الفاتورة
                     facture_result = generate_facture_80mm([{"Nom": product.get('Nom', code_auto), "Quantité": 1, "Prix": float(product['Prix']), "Total": total}], "FACTURE DE VENTE")
                     facture_path, invoice_number = facture_result
                     
@@ -1873,6 +1880,12 @@ if menu == t("pos"):
         
         # ====== Normal Sale ======
         if mode == t("normal_sale"):
+            # Scanner automatique
+            use_normal_scanner = st.checkbox("📸 تفعيل الماسح التلقائي", key="normal_scanner_toggle")
+            if use_normal_scanner:
+                st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً")
+                mobile_barcode_scanner("vente_normale_code")
+            
             col1, col2 = st.columns(2)
             with col1:
                 code = st.text_input(t("barcode"), key="vente_normale_code")
@@ -1902,6 +1915,7 @@ if menu == t("pos"):
                         if q_old >= qty:
                             total = prix * qty
                             
+                            # رقم الفاتورة
                             facture_result = generate_facture_80mm([{"Nom": nom, "Quantité": qty, "Prix": prix, "Total": total}], "FACTURE DE VENTE")
                             facture_path, invoice_number = facture_result
                             
@@ -1929,17 +1943,15 @@ if menu == t("pos"):
         elif mode == t("scan_qr"):
             st.subheader(t("scan_qr"))
             
-            if st.session_state.scanned_barcode is None:
-                st.warning("⚠️ يرجى مسح الباركود للمتابعة")
-                mobile_barcode_scanner("scanned_barcode")
-                st.stop()
-            
-            barcode = st.session_state.scanned_barcode
-            st.success(f"✅ تم مسح الباركود بنجاح: {barcode}")
+            # Scanner automatique
+            use_qr_scanner = st.checkbox("📸 تفعيل الماسح التلقائي", key="qr_scanner_toggle")
+            if use_qr_scanner:
+                st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً")
+                mobile_barcode_scanner("qr_code")
             
             col1, col2 = st.columns(2)
             with col1:
-                code_qr = st.text_input(f"{t('barcode')} (auto)", value=barcode, disabled=True)
+                code_qr = st.text_input(f"{t('barcode')} (auto)", key="qr_code")
             with col2:
                 qty_qr = st.number_input(t("quantity"), min_value=0.0, step=0.1, value=1.0, key="qr_qty")
             
@@ -1970,7 +1982,6 @@ if menu == t("pos"):
                             supabase.table("stock").update({"Quantité": q_old - qty_qr}).eq("id", doc_id).execute()
                             play_success_sound()
                             st.success(f"{t('sale_success')} {nom} - {qty_qr} x {prix} = {total:.2f} DH | Facture: {invoice_number}")
-                            st.session_state.scanned_barcode = None
                             st.rerun()
                         else:
                             st.error(f"{t('low_stock_warning')} {q_old}")
@@ -1978,10 +1989,6 @@ if menu == t("pos"):
                         st.error(t("product_not_found"))
                 else:
                     st.error(t("fill_all_fields"))
-            
-            if st.button("🔄 مسح جديد"):
-                st.session_state.scanned_barcode = None
-                st.rerun()
         
         # ====== Free Sale ======
         elif mode == t("free_sale"):
@@ -2014,27 +2021,26 @@ if menu == t("pos"):
         
         # ====== Cart ======
         elif mode == t("cart"):
+            # اختيار نوع السلة: يدوي أو تلقائي
             cart_mode = st.radio(
                 t("cart_mode_label"),
                 [t("cart_manual"), t("cart_auto")],
                 horizontal=True
             )
             
-            # ====== Cart Manual ======
+            # ========== السلة اليدوية ==========
             if cart_mode == t("cart_manual"):
                 col1, col2 = st.columns([1, 1])
                 with col1:
                     st.subheader(t("add_to_cart"))
                     
-                    if st.session_state.scanned_barcode is None:
-                        st.warning("⚠️ يرجى مسح الباركود للمتابعة")
-                        mobile_barcode_scanner("scanned_barcode")
-                        st.stop()
+                    # Scanner automatique
+                    use_cart_scanner = st.checkbox("📸 تفعيل الماسح التلقائي", key="cart_scanner_toggle")
+                    if use_cart_scanner:
+                        st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً")
+                        mobile_barcode_scanner("panier_code")
                     
-                    barcode = st.session_state.scanned_barcode
-                    st.success(f"✅ تم مسح الباركود: {barcode}")
-                    
-                    code = st.text_input(t("barcode"), value=barcode, disabled=True)
+                    code = st.text_input(t("barcode"), key="panier_code")
                     qty = st.number_input(f"{t('quantity')}:", min_value=0.0, step=0.1, key="panier_qty")
                     
                     product = get_product_info(code) if code else None
@@ -2046,6 +2052,7 @@ if menu == t("pos"):
                     
                     if st.button(t("add_to_cart")):
                         if code and qty > 0 and prix_u > 0:
+                            # التحقق إذا كان المنتج موجوداً مسبقاً في السلة
                             found = False
                             for item in st.session_state.cart:
                                 if item['Code'] == code:
@@ -2062,12 +2069,7 @@ if menu == t("pos"):
                                     "Nom": nom_produit
                                 })
                             st.success(f"{t('add_to_cart')}: {nom_produit} x {qty}")
-                            st.session_state.scanned_barcode = None
                             st.rerun()
-                    
-                    if st.button("🔄 مسح جديد"):
-                        st.session_state.scanned_barcode = None
-                        st.rerun()
                 
                 with col2:
                     st.subheader(t("cart"))
@@ -2124,7 +2126,7 @@ if menu == t("pos"):
                     else:
                         st.info(t("no_data"))
             
-            # ====== Cart Auto ======
+            # ========== السلة التلقائية (سكانير متواصل) ==========
             else:
                 st.success(t("cart_auto_info"))
                 auto_cart_scanner()
@@ -2140,6 +2142,7 @@ if menu == t("pos"):
                     product = get_product_info(code_auto_cart)
                     if product:
                         if float(product['Quantité']) >= 1:
+                            # التعرف على المنتج الجديد تلقائياً
                             found = False
                             for item in st.session_state.cart:
                                 if item['Code'] == code_auto_cart:
@@ -2214,10 +2217,10 @@ if menu == t("pos"):
         st.metric(t("total_sales"), f"{total_ventes:.2f} DH")
     export_import_buttons("ventes", df_ventes)
 
-# ==================== Stock ====================
 elif menu == t("stock"):
     st.header(t("stock"))
     
+    # خانة البحث
     st.subheader(t("search_stock"))
     search_term = st.text_input(
         t("search_placeholder"),
@@ -2237,7 +2240,7 @@ elif menu == t("stock"):
         else:
             st.success(f"{t('search_results')} {len(df_stock)} produit(s)")
     
-    # ====== Add Product ======
+    # إضافة منتج جديد مع ماسح باركود
     with st.expander(t("add_product"), expanded=True):
         use_add_scanner = st.checkbox(t("stock_scanner_add"), key="add_scanner_checkbox")
         if use_add_scanner:
@@ -2290,7 +2293,6 @@ elif menu == t("stock"):
     else:
         st.success(t("stock_ok"))
     
-    # ====== Update Product ======
     if not df_stock.empty:
         with st.expander(t("update_product")):
             use_update_scanner = st.checkbox(t("stock_scanner_update"), key="update_scanner_checkbox")
@@ -2344,7 +2346,6 @@ elif menu == t("stock"):
                     except Exception as e:
                         st.error(f"{t('error_generic')}: {str(e)}")
 
-# ==================== Impression ====================
 elif menu == t("impression"):
     st.header(t("impression"))
     col1, col2 = st.columns(2)
@@ -2386,7 +2387,6 @@ elif menu == t("impression"):
     
     export_import_buttons("impressions", df_imp)
 
-# ==================== Caisse ====================
 elif menu == t("caisse"):
     st.header(t("caisse"))
     
@@ -2425,7 +2425,7 @@ elif menu == t("caisse"):
             if st.button(t("yes_reset")):
                 try:
                     total_jour = reset_caisse()
-                    st.success(f"✅ {t('reset_success')} {total_jour:.2f} DH - تم مسح جميع بيانات اليوم (مبيعات، طباعة، ديون)")
+                    st.success(f"✅ {t('reset_success')} {total_jour:.2f} DH - تم مسح جميع بيانات اليوم")
                     st.session_state.caisse_reset_confirmed = False
                     st.balloons()
                     time.sleep(2)
@@ -2456,10 +2456,10 @@ elif menu == t("caisse"):
     else:
         st.info(t("no_data"))
 
-# ==================== Credits ====================
 elif menu == t("credits"):
     st.header(t("credits"))
     
+    # ========== زر إضافة دين جديد (فوق) ==========
     with st.expander(t("add_credit"), expanded=True):
         col1, col2 = st.columns(2)
         with col1:
@@ -2485,6 +2485,7 @@ elif menu == t("credits"):
     
     st.divider()
     
+    # ========== بحث في الديون ==========
     st.subheader("🔍 بحث عن دين")
     search_credit = st.text_input(
         "ابحث باسم العميل:",
@@ -2492,8 +2493,10 @@ elif menu == t("credits"):
         key="credit_search_input"
     )
     
+    # جلب البيانات
     df_credits = get_df("credits")
     
+    # تصفية حسب البحث
     if search_credit and not df_credits.empty:
         df_credits = df_credits[df_credits['Client'].str.contains(search_credit, case=False, na=False)]
         if df_credits.empty:
@@ -2513,6 +2516,7 @@ elif menu == t("credits"):
         
         st.divider()
         
+        # ========== إدارة الدين ==========
         st.subheader("💳 إدارة الدين")
         
         col_credit1, col_credit2 = st.columns(2)
@@ -2536,8 +2540,10 @@ elif menu == t("credits"):
                 key="credit_operation_amount"
             )
         
+        # ========== 3 أزرار: إضافة / تسديد / حذف ==========
         col_add, col_pay, col_delete = st.columns(3)
         
+        # زر إضافة للدين (يزيد المبلغ)
         with col_add:
             if st.button(t("add_to_credit"), use_container_width=True, key="add_to_existing_credit_btn"):
                 if credit_a_reduire and montant_operation > 0:
@@ -2552,6 +2558,7 @@ elif menu == t("credits"):
                 else:
                     st.error(t("fill_all_fields"))
         
+        # زر تسديد (ينقص المبلغ)
         with col_pay:
             if st.button(t("pay_button"), use_container_width=True, key="pay_existing_credit_btn"):
                 if credit_a_reduire and montant_operation > 0:
@@ -2575,6 +2582,7 @@ elif menu == t("credits"):
                 else:
                     st.error(t("fill_all_fields"))
         
+        # زر حذف الدين نهائياً
         with col_delete:
             if st.button(t("delete_credit"), use_container_width=True, key="delete_existing_credit_btn"):
                 if credit_a_reduire:
@@ -2611,7 +2619,6 @@ elif menu == t("credits"):
     else:
         st.info(t("no_credits"))
 
-# ==================== Factures ====================
 elif menu == t("factures"):
     st.header(t("factures"))
     
@@ -2648,7 +2655,6 @@ elif menu == t("factures"):
     else:
         st.info(t("no_data"))
 
-# ==================== Commandes ====================
 elif menu == t("commandes"):
     st.header(t("commandes"))
     
@@ -2749,6 +2755,7 @@ elif menu == t("services"):
     st.header(t("services"))
     st.markdown("---")
     
+    # ========== إضافة خدمة جديدة ==========
     with st.expander(t("add_service"), expanded=True):
         st.markdown("### ➕ إضافة خدمة جديدة")
         col_add1, col_add2, col_add3 = st.columns([3, 2, 2])
@@ -2763,7 +2770,7 @@ elif menu == t("services"):
                 t("service_price_input_label"),
                 min_value=0.0,
                 value=0.0,
-                step=1.0,  # ← Hna bdalt mn 0.5 l 1.0
+                step=1.0,
                 key="new_service_price"
             )
         with col_add3:
@@ -2785,7 +2792,10 @@ elif menu == t("services"):
     
     st.markdown("---")
     
+    # جلب الخدمات من قاعدة البيانات
     df_services_db = get_df("services_electroniques")
+    
+    # عرض الخدمات في شبكة
     st.subheader(t("service_select"))
     
     if not df_services_db.empty:
@@ -2796,6 +2806,7 @@ elif menu == t("services"):
             service_name = row['Nom']
             service_price = row['Prix']
             
+            # اختيار أيقونة حسب الاسم
             if "copie" in service_name.lower() or "نسخ" in service_name:
                 icon = "📄"
                 unit = "page"
@@ -2845,14 +2856,17 @@ elif menu == t("services"):
                     st.session_state.selected_service_price = service_price
                     st.session_state.selected_service_unit = unit
         
+        # عرض قائمة الخدمات
         with st.expander(t("service_list"), expanded=False):
             st.dataframe(df_services_db, use_container_width=True, hide_index=True)
             export_import_buttons("services_electroniques", df_services_db)
+    
     else:
         st.info("لا توجد خدمات. أضف خدمات جديدة من الأعلى.")
     
     st.markdown("---")
     
+    # نموذج الخدمة المختارة
     if "selected_service" in st.session_state and st.session_state.selected_service:
         st.subheader(f"{t('service_selected')} {st.session_state.selected_service}")
         
@@ -2870,8 +2884,8 @@ elif menu == t("services"):
                 t("price"),
                 min_value=0.0,
                 value=st.session_state.selected_service_price,
-                step=1.0,  # ← Hna bdalt mn 0.5 l 1.0
-                format="%.2f",  # ← Hna zidt format
+                step=1.0,
+                format="%.2f",
                 key="service_price_input"
             )
         
@@ -2880,11 +2894,14 @@ elif menu == t("services"):
         if total_service > 0:
             st.metric(t("total"), f"{total_service:.2f} DH")
         
+        # معلومات العميل (اختياري)
         with st.expander(t("service_client_info"), expanded=False):
             client_name = st.text_input(t("service_client_name"), key="service_client_name_input")
             client_tel = st.text_input(t("service_client_tel"), key="service_client_tel_input")
         
+        # زر إتمام الخدمة وطباعة الفاتورة
         if st.button(t("service_confirm"), type="primary", use_container_width=True, key="service_confirm_btn"):
+            # تحضير بيانات الفاتورة
             service_cart = [{
                 "Code": st.session_state.selected_service,
                 "Nom": st.session_state.selected_service,
@@ -2893,9 +2910,11 @@ elif menu == t("services"):
                 "Total": total_service
             }]
             
+            # رقم الفاتورة
             facture_result = generate_facture_80mm(service_cart, "FACTURE SERVICE")
             facture_path, invoice_number = facture_result
             
+            # تسجيل الخدمة في المبيعات
             supabase.table("ventes").insert({
                 "Code": st.session_state.selected_service,
                 "Quantité": float(quantity),
@@ -2906,10 +2925,14 @@ elif menu == t("services"):
                 "Facture": invoice_number
             }).execute()
             
+            # صوت النجاح
             play_success_sound()
+            
+            # رسالة نجاح
             st.success(f"✅ تم إتمام الخدمة: {st.session_state.selected_service} - {total_service:.2f} DH | Facture: {invoice_number}")
             st.balloons()
             
+            # عرض الفاتورة للتحميل
             if os.path.exists("facture_80mm.pdf"):
                 with open("facture_80mm.pdf", "rb") as f:
                     st.download_button(
@@ -2921,6 +2944,8 @@ elif menu == t("services"):
                     )
     
     st.markdown("---")
+    
+    # سجل الخدمات السابقة
     st.subheader(t("service_history"))
     df_services = get_df("ventes")
     if not df_services.empty and not df_services_db.empty:
@@ -2935,11 +2960,12 @@ elif menu == t("services"):
     else:
         st.info(t("no_data"))
 
-# ==================== Outils ====================
+# ==================== OUTILS RAPIDES ====================
 elif menu == t("outils"):
     st.header(t("outils"))
     st.markdown("---")
     
+    # ========== تطبيقات Office Online ==========
     st.subheader(t("office_label"))
     st.info("🌐 فتح التطبيقات في المتصفح (Online)")
     
@@ -2983,6 +3009,7 @@ elif menu == t("outils"):
     
     st.markdown("---")
     
+    # ========== WhatsApp ==========
     st.subheader(t("whatsapp_label"))
     
     col_w1, col_w2 = st.columns(2)
@@ -3010,6 +3037,7 @@ elif menu == t("outils"):
     
     st.markdown("---")
     
+    # ========== بحث Google ==========
     st.subheader(t("google_search"))
     
     google_query = st.text_input(
@@ -3027,6 +3055,7 @@ elif menu == t("outils"):
         """)
         st.success(f"✅ تم البحث عن: {google_query}")
     
+    # ========== Google مدمج في الصفحة ==========
     st.markdown("---")
     st.subheader(t("google_embedded"))
     
