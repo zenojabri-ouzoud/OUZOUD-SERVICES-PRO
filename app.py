@@ -10,7 +10,8 @@ import io
 import json 
 import time 
 import plotly.express as px 
-import plotly.graph_objects as go  --- Supabase إعداد --- 
+import plotly.graph_objects as go  
+--- Supabase إعداد --- 
 #
 try: 
 supabase: Client = create_client( 
