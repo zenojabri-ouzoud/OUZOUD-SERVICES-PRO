@@ -12,7 +12,11 @@ import time
 import plotly.express as px
 import plotly.graph_objects as go
 import base64
-from streamlit_barcode_scanner import barcode_scanner
+import av
+import cv2
+import queue
+from pyzbar.pyzbar import decode
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
 
 # --- إعداد Supabase ---
 try:
@@ -34,26 +38,64 @@ nUMI3wB+wAy4HIbBYYwqSQBAfG3xH0opvTv/GtwZEkoppY4WgBDCG0Cc9knT9P1dR1Cjla0PvwAy
 AM+O411WAvjUttYFgAFcI4lLX4R/Bx4A6ERcL1v56iUAAAAASUVORK5CYII=
 """
 
-# ==================== دالة الماسح للبيع (camera daiman cha3la) ====================
-def barcode_scanner_vente(session_key):
+# ==================== إعدادات WebRTC ====================
+RTC_CONFIGURATION = RTCConfiguration(
+    {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+)
+
+# ==================== دالة الماسح WebRTC للبيع ====================
+def webrtc_barcode_scanner(session_key):
     """
-    ماسح باركود - camera daiman cha3la - يضمن كتابة القيمة في st.text_input
+    ماسح باركود باستخدام WebRTC - camera daiman cha3la
     """
-    # N7afdo 3la lvaleur f session_state
-    if f"{session_key}_scanned" not in st.session_state:
-        st.session_state[f"{session_key}_scanned"] = ""
+    st.markdown("### 📷 ماسح المنتجات")
     
-    # Scanner
-    scanned_value = barcode_scanner()
+    # تهيئة الذاكرة
+    if f'{session_key}_scanned' not in st.session_state:
+        st.session_state[f'{session_key}_scanned'] = ""
     
-    if scanned_value and scanned_value != st.session_state[f"{session_key}_scanned"]:
-        st.session_state[f"{session_key}_scanned"] = scanned_value
-        st.rerun()
+    if 'barcode_queue' not in st.session_state:
+        st.session_state.barcode_queue = queue.Queue()
     
-    # Khana li ghat3tmer
+    # دالة معالجة الصور
+    def video_frame_callback(frame):
+        img = frame.to_ndarray(format="bgr24")
+        
+        # البحث عن الباركود
+        barcodes = decode(img)
+        for barcode in barcodes:
+            barcode_data = barcode.data.decode('utf-8')
+            st.session_state.barcode_queue.put(barcode_data)
+            
+            # رسم مربع حول الباركود
+            (x, y, w, h) = barcode.rect
+            cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            cv2.putText(img, barcode_data, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            
+        return av.VideoFrame.from_ndarray(img, format="bgr24")
+    
+    # تشغيل الكاميرا
+    ctx = webrtc_streamer(
+        key=f"{session_key}_webrtc",
+        mode=WebRtcMode.SENDRECV,
+        rtc_configuration=RTC_CONFIGURATION,
+        video_frame_callback=video_frame_callback,
+        media_stream_constraints={"video": {"facingMode": "environment"}, "audio": False},
+        async_processing=True,
+    )
+    
+    # قراءة الباركود من الـ Queue
+    if ctx.state.playing:
+        if not st.session_state.barcode_queue.empty():
+            new_code = st.session_state.barcode_queue.get()
+            if new_code != st.session_state[f'{session_key}_scanned']:
+                st.session_state[f'{session_key}_scanned'] = new_code
+                st.rerun()
+    
+    # عرض الخانة
     barcode_input = st.text_input(
-        "الباركود",
-        value=st.session_state[f"{session_key}_scanned"],
+        "الباركود الممسوح 🏷️:", 
+        value=st.session_state[f'{session_key}_scanned'],
         key=session_key,
         placeholder="📸 امسح الباركود هنا..."
     )
@@ -1697,7 +1739,7 @@ if menu == t("pos"):
             use_normal_scanner = st.checkbox("📸 تفعيل الماسح التلقائي", key="normal_scanner_toggle")
             if use_normal_scanner:
                 st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً")
-                barcode_scanner_vente("vente_normale_code")
+                webrtc_barcode_scanner("vente_normale_code")
             
             col1, col2 = st.columns(2)
             with col1:
@@ -1759,7 +1801,7 @@ if menu == t("pos"):
             use_qr_scanner = st.checkbox("📸 تفعيل الماسح التلقائي", key="qr_scanner_toggle")
             if use_qr_scanner:
                 st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً")
-                barcode_scanner_vente("qr_code")
+                webrtc_barcode_scanner("qr_code")
             
             col1, col2 = st.columns(2)
             with col1:
@@ -1849,7 +1891,7 @@ if menu == t("pos"):
                     use_cart_scanner = st.checkbox("📸 تفعيل الماسح التلقائي", key="cart_scanner_toggle")
                     if use_cart_scanner:
                         st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً")
-                        barcode_scanner_vente("panier_code")
+                        webrtc_barcode_scanner("panier_code")
                     
                     code = st.text_input(t("barcode"), key="panier_code")
                     qty = st.number_input(f"{t('quantity')}:", min_value=0.0, step=0.1, key="panier_qty")
