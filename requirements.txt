@@ -1,8 +1,7 @@
-
 streamlit
 pandas
-supabase-py
+supabase
 fpdf
-pytz
 plotly
+pytz
 openpyxl
