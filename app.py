@@ -270,7 +270,6 @@ def get_next_invoice_number():
  last_num = max([int(inv.replace("FACT-", "")) for inv in last_invoices if "FACT-" in str(inv)])
  return f"FACT-{last_num + 1:04d}"
 
-إذا لم يكن هناك أرقام فواتير، ابدأ من 1 #
  return f"FACT-{len(df_ventes) + 1:04d}"
 def generate_facture_80mm(cart_data, titre="FACTURE"):
  """
