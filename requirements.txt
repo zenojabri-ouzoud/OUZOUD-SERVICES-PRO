@@ -5,3 +5,4 @@ fpdf
 plotly
 pytz
 openpyxl
+streamlit-barcode-scanner
