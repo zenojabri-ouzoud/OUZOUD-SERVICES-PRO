@@ -11,7 +11,7 @@ import json
 import time
 import plotly.express as px
 import plotly.graph_objects as go
-from streamlit_barcode_scanner import barcode_scanner
+from streamlit_qrcode_scanner import qrcode_scanner
 
 # --- إعداد Supabase ---
 try:
