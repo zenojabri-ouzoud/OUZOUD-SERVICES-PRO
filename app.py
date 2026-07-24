@@ -30,8 +30,8 @@ def mobile_barcode_scanner(session_key):
     scanner_html = f"""
     <div id="barcode-scanner-container" style="width:100%; min-height:350px; border:2px dashed #4CAF50; border-radius:10px; padding:15px; background:#f9f9f9;">
         <div id="reader" style="width:100%; min-height:300px;"></div>
-        <p style="text-align:center; color:#666; font-size:14px; margin-top:10px;">قرب الكاميرا من الباركود</p>
-        <div id="scan-status" style="text-align:center; font-size:14px; color:#999; margin-top:5px;">جاري تهيئة الكاميرا...</div>
+        <p style="text-align:center; color:#666; font-size:14px; margin-top:10px;">📷 قرب الكاميرا من الباركود</p>
+        <div id="scan-status" style="text-align:center; font-size:14px; color:#999; margin-top:5px;">⏳ جاري تهيئة الكاميرا...</div>
     </div>
 
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -147,7 +147,7 @@ def mobile_barcode_scanner(session_key):
                 html5Qrcode.stop().then(() => {{
                     isScanning = false;
                     scannerStarted = false;
-                    updateStatus('جاهز للمسح مرة أخرى', false);
+                    updateStatus('🔄 جاهز للمسح مرة أخرى', false);
 
                     // 4. إعادة تشغيل الماسح بعد 2 ثانية
                     setTimeout(() => {{
@@ -199,7 +199,7 @@ def mobile_barcode_scanner(session_key):
                     facingMode: "environment"
                 }};
 
-                updateStatus('جاري تشغيل الكاميرا...', false);
+                updateStatus('⏳ جاري تشغيل الكاميرا...', false);
 
                 html5Qrcode.start(
                     {{ facingMode: "environment" }},
@@ -214,7 +214,7 @@ def mobile_barcode_scanner(session_key):
                     }}
                 ).then(function() {{
                     isScanning = true;
-                    updateStatus('الكاميرا شغالة - امسح الباركود', false);
+                    updateStatus('📷 الكاميرا شغالة - امسح الباركود', false);
                 }}).catch(function(err) {{
                     console.error('Scanner start error:', err);
                     updateStatus('❌خطأ: ' + err.message, false, true);
@@ -384,814 +384,814 @@ if "lang" not in st.session_state:
 
 translations = {
     "login_title": {
-        "ar": "تسجيل الدخول",
-        "fr": "Connexion",
-        "en": "Login"
+        "ar": "🔐 تسجيل الدخول",
+        "fr": "🔐 Connexion",
+        "en": "🔐 Login"
     },
     "password_label": {
-        "ar": "كلمة المرور:",
-        "fr": "Mot de passe:",
-        "en": "Password:"
+        "ar": "🔑 كلمة المرور:",
+        "fr": "🔑 Mot de passe:",
+        "en": "🔑 Password:"
     },
     "login_button": {
-        "ar": "دخول",
-        "fr": "Connexion",
-        "en": "Login"
+        "ar": "🚪 دخول",
+        "fr": "🚪 Connexion",
+        "en": "🚪 Login"
     },
     "wrong_password": {
-        "ar": "❌كلمة المرور خاطئة!",
-        "fr": "❌Mot de passe incorrect!",
-        "en": "❌Wrong password!"
+        "ar": "❌ كلمة المرور خاطئة!",
+        "fr": "❌ Mot de passe incorrect!",
+        "en": "❌ Wrong password!"
     },
     "menu_main": {
-        "ar": "القائمة الرئيسية",
-        "fr": "Menu Principal",
-        "en": "Main Menu"
+        "ar": "📋 القائمة الرئيسية",
+        "fr": "📋 Menu Principal",
+        "en": "📋 Main Menu"
     },
     "dashboard": {
-        "ar": "لوحة التحكم",
-        "fr": "Tableau de Bord",
-        "en": "Dashboard"
+        "ar": "📊 لوحة التحكم",
+        "fr": "📊 Tableau de Bord",
+        "en": "📊 Dashboard"
     },
     "pos": {
-        "ar": "نقطة البيع",
-        "fr": "Point de Vente",
-        "en": "Point of Sale"
+        "ar": "💰 نقطة البيع",
+        "fr": "💰 Point de Vente",
+        "en": "💰 Point of Sale"
     },
     "stock": {
-        "ar": "إدارة المخزون",
-        "fr": "Gestion Stock",
-        "en": "Stock Management"
+        "ar": "📦 إدارة المخزون",
+        "fr": "📦 Gestion Stock",
+        "en": "📦 Stock Management"
     },
     "impression": {
-        "ar": "الطباعة",
-        "fr": "Impression",
-        "en": "Printing"
+        "ar": "🖨️ الطباعة",
+        "fr": "🖨️ Impression",
+        "en": "🖨️ Printing"
     },
     "caisse": {
-        "ar": "الخزينة",
-        "fr": "Caisse",
-        "en": "Cash Register"
+        "ar": "🏦 الخزينة",
+        "fr": "🏦 Caisse",
+        "en": "🏦 Cash Register"
     },
     "credits": {
-        "ar": "الديون",
-        "fr": "Crédits",
-        "en": "Credits"
+        "ar": "📋 الديون",
+        "fr": "📋 Crédits",
+        "en": "📋 Credits"
     },
     "factures": {
-        "ar": "الفواتير",
-        "fr": "Factures",
-        "en": "Invoices"
+        "ar": "🧾 الفواتير",
+        "fr": "🧾 Factures",
+        "en": "🧾 Invoices"
     },
     "commandes": {
-        "ar": "طلبيات الموردين",
-        "fr": "Commandes Fournisseur",
-        "en": "Supplier Orders"
+        "ar": "📝 طلبيات الموردين",
+        "fr": "📝 Commandes Fournisseur",
+        "en": "📝 Supplier Orders"
     },
     "services": {
-        "ar": "الخدمات الإلكترونية",
-        "fr": "Services Électroniques",
-        "en": "Electronic Services"
+        "ar": "⚡ الخدمات الإلكترونية",
+        "fr": "⚡ Services Électroniques",
+        "en": "⚡ Electronic Services"
     },
     "outils": {
-        "ar": "أدوات سريعة",
-        "fr": "Outils Rapides",
-        "en": "Quick Tools"
+        "ar": "🔧 أدوات سريعة",
+        "fr": "🔧 Outils Rapides",
+        "en": "🔧 Quick Tools"
     },
     "google_search": {
-        "ar": "بحث Google",
-        "fr": "Recherche Google",
-        "en": "Google Search"
+        "ar": "🔍 بحث Google",
+        "fr": "🔍 Recherche Google",
+        "en": "🔍 Google Search"
     },
     "activate_scanner": {
-        "ar": "تفعيل الماسح الضوئي السريع",
-        "fr": "Activer le scanner rapide",
-        "en": "Activate Fast Scanner"
+        "ar": "📷 تفعيل الماسح الضوئي السريع",
+        "fr": "📷 Activer le scanner rapide",
+        "en": "📷 Activate Fast Scanner"
     },
     "auto_sale_mode": {
-        "ar": "البيع التلقائي (سكانير = بيع مباشر + فاتورة 80mm)",
-        "fr": "Vente Auto (Scan = Vente Directe + Facture 80mm)",
-        "en": "Auto Sale (Scan = Direct Sale + 80mm Invoice)"
+        "ar": "🤖 البيع التلقائي (سكانير = بيع مباشر + فاتورة 80mm)",
+        "fr": "🤖 Vente Auto (Scan = Vente Directe + Facture 80mm)",
+        "en": "🤖 Auto Sale (Scan = Direct Sale + 80mm Invoice)"
     },
     "sale_type": {
-        "ar": "نوع البيع:",
-        "fr": "Type de vente:",
-        "en": "Sale Type:"
+        "ar": "📌 نوع البيع:",
+        "fr": "📌 Type de vente:",
+        "en": "📌 Sale Type:"
     },
     "normal_sale": {
-        "ar": "بيع عادي",
-        "fr": "Vente Normale",
-        "en": "Normal Sale"
+        "ar": "🛒 بيع عادي",
+        "fr": "🛒 Vente Normale",
+        "en": "🛒 Normal Sale"
     },
     "scan_qr": {
-        "ar": "مسح QR",
-        "fr": "Scan QR",
-        "en": "QR Scan"
+        "ar": "📱 مسح QR",
+        "fr": "📱 Scan QR",
+        "en": "📱 QR Scan"
     },
     "free_sale": {
-        "ar": "بيع حر",
-        "fr": "Vente Libre",
-        "en": "Free Sale"
+        "ar": "✏️ بيع حر",
+        "fr": "✏️ Vente Libre",
+        "en": "✏️ Free Sale"
     },
     "cart": {
-        "ar": "سلة المشتريات",
-        "fr": "Panier",
-        "en": "Cart"
+        "ar": "🛒 سلة المشتريات",
+        "fr": "🛒 Panier",
+        "en": "🛒 Cart"
     },
     "cart_mode_label": {
-        "ar": "نوع السلة:",
-        "fr": "Type de panier:",
-        "en": "Cart type:"
+        "ar": "📌 نوع السلة:",
+        "fr": "📌 Type de panier:",
+        "en": "📌 Cart type:"
     },
     "cart_manual": {
-        "ar": "يدوي (إضافة منتج منتج)",
-        "fr": "Manuel (Ajout produit par produit)",
-        "en": "Manual (Add one by one)"
+        "ar": "✋ يدوي (إضافة منتج منتج)",
+        "fr": "✋ Manuel (Ajout produit par produit)",
+        "en": "✋ Manual (Add one by one)"
     },
     "cart_auto": {
-        "ar": "تلقائي (سكانير متواصل)",
-        "fr": "Auto (Scan continu)",
-        "en": "Auto (Continuous scan)"
+        "ar": "🤖 تلقائي (سكانير متواصل)",
+        "fr": "🤖 Auto (Scan continu)",
+        "en": "🤖 Auto (Continuous scan)"
     },
     "cart_auto_info": {
-        "ar": "الماسح التلقائي: امسح الباركود = يضاف للسلة تلقائياً | امسح باركود آخر = يضاف أيضاً | اضغط إنهاء = فاتورة",
-        "fr": "Scanner auto: Scannez = Ajouté au panier | Scannez autre = Ajouté aussi | Terminer = Facture",
-        "en": "Auto scanner: Scan = Added to cart | Scan another = Added too | Finish = Invoice"
+        "ar": "📷 الماسح التلقائي: امسح الباركود = يضاف للسلة تلقائياً | امسح باركود آخر = يضاف أيضاً | اضغط إنهاء = فاتورة",
+        "fr": "📷 Scanner auto: Scannez = Ajouté au panier | Scannez autre = Ajouté aussi | Terminer = Facture",
+        "en": "📷 Auto scanner: Scan = Added to cart | Scan another = Added too | Finish = Invoice"
     },
     "cart_empty": {
-        "ar": "السلة فارغة - امسح الباركود للإضافة",
-        "fr": "Panier vide - Scannez pour ajouter",
-        "en": "Empty cart - Scan to add"
+        "ar": "🛒 السلة فارغة - امسح الباركود للإضافة",
+        "fr": "🛒 Panier vide - Scannez pour ajouter",
+        "en": "🛒 Empty cart - Scan to add"
     },
     "cart_products_count": {
-        "ar": "منتجات",
-        "fr": "produits",
-        "en": "products"
+        "ar": "📦 منتجات",
+        "fr": "📦 produits",
+        "en": "📦 products"
     },
     "barcode": {
-        "ar": "الباركود",
-        "fr": "Code-barres",
-        "en": "Barcode"
+        "ar": "📱 الباركود",
+        "fr": "📱 Code-barres",
+        "en": "📱 Barcode"
     },
     "barcode_optional": {
-        "ar": "الباركود (اختياري)",
-        "fr": "Code-barres (Optionnel)",
-        "en": "Barcode (Optional)"
+        "ar": "📱 الباركود (اختياري)",
+        "fr": "📱 Code-barres (Optionnel)",
+        "en": "📱 Barcode (Optional)"
     },
     "quantity": {
-        "ar": "الكمية",
-        "fr": "Quantité",
-        "en": "Quantity"
+        "ar": "🔢 الكمية",
+        "fr": "🔢 Quantité",
+        "en": "🔢 Quantity"
     },
     "price": {
-        "ar": "السعر",
-        "fr": "Prix",
-        "en": "Price"
+        "ar": "💲 السعر",
+        "fr": "💲 Prix",
+        "en": "💲 Price"
     },
     "total": {
-        "ar": "المجموع",
-        "fr": "Total",
-        "en": "Total"
+        "ar": "💰 المجموع",
+        "fr": "💰 Total",
+        "en": "💰 Total"
     },
     "confirm_sale": {
-        "ar": "✅تأكيد البيع",
-        "fr": "✅Confirmer la Vente",
-        "en": "✅Confirm Sale"
+        "ar": "✅ تأكيد البيع",
+        "fr": "✅ Confirmer la Vente",
+        "en": "✅ Confirm Sale"
     },
     "add_to_cart": {
-        "ar": "✅أضف إلى السلة",
-        "fr": "✅Ajouter au Panier",
-        "en": "✅Add to Cart"
+        "ar": "➕ أضف إلى السلة",
+        "fr": "➕ Ajouter au Panier",
+        "en": "➕ Add to Cart"
     },
     "validate_cart": {
-        "ar": "تأكيد وتسجيل الكل",
-        "fr": "Valider et Enregistrer Tout",
-        "en": "Validate and Save All"
+        "ar": "✅ تأكيد وتسجيل الكل",
+        "fr": "✅ Valider et Enregistrer Tout",
+        "en": "✅ Validate and Save All"
     },
     "clear_cart": {
-        "ar": "تفريغ السلة",
-        "fr": "Vider le Panier",
-        "en": "Clear Cart"
+        "ar": "🗑️ تفريغ السلة",
+        "fr": "🗑️ Vider le Panier",
+        "en": "🗑️ Clear Cart"
     },
     "finish_cart": {
-        "ar": "إنهاء وإصدار الفاتورة",
-        "fr": "Terminer et Imprimer la Facture",
-        "en": "Finish & Print Invoice"
+        "ar": "🏁 إنهاء وإصدار الفاتورة",
+        "fr": "🏁 Terminer et Imprimer la Facture",
+        "en": "🏁 Finish & Print Invoice"
     },
     "sale_success": {
-        "ar": "✅تم تسجيل البيع بنجاح!",
-        "fr": "✅Vente enregistrée avec succès!",
-        "en": "✅Sale recorded successfully!"
+        "ar": "✅ تم تسجيل البيع بنجاح!",
+        "fr": "✅ Vente enregistrée avec succès!",
+        "en": "✅ Sale recorded successfully!"
     },
     "low_stock_warning": {
-        "ar": "المخزون غير كافي! المتوفر:",
-        "fr": "Stock insuffisant! Disponible:",
-        "en": "Insufficient stock! Available:"
+        "ar": "⚠️ المخزون غير كافي! المتوفر:",
+        "fr": "⚠️ Stock insuffisant! Disponible:",
+        "en": "⚠️ Insufficient stock! Available:"
     },
     "product_not_found": {
-        "ar": "المنتج غير موجود في المخزون",
-        "fr": "Produit introuvable dans le stock",
-        "en": "Product not found in stock"
+        "ar": "❌ المنتج غير موجود في المخزون",
+        "fr": "❌ Produit introuvable dans le stock",
+        "en": "❌ Product not found in stock"
     },
     "add_product": {
-        "ar": "➕إضافة منتج",
-        "fr": "➕Ajouter un Produit",
-        "en": "➕Add Product"
+        "ar": "➕ إضافة منتج",
+        "fr": "➕ Ajouter un Produit",
+        "en": "➕ Add Product"
     },
     "product_name": {
-        "ar": "اسم المنتج",
-        "fr": "Nom du Produit",
-        "en": "Product Name"
+        "ar": "📝 اسم المنتج",
+        "fr": "📝 Nom du Produit",
+        "en": "📝 Product Name"
     },
     "add_button": {
-        "ar": "➕إضافة",
-        "fr": "➕Ajouter",
-        "en": "➕Add"
+        "ar": "➕ إضافة",
+        "fr": "➕ Ajouter",
+        "en": "➕ Add"
     },
     "update_product": {
-        "ar": "تحديث منتج",
-        "fr": "Modifier Produit",
-        "en": "Update Product"
+        "ar": "✏️ تحديث منتج",
+        "fr": "✏️ Modifier Produit",
+        "en": "✏️ Update Product"
     },
     "current_stock": {
-        "ar": "المخزون الحالي",
-        "fr": "Stock Actuel",
-        "en": "Current Stock"
+        "ar": "📊 المخزون الحالي",
+        "fr": "📊 Stock Actuel",
+        "en": "📊 Current Stock"
     },
     "stock_alert": {
-        "ar": "تنبيهات المخزون",
-        "fr": "Alertes Stock",
-        "en": "Stock Alerts"
+        "ar": "🔔 تنبيهات المخزون",
+        "fr": "🔔 Alertes Stock",
+        "en": "🔔 Stock Alerts"
     },
     "low_stock_products": {
-        "ar": "منتجات بمخزون منخفض!",
-        "fr": "produits avec stock bas!",
-        "en": "products with low stock!"
+        "ar": "⚠️ منتجات بمخزون منخفض!",
+        "fr": "⚠️ produits avec stock bas!",
+        "en": "⚠️ products with low stock!"
     },
     "stock_ok": {
-        "ar": "✅جميع المنتجات بمخزون جيد",
-        "fr": "✅Tous les produits sont bien stockés",
-        "en": "✅All products are well stocked"
+        "ar": "✅ جميع المنتجات بمخزون جيد",
+        "fr": "✅ Tous les produits sont bien stockés",
+        "en": "✅ All products are well stocked"
     },
     "select_product": {
-        "ar": "اختر المنتج",
-        "fr": "Choisir le produit",
-        "en": "Select product"
+        "ar": "🔍 اختر المنتج",
+        "fr": "🔍 Choisir le produit",
+        "en": "🔍 Select product"
     },
     "or_choose_name": {
-        "ar": "أو اختر بالاسم:",
-        "fr": "Ou choisir par nom:",
-        "en": "Or choose by name:"
+        "ar": "📝 أو اختر بالاسم:",
+        "fr": "📝 Ou choisir par nom:",
+        "en": "📝 Or choose by name:"
     },
     "search_stock": {
-        "ar": "بحث في المخزون (بالاسم أو الباركود)",
-        "fr": "Rechercher dans le stock (par nom ou code-barres)",
-        "en": "Search Stock (by name or barcode)"
+        "ar": "🔍 بحث في المخزون (بالاسم أو الباركود)",
+        "fr": "🔍 Rechercher dans le stock (par nom ou code-barres)",
+        "en": "🔍 Search Stock (by name or barcode)"
     },
     "search_placeholder": {
-        "ar": "اكتب اسم المنتج أو الباركود للبحث...",
-        "fr": "Tapez le nom du produit ou le code-barres pour rechercher...",
-        "en": "Type product name or barcode to search..."
+        "ar": "✏️ اكتب اسم المنتج أو الباركود للبحث...",
+        "fr": "✏️ Tapez le nom du produit ou le code-barres pour rechercher...",
+        "en": "✏️ Type product name or barcode to search..."
     },
     "search_results": {
-        "ar": "نتائج البحث:",
-        "fr": "Résultats de recherche:",
-        "en": "Search results:"
+        "ar": "📋 نتائج البحث:",
+        "fr": "📋 Résultats de recherche:",
+        "en": "📋 Search results:"
     },
     "no_results": {
-        "ar": "لا توجد نتائج مطابقة",
-        "fr": "Aucun résultat trouvé",
-        "en": "No matching results"
+        "ar": "❌ لا توجد نتائج مطابقة",
+        "fr": "❌ Aucun résultat trouvé",
+        "en": "❌ No matching results"
     },
     "new_quantity": {
-        "ar": "الكمية الجديدة",
-        "fr": "Nouvelle Quantité",
-        "en": "New Quantity"
+        "ar": "🔢 الكمية الجديدة",
+        "fr": "🔢 Nouvelle Quantité",
+        "en": "🔢 New Quantity"
     },
     "new_price": {
-        "ar": "السعر الجديد",
-        "fr": "Nouveau Prix",
-        "en": "New Price"
+        "ar": "💲 السعر الجديد",
+        "fr": "💲 Nouveau Prix",
+        "en": "💲 New Price"
     },
     "update_button": {
-        "ar": "تحديث",
-        "fr": "Modifier",
-        "en": "Update"
+        "ar": "✏️ تحديث",
+        "fr": "✏️ Modifier",
+        "en": "✏️ Update"
     },
     "price_per_page": {
-        "ar": "سعر الصفحة",
-        "fr": "Prix/Page",
-        "en": "Price/Page"
+        "ar": "💲 سعر الصفحة",
+        "fr": "💲 Prix/Page",
+        "en": "💲 Price/Page"
     },
     "number_of_pages": {
-        "ar": "عدد الصفحات",
-        "fr": "Nombre de Pages",
-        "en": "Number of Pages"
+        "ar": "🔢 عدد الصفحات",
+        "fr": "🔢 Nombre de Pages",
+        "en": "🔢 Number of Pages"
     },
     "save_print": {
-        "ar": "حفظ وطباعة",
-        "fr": "Enregistrer et Imprimer",
-        "en": "Save and Print"
+        "ar": "💾 حفظ وطباعة",
+        "fr": "💾 Enregistrer et Imprimer",
+        "en": "💾 Save and Print"
     },
     "print_history": {
-        "ar": "سجل الطباعة",
-        "fr": "Historique d'Impression",
-        "en": "Print History"
+        "ar": "📋 سجل الطباعة",
+        "fr": "📋 Historique d'Impression",
+        "en": "📋 Print History"
     },
     "total_sales": {
-        "ar": "إجمالي المبيعات",
-        "fr": "Total des Ventes",
-        "en": "Total Sales"
+        "ar": "💰 إجمالي المبيعات",
+        "fr": "💰 Total des Ventes",
+        "en": "💰 Total Sales"
     },
     "total_printing": {
-        "ar": "إجمالي الطباعة",
-        "fr": "Total Impressions",
-        "en": "Total Printing"
+        "ar": "💰 إجمالي الطباعة",
+        "fr": "💰 Total Impressions",
+        "en": "💰 Total Printing"
     },
     "total_credits": {
-        "ar": "إجمالي الديون",
-        "fr": "Total Crédits",
-        "en": "Total Credits"
+        "ar": "💰 إجمالي الديون",
+        "fr": "💰 Total Crédits",
+        "en": "💰 Total Credits"
     },
     "grand_total": {
-        "ar": "المجموع العام",
-        "fr": "Total Général",
-        "en": "Grand Total"
+        "ar": "💰 المجموع العام",
+        "fr": "💰 Total Général",
+        "en": "💰 Grand Total"
     },
     "reset_caisse": {
-        "ar": "تصفير الخزينة (نهاية اليوم)",
-        "fr": "Réinitialiser la Caisse (Fin de journée)",
-        "en": "Reset Cash Register (End of Day)"
+        "ar": "🔄 تصفير الخزينة (نهاية اليوم)",
+        "fr": "🔄 Réinitialiser la Caisse (Fin de journée)",
+        "en": "🔄 Reset Cash Register (End of Day)"
     },
     "reset_warning": {
-        "ar": "هذا الزر سيحفظ ملخص اليوم ويصفر العداد. استخدمه فقط في نهاية اليوم!",
-        "fr": "Ce bouton enregistrera le résumé du jour et remettra le compteur à zéro. À utiliser uniquement en fin de journée!",
-        "en": "This button will save today's summary and reset the counter. Use only at end of day!"
+        "ar": "⚠️ هذا الزر سيحفظ ملخص اليوم ويصفر العداد. استخدمه فقط في نهاية اليوم!",
+        "fr": "⚠️ Ce bouton enregistrera le résumé du jour et remettra le compteur à zéro. À utiliser uniquement en fin de journée!",
+        "en": "⚠️ This button will save today's summary and reset the counter. Use only at end of day!"
     },
     "reset_button": {
-        "ar": "تصفير الخزينة لليوم",
-        "fr": "Réinitialiser la Caisse du Jour",
-        "en": "Reset Today's Cash Register"
+        "ar": "🔄 تصفير الخزينة لليوم",
+        "fr": "🔄 Réinitialiser la Caisse du Jour",
+        "en": "🔄 Reset Today's Cash Register"
     },
     "confirm_reset": {
-        "ar": "❌هل أنت متأكد من تصفير الخزينة؟ سيتم حفظ ملخص اليوم في السجل.",
-        "fr": "❌Êtes-vous sûr de vouloir réinitialiser la caisse? Le résumé du jour sera sauvegardé.",
-        "en": "❌Are you sure you want to reset the cash register? Today's summary will be saved."
+        "ar": "❌ هل أنت متأكد من تصفير الخزينة؟ سيتم حفظ ملخص اليوم في السجل.",
+        "fr": "❌ Êtes-vous sûr de vouloir réinitialiser la caisse? Le résumé du jour sera sauvegardé.",
+        "en": "❌ Are you sure you want to reset the cash register? Today's summary will be saved."
     },
     "yes_reset": {
-        "ar": "✅نعم، صفر الخزينة",
-        "fr": "✅Oui, réinitialiser",
-        "en": "✅Yes, reset"
+        "ar": "✅ نعم، صفر الخزينة",
+        "fr": "✅ Oui, réinitialiser",
+        "en": "✅ Yes, reset"
     },
     "cancel": {
-        "ar": "❌إلغاء",
-        "fr": "❌Annuler",
-        "en": "❌Cancel"
+        "ar": "❌ إلغاء",
+        "fr": "❌ Annuler",
+        "en": "❌ Cancel"
     },
     "reset_success": {
-        "ar": "✅تم تصفير الخزينة بنجاح! إجمالي اليوم:",
-        "fr": "✅Caisse réinitialisée avec succès! Total du jour:",
-        "en": "✅Cash register reset successfully! Daily total:"
+        "ar": "✅ تم تصفير الخزينة بنجاح! إجمالي اليوم:",
+        "fr": "✅ Caisse réinitialisée avec succès! Total du jour:",
+        "en": "✅ Cash register reset successfully! Daily total:"
     },
     "history": {
-        "ar": "سجل الأيام السابقة",
-        "fr": "Historique des Jours Précédents",
-        "en": "Previous Days History"
+        "ar": "📋 سجل الأيام السابقة",
+        "fr": "📋 Historique des Jours Précédents",
+        "en": "📋 Previous Days History"
     },
     "recent_sales": {
-        "ar": "المبيعات الأخيرة",
-        "fr": "Ventes Récentes",
-        "en": "Recent Sales"
+        "ar": "📊 المبيعات الأخيرة",
+        "fr": "📊 Ventes Récentes",
+        "en": "📊 Recent Sales"
     },
     "add_credit": {
-        "ar": "➕إضافة دين جديد",
-        "fr": "➕Ajouter un Crédit",
-        "en": "➕Add New Credit"
+        "ar": "➕ إضافة دين جديد",
+        "fr": "➕ Ajouter un Crédit",
+        "en": "➕ Add New Credit"
     },
     "client_name": {
-        "ar": "اسم العميل",
-        "fr": "Nom du Client",
-        "en": "Client Name"
+        "ar": "👤 اسم العميل",
+        "fr": "👤 Nom du Client",
+        "en": "👤 Client Name"
     },
     "amount": {
-        "ar": "المبلغ",
-        "fr": "Montant",
-        "en": "Amount"
+        "ar": "💰 المبلغ",
+        "fr": "💰 Montant",
+        "en": "💰 Amount"
     },
     "add_credit_button": {
-        "ar": "➕إضافة دين",
-        "fr": "➕Ajouter Crédit",
-        "en": "➕Add Credit"
+        "ar": "➕ إضافة دين",
+        "fr": "➕ Ajouter Crédit",
+        "en": "➕ Add Credit"
     },
     "credit_list": {
-        "ar": "قائمة الديون",
-        "fr": "Liste des Crédits",
-        "en": "Credit List"
+        "ar": "📋 قائمة الديون",
+        "fr": "📋 Liste des Crédits",
+        "en": "📋 Credit List"
     },
     "reduce_credit": {
-        "ar": "تقليل مبلغ الدين",
-        "fr": "Réduire le Crédit",
-        "en": "Reduce Credit"
+        "ar": "📉 تقليل مبلغ الدين",
+        "fr": "📉 Réduire le Crédit",
+        "en": "📉 Reduce Credit"
     },
     "reduce_credit_info": {
-        "ar": "هذا الزر يقلل من مبلغ الدين بدون حذفه كاملاً",
-        "fr": "Ce bouton réduit le montant du crédit sans le supprimer complètement",
-        "en": "This button reduces the credit amount without deleting it completely"
+        "ar": "ℹ️ هذا الزر يقلل من مبلغ الدين بدون حذفه كاملاً",
+        "fr": "ℹ️ Ce bouton réduit le montant du crédit sans le supprimer complètement",
+        "en": "ℹ️ This button reduces the credit amount without deleting it completely"
     },
     "select_credit": {
-        "ar": "اختر الدين لتقليله",
-        "fr": "Choisir le crédit à réduire",
-        "en": "Select credit to reduce"
+        "ar": "🔍 اختر الدين لتقليله",
+        "fr": "🔍 Choisir le crédit à réduire",
+        "en": "🔍 Select credit to reduce"
     },
     "payment_amount": {
-        "ar": "المبلغ المدفوع",
-        "fr": "Montant Payé",
-        "en": "Amount Paid"
+        "ar": "💰 المبلغ المدفوع",
+        "fr": "💰 Montant Payé",
+        "en": "💰 Amount Paid"
     },
     "pay_button": {
-        "ar": "تسديد جزء من الدين",
-        "fr": "Payer une Partie du Crédit",
-        "en": "Pay Part of Credit"
+        "ar": "💳 تسديد جزء من الدين",
+        "fr": "💳 Payer une Partie du Crédit",
+        "en": "💳 Pay Part of Credit"
     },
     "payment_history": {
-        "ar": "سجل المدفوعات",
-        "fr": "Historique des Paiements",
-        "en": "Payment History"
+        "ar": "📋 سجل المدفوعات",
+        "fr": "📋 Historique des Paiements",
+        "en": "📋 Payment History"
     },
     "no_credits": {
-        "ar": "لا توجد ديون حالياً",
-        "fr": "Aucun crédit pour le moment",
-        "en": "No credits currently"
+        "ar": "ℹ️ لا توجد ديون حالياً",
+        "fr": "ℹ️ Aucun crédit pour le moment",
+        "en": "ℹ️ No credits currently"
     },
     "delete_credit": {
-        "ar": "حذف الدين نهائياً",
-        "fr": "Supprimer le crédit",
-        "en": "Delete Credit Permanently"
+        "ar": "🗑️ حذف الدين نهائياً",
+        "fr": "🗑️ Supprimer le crédit",
+        "en": "🗑️ Delete Credit Permanently"
     },
     "add_to_credit": {
-        "ar": "إضافة للدين",
-        "fr": "Ajouter au crédit",
-        "en": "Add to Credit"
+        "ar": "➕ إضافة للدين",
+        "fr": "➕ Ajouter au crédit",
+        "en": "➕ Add to Credit"
     },
     "last_sale": {
-        "ar": "آخر عملية بيع",
-        "fr": "Dernière Vente",
-        "en": "Last Sale"
+        "ar": "🔄 آخر عملية بيع",
+        "fr": "🔄 Dernière Vente",
+        "en": "🔄 Last Sale"
     },
     "print_invoice": {
-        "ar": "طباعة آخر فاتورة",
-        "fr": "Imprimer la Dernière Facture",
-        "en": "Print Last Invoice"
+        "ar": "🖨️ طباعة آخر فاتورة",
+        "fr": "🖨️ Imprimer la Dernière Facture",
+        "en": "🖨️ Print Last Invoice"
     },
     "download_sale_invoice": {
-        "ar": "تحميل فاتورة البيع",
-        "fr": "Télécharger Facture de Vente",
-        "en": "Download Sale Invoice"
+        "ar": "📥 تحميل فاتورة البيع",
+        "fr": "📥 Télécharger Facture de Vente",
+        "en": "📥 Download Sale Invoice"
     },
     "download_print_invoice": {
-        "ar": "تحميل فاتورة الطباعة",
-        "fr": "Télécharger Facture d'Impression",
-        "en": "Download Print Invoice"
+        "ar": "📥 تحميل فاتورة الطباعة",
+        "fr": "📥 Télécharger Facture d'Impression",
+        "en": "📥 Download Print Invoice"
     },
     "download_order": {
-        "ar": "تحميل الطلبية",
-        "fr": "Télécharger la Commande",
-        "en": "Download Order"
+        "ar": "📥 تحميل الطلبية",
+        "fr": "📥 Télécharger la Commande",
+        "en": "📥 Download Order"
     },
     "all_sales": {
-        "ar": "جميع المبيعات (للفوترة)",
-        "fr": "Toutes les Ventes (pour facturation)",
-        "en": "All Sales (for invoicing)"
+        "ar": "📊 جميع المبيعات (للفوترة)",
+        "fr": "📊 Toutes les Ventes (pour facturation)",
+        "en": "📊 All Sales (for invoicing)"
     },
     "new_order": {
-        "ar": "➕إضافة طلبية جديدة",
-        "fr": "➕Nouvelle Commande",
-        "en": "➕New Order"
+        "ar": "➕ إضافة طلبية جديدة",
+        "fr": "➕ Nouvelle Commande",
+        "en": "➕ New Order"
     },
     "requested_qty": {
-        "ar": "الكمية المطلوبة",
-        "fr": "Quantité Demandée",
-        "en": "Requested Quantity"
+        "ar": "🔢 الكمية المطلوبة",
+        "fr": "🔢 Quantité Demandée",
+        "en": "🔢 Requested Quantity"
     },
     "unit_price_est": {
-        "ar": "سعر الوحدة (تقديري)",
-        "fr": "Prix Unitaire (Estimé)",
-        "en": "Unit Price (Estimated)"
+        "ar": "💲 سعر الوحدة (تقديري)",
+        "fr": "💲 Prix Unitaire (Estimé)",
+        "en": "💲 Unit Price (Estimated)"
     },
     "add_to_order": {
-        "ar": "➕أضف للطلبية",
-        "fr": "➕Ajouter à la Commande",
-        "en": "➕Add to Order"
+        "ar": "➕ أضف للطلبية",
+        "fr": "➕ Ajouter à la Commande",
+        "en": "➕ Add to Order"
     },
     "current_order": {
-        "ar": "الطلبية الحالية",
-        "fr": "Commande Actuelle",
-        "en": "Current Order"
+        "ar": "📋 الطلبية الحالية",
+        "fr": "📋 Commande Actuelle",
+        "en": "📋 Current Order"
     },
     "estimated_total": {
-        "ar": "المجموع التقديري",
-        "fr": "Total Estimé",
-        "en": "Estimated Total"
+        "ar": "💰 المجموع التقديري",
+        "fr": "💰 Total Estimé",
+        "en": "💰 Estimated Total"
     },
     "save_order": {
-        "ar": "حفظ الطلبية",
-        "fr": "Sauvegarder la Commande",
-        "en": "Save Order"
+        "ar": "💾 حفظ الطلبية",
+        "fr": "💾 Sauvegarder la Commande",
+        "en": "💾 Save Order"
     },
     "print_order": {
-        "ar": "طباعة الطلبية",
-        "fr": "Imprimer la Commande",
-        "en": "Print Order"
+        "ar": "🖨️ طباعة الطلبية",
+        "fr": "🖨️ Imprimer la Commande",
+        "en": "🖨️ Print Order"
     },
     "clear_order": {
-        "ar": "تفريغ الطلبية",
-        "fr": "Vider la Commande",
-        "en": "Clear Order"
+        "ar": "🗑️ تفريغ الطلبية",
+        "fr": "🗑️ Vider la Commande",
+        "en": "🗑️ Clear Order"
     },
     "previous_orders": {
-        "ar": "الطلبيات السابقة",
-        "fr": "Commandes Précédentes",
-        "en": "Previous Orders"
+        "ar": "📋 الطلبيات السابقة",
+        "fr": "📋 Commandes Précédentes",
+        "en": "📋 Previous Orders"
     },
     "confirm_reception": {
-        "ar": "✅تأكيد استلام طلبية",
-        "fr": "✅Confirmer Réception Commande",
-        "en": "✅Confirm Order Reception"
+        "ar": "✅ تأكيد استلام طلبية",
+        "fr": "✅ Confirmer Réception Commande",
+        "en": "✅ Confirm Order Reception"
     },
     "select_order_confirm": {
-        "ar": "اختر الطلبية لتأكيد استلامها",
-        "fr": "Choisir la commande à confirmer",
-        "en": "Select order to confirm"
+        "ar": "🔍 اختر الطلبية لتأكيد استلامها",
+        "fr": "🔍 Choisir la commande à confirmer",
+        "en": "🔍 Select order to confirm"
     },
     "confirm_button": {
-        "ar": "✅تأكيد الاستلام",
-        "fr": "✅Confirmer la Réception",
-        "en": "✅Confirm Reception"
+        "ar": "✅ تأكيد الاستلام",
+        "fr": "✅ Confirmer la Réception",
+        "en": "✅ Confirm Reception"
     },
     "no_pending_orders": {
-        "ar": "لا توجد طلبيات قيد الانتظار",
-        "fr": "Aucune commande en attente",
-        "en": "No pending orders"
+        "ar": "ℹ️ لا توجد طلبيات قيد الانتظار",
+        "fr": "ℹ️ Aucune commande en attente",
+        "en": "ℹ️ No pending orders"
     },
     "order_saved": {
-        "ar": "✅تم حفظ الطلبية بنجاح!",
-        "fr": "✅Commande sauvegardée avec succès!",
-        "en": "✅Order saved successfully!"
+        "ar": "✅ تم حفظ الطلبية بنجاح!",
+        "fr": "✅ Commande sauvegardée avec succès!",
+        "en": "✅ Order saved successfully!"
     },
     "order_received": {
-        "ar": "✅تم تأكيد الاستلام وتحديث المخزون!",
-        "fr": "✅Réception confirmée et stock mis à jour!",
-        "en": "✅Reception confirmed and stock updated!"
+        "ar": "✅ تم تأكيد الاستلام وتحديث المخزون!",
+        "fr": "✅ Réception confirmée et stock mis à jour!",
+        "en": "✅ Reception confirmed and stock updated!"
     },
     "quick_stats": {
-        "ar": "إحصائيات سريعة",
-        "fr": "Statistiques Rapides",
-        "en": "Quick Stats"
+        "ar": "📊 إحصائيات سريعة",
+        "fr": "📊 Statistiques Rapides",
+        "en": "📊 Quick Stats"
     },
     "products_count": {
-        "ar": "المنتجات",
-        "fr": "Produits",
-        "en": "Products"
+        "ar": "📦 المنتجات",
+        "fr": "📦 Produits",
+        "en": "📦 Products"
     },
     "sales_count": {
-        "ar": "المبيعات",
-        "fr": "Ventes",
-        "en": "Sales"
+        "ar": "💰 المبيعات",
+        "fr": "💰 Ventes",
+        "en": "💰 Sales"
     },
     "orders_count": {
-        "ar": "الطلبيات",
-        "fr": "Commandes",
-        "en": "Orders"
+        "ar": "📋 الطلبيات",
+        "fr": "📋 Commandes",
+        "en": "📋 Orders"
     },
     "error_generic": {
-        "ar": "❌حدث خطأ. الرجاء المحاولة مرة أخرى.",
-        "fr": "❌Une erreur est survenue. Veuillez réessayer.",
-        "en": "❌An error occurred. Please try again."
+        "ar": "❌ حدث خطأ. الرجاء المحاولة مرة أخرى.",
+        "fr": "❌ Une erreur est survenue. Veuillez réessayer.",
+        "en": "❌ An error occurred. Please try again."
     },
     "fill_all_fields": {
-        "ar": "الرجاء ملء جميع الحقول",
-        "fr": "Veuillez remplir tous les champs",
-        "en": "Please fill all fields"
+        "ar": "⚠️ الرجاء ملء جميع الحقول",
+        "fr": "⚠️ Veuillez remplir tous les champs",
+        "en": "⚠️ Please fill all fields"
     },
     "product_added": {
-        "ar": "✅تم إضافة المنتج بنجاح!",
-        "fr": "✅Produit ajouté avec succès!",
-        "en": "✅Product added successfully!"
+        "ar": "✅ تم إضافة المنتج بنجاح!",
+        "fr": "✅ Produit ajouté avec succès!",
+        "en": "✅ Product added successfully!"
     },
     "product_updated": {
-        "ar": "✅تم تحديث المنتج بنجاح!",
-        "fr": "✅Produit mis à jour avec succès!",
-        "en": "✅Product updated successfully!"
+        "ar": "✅ تم تحديث المنتج بنجاح!",
+        "fr": "✅ Produit mis à jour avec succès!",
+        "en": "✅ Product updated successfully!"
     },
     "export_excel": {
-        "ar": "تصدير Excel",
-        "fr": "Exporter Excel",
-        "en": "Export Excel"
+        "ar": "📤 تصدير Excel",
+        "fr": "📤 Exporter Excel",
+        "en": "📤 Export Excel"
     },
     "import_excel": {
-        "ar": "استيراد Excel",
-        "fr": "Importer Excel",
-        "en": "Import Excel"
+        "ar": "📥 استيراد Excel",
+        "fr": "📥 Importer Excel",
+        "en": "📥 Import Excel"
     },
     "import_success": {
-        "ar": "✅تم الاستيراد بنجاح!",
-        "fr": "✅Import réussi!",
-        "en": "✅Import successful!"
+        "ar": "✅ تم الاستيراد بنجاح!",
+        "fr": "✅ Import réussi!",
+        "en": "✅ Import successful!"
     },
     "lang_select": {
-        "ar": "اللغة",
-        "fr": "Langue",
-        "en": "Language"
+        "ar": "🌐 اللغة",
+        "fr": "🌐 Langue",
+        "en": "🌐 Language"
     },
     "no_data": {
-        "ar": "لا توجد بيانات",
-        "fr": "Aucune donnée",
-        "en": "No data"
+        "ar": "ℹ️ لا توجد بيانات",
+        "fr": "ℹ️ Aucune donnée",
+        "en": "ℹ️ No data"
     },
     "invoice_printed": {
-        "ar": "تمت طباعة الفاتورة تلقائياً",
-        "fr": "Facture imprimée automatiquement",
-        "en": "Invoice printed automatically"
+        "ar": "🖨️ تمت طباعة الفاتورة تلقائياً",
+        "fr": "🖨️ Facture imprimée automatiquement",
+        "en": "🖨️ Invoice printed automatically"
     },
     "scan_success_sound": {
-        "ar": "✅تم المسح بنجاح!",
-        "fr": "✅Scan réussi!",
-        "en": "✅Scan successful!"
+        "ar": "✅ تم المسح بنجاح!",
+        "fr": "✅ Scan réussi!",
+        "en": "✅ Scan successful!"
     },
     "live_sync_label": {
-        "ar": "مزامنة مباشرة",
-        "fr": "Synchro Live",
-        "en": "Live Sync"
+        "ar": "🔄 مزامنة مباشرة",
+        "fr": "🔄 Synchro Live",
+        "en": "🔄 Live Sync"
     },
     "live_sync_active_msg": {
-        "ar": "المزامنة المباشرة نشطة - تحديث كل 5 ثواني",
-        "fr": "Synchro Live active - Mise à jour toutes les 5 secondes",
-        "en": "Live Sync active - Updating every 5 seconds"
+        "ar": "✅ المزامنة المباشرة نشطة - تحديث كل 5 ثواني",
+        "fr": "✅ Synchro Live active - Mise à jour toutes les 5 secondes",
+        "en": "✅ Live Sync active - Updating every 5 seconds"
     },
     "stock_scanner_add": {
-        "ar": "مسح الباركود للإضافة",
-        "fr": "Scanner pour ajouter",
-        "en": "Scan barcode to add"
+        "ar": "📷 مسح الباركود للإضافة",
+        "fr": "📷 Scanner pour ajouter",
+        "en": "📷 Scan barcode to add"
     },
     "stock_scanner_update": {
-        "ar": "مسح الباركود للتحديث",
-        "fr": "Scanner pour modifier",
-        "en": "Scan barcode to update"
+        "ar": "📷 مسح الباركود للتحديث",
+        "fr": "📷 Scanner pour modifier",
+        "en": "📷 Scan barcode to update"
     },
     "service_select": {
-        "ar": "اختر الخدمة المطلوبة:",
-        "fr": "Choisissez le service:",
-        "en": "Select service:"
+        "ar": "🔍 اختر الخدمة المطلوبة:",
+        "fr": "🔍 Choisissez le service:",
+        "en": "🔍 Select service:"
     },
     "service_selected": {
-        "ar": "الخدمة المختارة:",
-        "fr": "Service sélectionné:",
-        "en": "Selected service:"
+        "ar": "✅ الخدمة المختارة:",
+        "fr": "✅ Service sélectionné:",
+        "en": "✅ Selected service:"
     },
     "service_quantity": {
-        "ar": "الكمية / العدد",
-        "fr": "Quantité / Nombre",
-        "en": "Quantity / Number"
+        "ar": "🔢 الكمية / العدد",
+        "fr": "🔢 Quantité / Nombre",
+        "en": "🔢 Quantity / Number"
     },
     "service_confirm": {
-        "ar": "✅إتمام الخدمة وطباعة الفاتورة",
-        "fr": "✅Terminer le service et imprimer la facture",
-        "en": "✅Complete service and print invoice"
+        "ar": "✅ إتمام الخدمة وطباعة الفاتورة",
+        "fr": "✅ Terminer le service et imprimer la facture",
+        "en": "✅ Complete service and print invoice"
     },
     "service_history": {
-        "ar": "سجل الخدمات",
-        "fr": "Historique des services",
-        "en": "Service History"
+        "ar": "📋 سجل الخدمات",
+        "fr": "📋 Historique des services",
+        "en": "📋 Service History"
     },
     "service_total": {
-        "ar": "إجمالي الخدمات",
-        "fr": "Total des services",
-        "en": "Total Services"
+        "ar": "💰 إجمالي الخدمات",
+        "fr": "💰 Total des services",
+        "en": "💰 Total Services"
     },
     "service_client_info": {
-        "ar": "معلومات العميل (اختياري)",
-        "fr": "Informations client (Optionnel)",
-        "en": "Client Information (Optional)"
+        "ar": "👤 معلومات العميل (اختياري)",
+        "fr": "👤 Informations client (Optionnel)",
+        "en": "👤 Client Information (Optional)"
     },
     "service_client_name": {
-        "ar": "اسم العميل",
-        "fr": "Nom du client",
-        "en": "Client Name"
+        "ar": "👤 اسم العميل",
+        "fr": "👤 Nom du client",
+        "en": "👤 Client Name"
     },
     "service_client_tel": {
-        "ar": "رقم الهاتف",
-        "fr": "Numéro de téléphone",
-        "en": "Phone Number"
+        "ar": "📞 رقم الهاتف",
+        "fr": "📞 Numéro de téléphone",
+        "en": "📞 Phone Number"
     },
     "service_no_history": {
-        "ar": "لا توجد خدمات سابقة",
-        "fr": "Aucun service précédent",
-        "en": "No previous services"
+        "ar": "ℹ️ لا توجد خدمات سابقة",
+        "fr": "ℹ️ Aucun service précédent",
+        "en": "ℹ️ No previous services"
     },
     "add_service": {
-        "ar": "➕إضافة خدمة جديدة",
-        "fr": "➕Ajouter un service",
-        "en": "➕Add New Service"
+        "ar": "➕ إضافة خدمة جديدة",
+        "fr": "➕ Ajouter un service",
+        "en": "➕ Add New Service"
     },
     "service_name_input": {
-        "ar": "اسم الخدمة",
-        "fr": "Nom du service",
-        "en": "Service Name"
+        "ar": "📝 اسم الخدمة",
+        "fr": "📝 Nom du service",
+        "en": "📝 Service Name"
     },
     "service_price_input_label": {
-        "ar": "السعر (DH)",
-        "fr": "Prix (DH)",
-        "en": "Price (DH)"
+        "ar": "💲 السعر (DH)",
+        "fr": "💲 Prix (DH)",
+        "en": "💲 Price (DH)"
     },
     "save_service": {
-        "ar": "حفظ الخدمة",
-        "fr": "Sauvegarder le service",
-        "en": "Save Service"
+        "ar": "💾 حفظ الخدمة",
+        "fr": "💾 Sauvegarder le service",
+        "en": "💾 Save Service"
     },
     "service_list": {
-        "ar": "قائمة الخدمات",
-        "fr": "Liste des services",
-        "en": "Service List"
+        "ar": "📋 قائمة الخدمات",
+        "fr": "📋 Liste des services",
+        "en": "📋 Service List"
     },
     "whatsapp_label": {
-        "ar": "واتساب",
-        "fr": "WhatsApp",
-        "en": "WhatsApp"
+        "ar": "💬 واتساب",
+        "fr": "💬 WhatsApp",
+        "en": "💬 WhatsApp"
     },
     "whatsapp_number": {
-        "ar": "رقم الهاتف (مع رمز البلد):",
-        "fr": "Numéro de téléphone (avec code pays):",
-        "en": "Phone Number (with country code):"
+        "ar": "📞 رقم الهاتف (مع رمز البلد):",
+        "fr": "📞 Numéro de téléphone (avec code pays):",
+        "en": "📞 Phone Number (with country code):"
     },
     "whatsapp_message": {
-        "ar": "الرسالة:",
-        "fr": "Message:",
-        "en": "Message:"
+        "ar": "✏️ الرسالة:",
+        "fr": "✏️ Message:",
+        "en": "✏️ Message:"
     },
     "whatsapp_open": {
-        "ar": "فتح WhatsApp",
-        "fr": "Ouvrir WhatsApp",
-        "en": "Open WhatsApp"
+        "ar": "💬 فتح WhatsApp",
+        "fr": "💬 Ouvrir WhatsApp",
+        "en": "💬 Open WhatsApp"
     },
     "office_label": {
-        "ar": "تطبيقات Microsoft Office",
-        "fr": "Applications Microsoft Office",
-        "en": "Microsoft Office Apps"
+        "ar": "📁 تطبيقات Microsoft Office",
+        "fr": "📁 Applications Microsoft Office",
+        "en": "📁 Microsoft Office Apps"
     },
     "google_embedded": {
-        "ar": "Google مدمج",
-        "fr": "Google intégré",
-        "en": "Embedded Google"
+        "ar": "🌐 Google مدمج",
+        "fr": "🌐 Google intégré",
+        "en": "🌐 Embedded Google"
     },
     "show_google": {
-        "ar": "إظهار Google مدمج",
-        "fr": "Afficher Google intégré",
-        "en": "Show Embedded Google"
+        "ar": "🌐 إظهار Google مدمج",
+        "fr": "🌐 Afficher Google intégré",
+        "en": "🌐 Show Embedded Google"
     },
     "voice_command": {
-        "ar": "تحكم صوتي",
-        "fr": "Commande Vocale",
-        "en": "Voice Command"
+        "ar": "🎤 تحكم صوتي",
+        "fr": "🎤 Commande Vocale",
+        "en": "🎤 Voice Command"
     },
     "voice_listening": {
-        "ar": "جاري الاستماع...",
-        "fr": "Écoute en cours...",
-        "en": "Listening..."
+        "ar": "🎤 جاري الاستماع...",
+        "fr": "🎤 Écoute en cours...",
+        "en": "🎤 Listening..."
     },
     "voice_start": {
-        "ar": "ابدأ الاستماع",
-        "fr": "Commencer l'écoute",
-        "en": "Start Listening"
+        "ar": "▶️ ابدأ الاستماع",
+        "fr": "▶️ Commencer l'écoute",
+        "en": "▶️ Start Listening"
     },
     "voice_stop": {
-        "ar": "إيقاف الاستماع",
-        "fr": "Arrêter l'écoute",
-        "en": "Stop Listening"
+        "ar": "⏹️ إيقاف الاستماع",
+        "fr": "⏹️ Arrêter l'écoute",
+        "en": "⏹️ Stop Listening"
     },
     "invoice_number": {
-        "ar": "رقم الفاتورة",
-        "fr": "Numéro de facture",
-        "en": "Invoice Number"
+        "ar": "🧾 رقم الفاتورة",
+        "fr": "🧾 Numéro de facture",
+        "en": "🧾 Invoice Number"
     },
     "top_products": {
-        "ar": "المنتجات الأكثر ربحية",
-        "fr": "Produits les plus rentables",
-        "en": "Most Profitable Products"
+        "ar": "🏆 المنتجات الأكثر ربحية",
+        "fr": "🏆 Produits les plus rentables",
+        "en": "🏆 Most Profitable Products"
     },
     "compare_periods": {
-        "ar": "مقارنة الفترات",
-        "fr": "Comparer les périodes",
-        "en": "Compare Periods"
+        "ar": "📊 مقارنة الفترات",
+        "fr": "📊 Comparer les périodes",
+        "en": "📊 Compare Periods"
     },
     "sales_chart": {
-        "ar": "رسم بياني للمبيعات",
-        "fr": "Graphique des ventes",
-        "en": "Sales Chart"
+        "ar": "📈 رسم بياني للمبيعات",
+        "fr": "📈 Graphique des ventes",
+        "en": "📈 Sales Chart"
     },
     "sales_prediction": {
-        "ar": "توقعات المبيعات",
-        "fr": "Prévisions des ventes",
-        "en": "Sales Prediction"
+        "ar": "🔮 توقعات المبيعات",
+        "fr": "🔮 Prévisions des ventes",
+        "en": "🔮 Sales Prediction"
     },
 }
 
@@ -1492,10 +1492,10 @@ def voice_command_component():
     voice_html = """
     <div id="voice-control">
         <button id="start-voice" style="padding:10px 20px; background:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
-            ابدأ الاستماع
+            🎤 ابدأ الاستماع
         </button>
         <button id="stop-voice" style="padding:10px 20px; background:#f44336; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px; display:none;">
-            إيقاف
+            ⏹️ إيقاف
         </button>
         <p id="voice-status" style="margin-top:10px; color:#666;"></p>
         <p id="voice-result" style="font-size:18px; font-weight:bold; color:#2196F3;"></p>
@@ -1515,7 +1515,7 @@ def voice_command_component():
         isListening = true;
         document.getElementById('start-voice').style.display = 'none';
         document.getElementById('stop-voice').style.display = 'inline-block';
-        document.getElementById('voice-status').innerText = 'جاري الاستماع...';
+        document.getElementById('voice-status').innerText = '🎤 جاري الاستماع...';
     });
 
     document.getElementById('stop-voice').addEventListener('click', function() {
@@ -1638,9 +1638,9 @@ if not st.session_state.authenticated:
 
 # ==================== الشريط الجانبي ==================== #
 with st.sidebar:
-    st.title("OUZOUD SERVICES")
+    st.title("🏪 OUZOUD SERVICES")
 
-    st.markdown(f"### {t('lang_select')}")
+    st.markdown(f"### 🌐 {t('lang_select')}")
     lang_col1, lang_col2, lang_col3 = st.columns(3)
     with lang_col1:
         if st.button("🇲🇦"):
@@ -1674,7 +1674,7 @@ with st.sidebar:
     st.divider()
 
     # زر المزامنة المباشرة
-    if st.button(t("live_sync_label")):
+    if st.button("🔄 " + t("live_sync_label")):
         st.session_state.live_sync_active = not st.session_state.live_sync_active
         if st.session_state.live_sync_active:
             st.success(t("live_sync_active_msg"))
@@ -1682,7 +1682,7 @@ with st.sidebar:
             st.rerun()
 
     st.divider()
-    st.markdown(f"### {t('quick_stats')}")
+    st.markdown(f"### 📊 {t('quick_stats')}")
     try:
         nb_produits = len(get_df("stock"))
         nb_ventes = len(get_df("ventes"))
@@ -1694,14 +1694,14 @@ with st.sidebar:
         pass
 
     st.divider()
-    st.markdown("### OUZOUD SERVICES")
+    st.markdown("### 🏪 OUZOUD SERVICES")
     st.markdown("📞 07.81.02.82.43")
     st.markdown("📧 maaridprint@gmail.com")
     st.markdown(f"🕐 {datetime.now().strftime('%d/%m/%Y %H:%M')}")
 
 # ==================== القائمة الرئيسية ==================== #
 if menu == t("dashboard"):
-    st.header(t("dashboard"))
+    st.header("📊 " + t("dashboard"))
 
     # إحصائيات سريعة
     df_v = get_df("ventes")
@@ -1727,7 +1727,7 @@ if menu == t("dashboard"):
     st.divider()
 
     # ========== المنتجات الأكثر ربحية ========== #
-    st.subheader(t("top_products"))
+    st.subheader("🏆 " + t("top_products"))
     if not df_v.empty:
         top_products = df_v.groupby('Nom')['Total'].sum().sort_values(ascending=False).head(10)
         if not top_products.empty:
@@ -1737,7 +1737,7 @@ if menu == t("dashboard"):
     st.divider()
 
     # ========== مقارنة الفترات ========== #
-    st.subheader(t("compare_periods"))
+    st.subheader("📊 " + t("compare_periods"))
     col_p1, col_p2 = st.columns(2)
     with col_p1:
         date1_start = st.date_input("من", value=datetime.now() - timedelta(days=7), key="p1_start")
@@ -1746,70 +1746,70 @@ if menu == t("dashboard"):
         date2_start = st.date_input("من", value=datetime.now() - timedelta(days=14), key="p2_start")
         date2_end = st.date_input("إلى", value=datetime.now() - timedelta(days=7), key="p2_end")
 
-    if st.button("قارن"):
+    if st.button("📊 قارن"):
         df_v['Date_dt'] = pd.to_datetime(df_v['Date'], format='%d/%m/%Y %H:%M', errors='coerce')
         p1 = df_v[(df_v['Date_dt'].dt.date >= date1_start) & (df_v['Date_dt'].dt.date <= date1_end)]['Total'].sum()
         p2 = df_v[(df_v['Date_dt'].dt.date >= date2_start) & (df_v['Date_dt'].dt.date <= date2_end)]['Total'].sum()
 
         col_m1, col_m2, col_m3 = st.columns(3)
         with col_m1:
-            st.metric("الفترة 1", f"{p1:.0f} DH")
+            st.metric("📅 الفترة 1", f"{p1:.0f} DH")
         with col_m2:
-            st.metric("الفترة 2", f"{p2:.0f} DH")
+            st.metric("📅 الفترة 2", f"{p2:.0f} DH")
         with col_m3:
             diff = p1 - p2
-            st.metric("الفرق", f"{diff:.0f} DH", delta=f"{(diff/p2*100 if p2 > 0 else 0):.1f}%")
+            st.metric("📊 الفرق", f"{diff:.0f} DH", delta=f"{(diff/p2*100 if p2 > 0 else 0):.1f}%")
 
     st.divider()
 
     # ========== رسم بياني للمبيعات ========== #
-    st.subheader(t("sales_chart"))
+    st.subheader("📈 " + t("sales_chart"))
     if not df_v.empty:
         df_v['Date_dt'] = pd.to_datetime(df_v['Date'], format='%d/%m/%Y %H:%M', errors='coerce')
         daily_sales = df_v.groupby(df_v['Date_dt'].dt.date)['Total'].sum().reset_index()
-        daily_sales.columns = ['التاريخ', 'المبيعات']
+        daily_sales.columns = ['📅 التاريخ', '💰 المبيعات']
 
-        fig = px.line(daily_sales.tail(30), x='التاريخ', y='المبيعات', title="تطور المبيعات (آخر 30 يوم)")
+        fig = px.line(daily_sales.tail(30), x='📅 التاريخ', y='💰 المبيعات', title="📈 تطور المبيعات (آخر 30 يوم)")
         st.plotly_chart(fig, use_container_width=True)
 
     st.divider()
 
     # ========== توقعات المبيعات ========== #
-    st.subheader(t("sales_prediction"))
+    st.subheader("🔮 " + t("sales_prediction"))
     if not df_v.empty:
         df_v['Date_dt'] = pd.to_datetime(df_v['Date'], format='%d/%m/%Y %H:%M', errors='coerce')
         daily_sales = df_v.groupby(df_v['Date_dt'].dt.date)['Total'].sum().reset_index()
-        daily_sales.columns = ['التاريخ', 'المبيعات']
+        daily_sales.columns = ['📅 التاريخ', '💰 المبيعات']
 
         if len(daily_sales) > 7:
-            avg_sales = daily_sales['المبيعات'].tail(7).mean()
-            last_sales = daily_sales['المبيعات'].tail(1).values[0]
+            avg_sales = daily_sales['💰 المبيعات'].tail(7).mean()
+            last_sales = daily_sales['💰 المبيعات'].tail(1).values[0]
 
             col_t1, col_t2, col_t3 = st.columns(3)
             with col_t1:
-                st.metric("متوسط المبيعات (7 أيام)", f"{avg_sales:.0f} DH")
+                st.metric("📊 متوسط المبيعات (7 أيام)", f"{avg_sales:.0f} DH")
             with col_t2:
-                st.metric("آخر يوم", f"{last_sales:.0f} DH")
+                st.metric("📅 آخر يوم", f"{last_sales:.0f} DH")
             with col_t3:
                 prediction = (avg_sales * 0.7 + last_sales * 0.3)
-                st.metric("توقعات الغد", f"{prediction:.0f} DH")
+                st.metric("🔮 توقعات الغد", f"{prediction:.0f} DH")
 
-    st.subheader("آخر المبيعات")
+    st.subheader("📋 آخر المبيعات")
     if not df_v.empty:
         st.dataframe(df_v.tail(5))
     else:
         st.info(t("no_data"))
 
 if menu == t("pos"):
-    st.header(t("pos"))
+    st.header("💰 " + t("pos"))
 
     # ========== نظام التحكم الصوتي ========== #
-    with st.expander(t("voice_command"), expanded=False):
+    with st.expander("🎤 " + t("voice_command"), expanded=False):
         voice_command_component()
 
     # Mode Auto Sale
     st.session_state.auto_sale_mode = st.checkbox(
-        t("auto_sale_mode"),
+        "🤖 " + t("auto_sale_mode"),
         value=st.session_state.auto_sale_mode
     )
 
@@ -1820,7 +1820,7 @@ if menu == t("pos"):
         auto_sale_scanner()
 
         code_auto = st.text_input(
-            "Code-barres",
+            "📱 Code-barres",
             key="auto_scan_input",
             label_visibility="collapsed",
             placeholder="⏳ En attente du scan... Scannez ici!"
@@ -1853,54 +1853,54 @@ if menu == t("pos"):
 
                     play_success_sound()
 
-                    st.success(f"✅{product.get('Nom', code_auto)} - {total:.2f} DH | {t('invoice_number')}: {invoice_number}")
+                    st.success(f"✅ {product.get('Nom', code_auto)} - {total:.2f} DH | {t('invoice_number')}: {invoice_number}")
                     st.balloons()
 
                     time.sleep(1.5)
                     st.rerun()
 
                 else:
-                    st.error(f"❌Stock épuisé pour {product.get('Nom', code_auto)}! Quantité disponible: {product['Quantité']}")
+                    st.error(f"❌ Stock épuisé pour {product.get('Nom', code_auto)}! Quantité disponible: {product['Quantité']}")
             else:
                 if code_auto:
                     st.error(t("product_not_found"))
 
     else:
-        use_scanner = st.checkbox(t("activate_scanner"))
+        use_scanner = st.checkbox("📷 " + t("activate_scanner"))
         if use_scanner:
             fast_barcode_scanner_with_qty(t("barcode"), t("quantity"))
 
         mode = st.radio(
-            t("sale_type"),
+            "📌 " + t("sale_type"),
             [t("normal_sale"), t("scan_qr"), t("free_sale"), t("cart")]
         )
 
         # ====== Normal Sale ======
         if mode == t("normal_sale"):
             # Scanner automatique
-            use_normal_scanner = st.checkbox("تفعيل الماسح التلقائي", key="normal_scanner_toggle")
+            use_normal_scanner = st.checkbox("📷 تفعيل الماسح التلقائي", key="normal_scanner_toggle")
             if use_normal_scanner:
                 st.info("📷 امسح الباركود الآن - سيتم كتابته تلقائياً")
                 mobile_barcode_scanner("vente_normale_code")
 
             col1, col2 = st.columns(2)
             with col1:
-                code = st.text_input(t("barcode"), key="vente_normale_code")
+                code = st.text_input("📱 " + t("barcode"), key="vente_normale_code")
             with col2:
-                qty = st.number_input(t("quantity"), min_value=0.0, step=0.1, key="vente_normale_qty")
+                qty = st.number_input("🔢 " + t("quantity"), min_value=0.0, step=0.1, key="vente_normale_qty")
 
             if not code:
                 df_stock_sale = get_df("stock")
                 if not df_stock_sale.empty and 'Nom' in df_stock_sale.columns:
                     selected_by_name = st.selectbox(
-                        t("or_choose_name"),
+                        "📝 " + t("or_choose_name"),
                         [""] + df_stock_sale['Nom'].tolist(),
                         key="select_by_name"
                     )
                     if selected_by_name:
                         code = selected_by_name
 
-            if st.button(t("confirm_sale")):
+            if st.button("✅ " + t("confirm_sale")):
                 if code and qty > 0:
                     product = get_product_info(code)
                     if product:
@@ -1927,10 +1927,10 @@ if menu == t("pos"):
                             }).execute()
                             supabase.table("stock").update({"Quantité": q_old - qty}).eq("id", doc_id).execute()
                             play_success_sound()
-                            st.success(f"{t('sale_success')} {nom} - {total:.2f} DH | Facture: {invoice_number}")
+                            st.success(f"✅ {t('sale_success')} {nom} - {total:.2f} DH | Facture: {invoice_number}")
                             st.rerun()
                         else:
-                            st.error(f"{t('low_stock_warning')} {q_old}")
+                            st.error(f"⚠️ {t('low_stock_warning')} {q_old}")
                     else:
                         st.error(t("product_not_found"))
                 else:
@@ -1938,21 +1938,21 @@ if menu == t("pos"):
 
         # ====== Scan QR ======
         elif mode == t("scan_qr"):
-            st.subheader(t("scan_qr"))
+            st.subheader("📱 " + t("scan_qr"))
 
             # Scanner automatique
-            use_qr_scanner = st.checkbox("تفعيل الماسح التلقائي", key="qr_scanner_toggle")
+            use_qr_scanner = st.checkbox("📷 تفعيل الماسح التلقائي", key="qr_scanner_toggle")
             if use_qr_scanner:
                 st.info("📷 امسح الباركود الآن - سيتم كتابته تلقائياً")
                 mobile_barcode_scanner("qr_code")
 
             col1, col2 = st.columns(2)
             with col1:
-                code_qr = st.text_input(f"{t('barcode')} (auto)", key="qr_code")
+                code_qr = st.text_input(f"📱 {t('barcode')} (auto)", key="qr_code")
             with col2:
-                qty_qr = st.number_input(t("quantity"), min_value=0.0, step=0.1, value=1.0, key="qr_qty")
+                qty_qr = st.number_input("🔢 " + t("quantity"), min_value=0.0, step=0.1, value=1.0, key="qr_qty")
 
-            if st.button(t("confirm_sale"), key="qr_sale"):
+            if st.button("✅ " + t("confirm_sale"), key="qr_sale"):
                 if code_qr and qty_qr > 0:
                     product = get_product_info(code_qr)
                     if product:
@@ -1978,10 +1978,10 @@ if menu == t("pos"):
                             }).execute()
                             supabase.table("stock").update({"Quantité": q_old - qty_qr}).eq("id", doc_id).execute()
                             play_success_sound()
-                            st.success(f"{t('sale_success')} {nom} - {qty_qr} x {prix} = {total:.2f} DH | Facture: {invoice_number}")
+                            st.success(f"✅ {t('sale_success')} {nom} - {qty_qr} x {prix} = {total:.2f} DH | Facture: {invoice_number}")
                             st.rerun()
                         else:
-                            st.error(f"{t('low_stock_warning')} {q_old}")
+                            st.error(f"⚠️ {t('low_stock_warning')} {q_old}")
                     else:
                         st.error(t("product_not_found"))
                 else:
@@ -1991,12 +1991,12 @@ if menu == t("pos"):
         elif mode == t("free_sale"):
             col1, col2 = st.columns(2)
             with col1:
-                name = st.text_input(t("product_name"))
+                name = st.text_input("📝 " + t("product_name"))
             with col2:
-                price = st.number_input(t("price"), min_value=0.0)
-            qty_libre = st.number_input(t("quantity"), min_value=0.0, step=0.1, value=1.0)
+                price = st.number_input("💲 " + t("price"), min_value=0.0)
+            qty_libre = st.number_input("🔢 " + t("quantity"), min_value=0.0, step=0.1, value=1.0)
 
-            if st.button(t("confirm_sale")):
+            if st.button("✅ " + t("confirm_sale")):
                 if name and price > 0:
                     total_libre = float(price) * qty_libre
 
@@ -2013,14 +2013,14 @@ if menu == t("pos"):
                         "Facture": invoice_number
                     }).execute()
                     play_success_sound()
-                    st.success(f"{t('sale_success')} {name} - {qty_libre} x {price} = {total_libre:.2f} DH | Facture: {invoice_number}")
+                    st.success(f"✅ {t('sale_success')} {name} - {qty_libre} x {price} = {total_libre:.2f} DH | Facture: {invoice_number}")
                     st.rerun()
 
         # ====== Cart ======
         elif mode == t("cart"):
             # اختيار نوع السلة: يدوي أو تلقائي
             cart_mode = st.radio(
-                t("cart_mode_label"),
+                "📌 " + t("cart_mode_label"),
                 [t("cart_manual"), t("cart_auto")],
                 horizontal=True
             )
@@ -2029,25 +2029,25 @@ if menu == t("pos"):
             if cart_mode == t("cart_manual"):
                 col1, col2 = st.columns([1, 1])
                 with col1:
-                    st.subheader(t("add_to_cart"))
+                    st.subheader("➕ " + t("add_to_cart"))
 
                     # Scanner automatique
-                    use_cart_scanner = st.checkbox("تفعيل الماسح التلقائي", key="cart_scanner_toggle")
+                    use_cart_scanner = st.checkbox("📷 تفعيل الماسح التلقائي", key="cart_scanner_toggle")
                     if use_cart_scanner:
                         st.info("📷 امسح الباركود الآن - سيتم كتابته تلقائياً")
                         mobile_barcode_scanner("panier_code")
 
-                    code = st.text_input(t("barcode"), key="panier_code")
-                    qty = st.number_input(f"{t('quantity')}:", min_value=0.0, step=0.1, key="panier_qty")
+                    code = st.text_input("📱 " + t("barcode"), key="panier_code")
+                    qty = st.number_input(f"🔢 {t('quantity')}:", min_value=0.0, step=0.1, key="panier_qty")
 
                     product = get_product_info(code) if code else None
                     prix_u = float(product['Prix']) if product else 0
                     nom_produit = product.get('Nom', code) if product else ""
 
                     if prix_u > 0:
-                        st.info(f"{t('product_name')}: {nom_produit} - {t('price')}: {prix_u:.2f} DH")
+                        st.info(f"📝 {t('product_name')}: {nom_produit} - 💲 {t('price')}: {prix_u:.2f} DH")
 
-                    if st.button(t("add_to_cart")):
+                    if st.button("➕ " + t("add_to_cart")):
                         if code and qty > 0 and prix_u > 0:
                             # التحقق إذا كان المنتج موجوداً مسبقاً في السلة
                             found = False
@@ -2065,17 +2065,17 @@ if menu == t("pos"):
                                     "Total": prix_u * qty,
                                     "Nom": nom_produit
                                 })
-                            st.success(f"{t('add_to_cart')}: {nom_produit} x {qty}")
+                            st.success(f"✅ {t('add_to_cart')}: {nom_produit} x {qty}")
                             st.rerun()
 
                 with col2:
-                    st.subheader(t("cart"))
+                    st.subheader("🛒 " + t("cart"))
                     if st.session_state.cart:
                         total_panier = sum(item['Total'] for item in st.session_state.cart)
                         st.table(pd.DataFrame(st.session_state.cart))
-                        st.metric(t("total"), f"{total_panier:.2f} DH")
+                        st.metric("💰 " + t("total"), f"{total_panier:.2f} DH")
 
-                        if st.button(t("finish_cart"), type="primary", use_container_width=True):
+                        if st.button("🏁 " + t("finish_cart"), type="primary", use_container_width=True):
                             for item in st.session_state.cart:
                                 product = get_product_info(item['Code'])
                                 if product:
@@ -2095,12 +2095,12 @@ if menu == t("pos"):
                             st.session_state.last_cart = st.session_state.cart.copy()
                             st.session_state.cart = []
                             play_success_sound()
-                            st.success(f"✅{t('invoice_printed')} | Facture: {invoice_number}")
+                            st.success(f"✅ {t('invoice_printed')} | Facture: {invoice_number}")
                             st.rerun()
 
                         col_btn1, col_btn2 = st.columns(2)
                         with col_btn1:
-                            if st.button(t("validate_cart"), use_container_width=True):
+                            if st.button("✅ " + t("validate_cart"), use_container_width=True):
                                 for item in st.session_state.cart:
                                     product = get_product_info(item['Code'])
                                     if product:
@@ -2117,7 +2117,7 @@ if menu == t("pos"):
                                 st.rerun()
 
                         with col_btn2:
-                            if st.button(t("clear_cart"), use_container_width=True):
+                            if st.button("🗑️ " + t("clear_cart"), use_container_width=True):
                                 st.session_state.cart = []
                                 st.rerun()
                     else:
@@ -2125,11 +2125,11 @@ if menu == t("pos"):
 
             # ========== السلة التلقائية (سكانير متواصل) ========== #
             else:
-                st.success(t("cart_auto_info"))
+                st.success("📷 " + t("cart_auto_info"))
                 auto_cart_scanner()
 
                 code_auto_cart = st.text_input(
-                    "Code-barres",
+                    "📱 Code-barres",
                     key="auto_cart_scan_input",
                     label_visibility="collapsed",
                     placeholder="📷 Scannez vos produits ici..."
@@ -2158,10 +2158,10 @@ if menu == t("pos"):
                                     "Nom": nom_produit
                                 })
                             play_success_sound()
-                            st.success(f"✅{product.get('Nom', code_auto_cart)} - {float(product['Prix']):.2f} DH ajouté au panier!")
+                            st.success(f"✅ {product.get('Nom', code_auto_cart)} - {float(product['Prix']):.2f} DH ajouté au panier!")
                             st.rerun()
                         else:
-                            st.error(f"❌Stock insuffisant pour {product.get('Nom', code_auto_cart)}")
+                            st.error(f"❌ Stock insuffisant pour {product.get('Nom', code_auto_cart)}")
                     else:
                         st.error(t("product_not_found"))
 
@@ -2172,7 +2172,7 @@ if menu == t("pos"):
                     total_panier = sum(item['Total'] for item in st.session_state.cart)
                     df_cart_display = pd.DataFrame(st.session_state.cart)
                     st.dataframe(df_cart_display[['Nom', 'Quantité', 'Prix', 'Total']], use_container_width=True)
-                    st.metric(t("total"), f"{total_panier:.2f} DH")
+                    st.metric("💰 " + t("total"), f"{total_panier:.2f} DH")
 
                     if st.button("💾 Enregistrer et Imprimer la Facture", type="primary", use_container_width=True, key="auto_finish_cart"):
                         for item in st.session_state.cart:
@@ -2194,7 +2194,7 @@ if menu == t("pos"):
                         st.session_state.last_cart = st.session_state.cart.copy()
                         st.session_state.cart = []
                         play_success_sound()
-                        st.success(f"✅{t('invoice_printed')} | Facture: {invoice_number}")
+                        st.success(f"✅ {t('invoice_printed')} | Facture: {invoice_number}")
                         st.balloons()
                         time.sleep(1.5)
                         st.rerun()
@@ -2203,26 +2203,26 @@ if menu == t("pos"):
                         st.session_state.cart = []
                         st.rerun()
                 else:
-                    st.info(t("cart_empty"))
+                    st.info("🛒 " + t("cart_empty"))
 
     st.divider()
-    st.subheader(t("recent_sales"))
+    st.subheader("📊 " + t("recent_sales"))
     df_ventes = get_df("ventes")
     if not df_ventes.empty:
         st.dataframe(df_ventes.tail(10))
         total_ventes = df_ventes['Total'].sum() if 'Total' in df_ventes.columns else 0
-        st.metric(t("total_sales"), f"{total_ventes:.2f} DH")
+        st.metric("💰 " + t("total_sales"), f"{total_ventes:.2f} DH")
     export_import_buttons("ventes", df_ventes)
 
 elif menu == t("stock"):
-    st.header(t("stock"))
+    st.header("📦 " + t("stock"))
 
     # خانة البحث
-    st.subheader(t("search_stock"))
+    st.subheader("🔍 " + t("search_stock"))
     search_term = st.text_input(
-        t("search_placeholder"),
+        "✏️ " + t("search_placeholder"),
         key="stock_search",
-        placeholder="اكتب اسم المنتج أو الباركود للبحث..."
+        placeholder="✏️ اكتب اسم المنتج أو الباركود للبحث..."
     )
 
     df_stock = get_df("stock")
@@ -2235,26 +2235,26 @@ elif menu == t("stock"):
         if df_stock.empty:
             st.info(t("no_results"))
         else:
-            st.success(f"{t('search_results')} {len(df_stock)} produit(s)")
+            st.success(f"✅ {t('search_results')} {len(df_stock)} produit(s)")
 
     # إضافة منتج جديد مع ماسح باركود
-    with st.expander(t("add_product"), expanded=True):
-        use_add_scanner = st.checkbox(t("stock_scanner_add"), key="add_scanner_checkbox")
+    with st.expander("➕ " + t("add_product"), expanded=True):
+        use_add_scanner = st.checkbox("📷 " + t("stock_scanner_add"), key="add_scanner_checkbox")
         if use_add_scanner:
             st.info("📷 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
             mobile_barcode_scanner("stock_barcode")
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            name = st.text_input(t("product_name"), key="stock_name")
+            name = st.text_input("📝 " + t("product_name"), key="stock_name")
         with col2:
-            price = st.number_input(t("price"), min_value=0.0, key="stock_price")
+            price = st.number_input("💲 " + t("price"), min_value=0.0, key="stock_price")
         with col3:
-            qty = st.number_input(t("quantity"), min_value=0.0, step=0.1, key="stock_qty")
+            qty = st.number_input("🔢 " + t("quantity"), min_value=0.0, step=0.1, key="stock_qty")
         with col4:
-            barcode = st.text_input(t("barcode_optional"), key="stock_barcode")
+            barcode = st.text_input("📱 " + t("barcode_optional"), key="stock_barcode")
 
-        if st.button(t("add_button"), key="stock_add_btn"):
+        if st.button("➕ " + t("add_button"), key="stock_add_btn"):
             if name:
                 product_data = {
                     "Nom": name,
@@ -2271,7 +2271,7 @@ elif menu == t("stock"):
             else:
                 st.error(t("fill_all_fields"))
 
-    st.subheader(t("current_stock"))
+    st.subheader("📊 " + t("current_stock"))
     if not df_stock.empty:
         df_display = df_stock.copy()
         if 'Code-barres' in df_display.columns:
@@ -2282,7 +2282,7 @@ elif menu == t("stock"):
 
     export_import_buttons("stock", df_stock)
 
-    st.subheader(t("stock_alert"))
+    st.subheader("🔔 " + t("stock_alert"))
     low_stock = check_stock_levels()
     if not low_stock.empty:
         st.warning(f"⚠️ {len(low_stock)} {t('low_stock_products')}")
@@ -2291,14 +2291,14 @@ elif menu == t("stock"):
         st.success(t("stock_ok"))
 
     if not df_stock.empty:
-        with st.expander(t("update_product")):
-            use_update_scanner = st.checkbox(t("stock_scanner_update"), key="update_scanner_checkbox")
+        with st.expander("✏️ " + t("update_product")):
+            use_update_scanner = st.checkbox("📷 " + t("stock_scanner_update"), key="update_scanner_checkbox")
             if use_update_scanner:
                 st.info("📷 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
                 mobile_barcode_scanner("stock_update_barcode")
 
             selected_product = st.selectbox(
-                t("select_product"),
+                "🔍 " + t("select_product"),
                 df_stock['Nom'].tolist(),
                 key="stock_update_select"
             )
@@ -2310,7 +2310,7 @@ elif menu == t("stock"):
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     new_qty = st.number_input(
-                        t("new_quantity"),
+                        "🔢 " + t("new_quantity"),
                         min_value=0.0,
                         step=0.1,
                         value=float(product_data.get('Quantité', 0)),
@@ -2318,19 +2318,19 @@ elif menu == t("stock"):
                     )
                 with col2:
                     new_price = st.number_input(
-                        t("new_price"),
+                        "💲 " + t("new_price"),
                         min_value=0.0,
                         value=float(product_data.get('Prix', 0)),
                         key="stock_update_price"
                     )
                 with col3:
                     new_barcode = st.text_input(
-                        t("barcode_optional"),
+                        "📱 " + t("barcode_optional"),
                         value=str(current_barcode) if current_barcode else "",
                         key="stock_update_barcode"
                     )
 
-                if st.button(t("update_button"), key="stock_update_btn"):
+                if st.button("✏️ " + t("update_button"), key="stock_update_btn"):
                     update_data = {
                         'Quantité': new_qty,
                         'Prix': new_price,
@@ -2344,18 +2344,18 @@ elif menu == t("stock"):
                         st.error(f"{t('error_generic')}: {str(e)}")
 
 elif menu == t("impression"):
-    st.header(t("impression"))
+    st.header("🖨️ " + t("impression"))
     col1, col2 = st.columns(2)
     with col1:
-        p = st.number_input(t("price_per_page"), min_value=0.0, key="print_price")
+        p = st.number_input("💲 " + t("price_per_page"), min_value=0.0, key="print_price")
     with col2:
-        n = st.number_input(t("number_of_pages"), min_value=0.0, step=0.1, key="print_nb")
+        n = st.number_input("🔢 " + t("number_of_pages"), min_value=0.0, step=0.1, key="print_nb")
 
     total_imp = p * n
     if total_imp > 0:
-        st.metric(t("total"), f"{total_imp:.2f} DH")
+        st.metric("💰 " + t("total"), f"{total_imp:.2f} DH")
 
-    if st.button(t("save_print"), key="print_save_btn"):
+    if st.button("💾 " + t("save_print"), key="print_save_btn"):
         if p > 0 and n > 0:
             try:
                 supabase.table("impressions").insert({
@@ -2368,24 +2368,24 @@ elif menu == t("impression"):
                 st.success(t("sale_success"))
                 if os.path.exists("facture_impression.pdf"):
                     with open("facture_impression.pdf", "rb") as f:
-                        st.download_button(t("download_print_invoice"), f, "facture_impression.pdf")
+                        st.download_button("📥 " + t("download_print_invoice"), f, "facture_impression.pdf")
             except Exception as e:
                 st.error(f"{t('error_generic')}: {str(e)}")
 
     st.divider()
-    st.subheader(t("print_history"))
+    st.subheader("📋 " + t("print_history"))
     df_imp = get_df("impressions")
     if not df_imp.empty:
         st.dataframe(df_imp, use_container_width=True)
         total_impressions = df_imp['Total'].sum() if 'Total' in df_imp.columns else 0
-        st.metric(t("total_printing"), f"{total_impressions:.2f} DH")
+        st.metric("💰 " + t("total_printing"), f"{total_impressions:.2f} DH")
     else:
         st.info(t("no_data"))
 
     export_import_buttons("impressions", df_imp)
 
 elif menu == t("caisse"):
-    st.header(t("caisse"))
+    st.header("🏦 " + t("caisse"))
 
     df_ventes_caisse = get_df("ventes")
     df_impressions_caisse = get_df("impressions")
@@ -2397,32 +2397,32 @@ elif menu == t("caisse"):
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric(t("total_sales"), f"{total_ventes:,.2f} DH")
+        st.metric("💰 " + t("total_sales"), f"{total_ventes:,.2f} DH")
     with col2:
-        st.metric(t("total_printing"), f"{total_impressions:,.2f} DH")
+        st.metric("💰 " + t("total_printing"), f"{total_impressions:,.2f} DH")
     with col3:
-        st.metric(t("total_credits"), f"{total_credits:,.2f} DH")
+        st.metric("💰 " + t("total_credits"), f"{total_credits:,.2f} DH")
 
     st.divider()
     total_general = total_ventes + total_impressions
-    st.metric(t("grand_total"), f"{total_general:,.2f} DH")
+    st.metric("💰 " + t("grand_total"), f"{total_general:,.2f} DH")
 
     st.divider()
-    st.subheader(t("reset_caisse"))
-    st.warning(t("reset_warning"))
+    st.subheader("🔄 " + t("reset_caisse"))
+    st.warning("⚠️ " + t("reset_warning"))
     st.error("⚠️ تحذير: هذا الزر سيحفظ ملخص اليوم ثم يمسح جميع بيانات اليوم (مبيعات، طباعة، ديون)")
 
-    if st.button(t("reset_button"), type="primary"):
+    if st.button("🔄 " + t("reset_button"), type="primary"):
         st.session_state.caisse_reset_confirmed = True
 
     if st.session_state.caisse_reset_confirmed:
-        st.error("❌هل أنت متأكد؟ سيتم مسح جميع بيانات اليوم نهائياً!")
+        st.error("❌ " + t("confirm_reset"))
         col_confirm, col_cancel = st.columns(2)
         with col_confirm:
-            if st.button(t("yes_reset")):
+            if st.button("✅ " + t("yes_reset")):
                 try:
                     total_jour = reset_caisse()
-                    st.success(f"✅{t('reset_success')} {total_jour:.2f} DH (تم مسح جميع بيانات اليوم)")
+                    st.success(f"✅ {t('reset_success')} {total_jour:.2f} DH (تم مسح جميع بيانات اليوم)")
                     st.session_state.caisse_reset_confirmed = False
                     st.balloons()
                     time.sleep(2)
@@ -2431,40 +2431,40 @@ elif menu == t("caisse"):
                     st.error(f"{t('error_generic')}: {str(e)}")
                     st.session_state.caisse_reset_confirmed = False
         with col_cancel:
-            if st.button(t("cancel")):
+            if st.button("❌ " + t("cancel")):
                 st.session_state.caisse_reset_confirmed = False
                 st.rerun()
 
     st.divider()
-    st.subheader(t("history"))
+    st.subheader("📋 " + t("history"))
     df_historique = get_df("historique_caisse")
     if not df_historique.empty:
         st.dataframe(df_historique, use_container_width=True)
         total_historique = df_historique['Total_Jour'].sum() if 'Total_Jour' in df_historique.columns else 0
-        st.metric(t("grand_total"), f"{total_historique:,.2f} DH")
+        st.metric("💰 " + t("grand_total"), f"{total_historique:,.2f} DH")
     else:
         st.info(t("no_data"))
 
     export_import_buttons("historique_caisse", df_historique)
 
-    st.subheader(t("recent_sales"))
+    st.subheader("📊 " + t("recent_sales"))
     if not df_ventes_caisse.empty:
         st.dataframe(df_ventes_caisse.tail(20), use_container_width=True)
     else:
         st.info(t("no_data"))
 
 elif menu == t("credits"):
-    st.header(t("credits"))
+    st.header("📋 " + t("credits"))
 
     # ========== زر إضافة دين جديد (فوق) ========== #
-    with st.expander(t("add_credit"), expanded=True):
+    with st.expander("➕ " + t("add_credit"), expanded=True):
         col1, col2 = st.columns(2)
         with col1:
-            client = st.text_input(t("client_name"), key="credit_client")
+            client = st.text_input("👤 " + t("client_name"), key="credit_client")
         with col2:
-            montant = st.number_input(t("amount"), min_value=0.0, key="credit_amount")
+            montant = st.number_input("💰 " + t("amount"), min_value=0.0, key="credit_amount")
 
-        if st.button(t("add_credit_button"), key="add_new_credit_btn"):
+        if st.button("➕ " + t("add_credit_button"), key="add_new_credit_btn"):
             if client and montant > 0:
                 try:
                     supabase.table("credits").insert({
@@ -2472,7 +2472,7 @@ elif menu == t("credits"):
                         "Montant": float(montant),
                         "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
                     }).execute()
-                    st.success(f"✅{client} - {montant:.2f} DH")
+                    st.success(f"✅ {client} - {montant:.2f} DH")
                     play_success_sound()
                     st.rerun()
                 except Exception as e:
@@ -2483,10 +2483,10 @@ elif menu == t("credits"):
     st.divider()
 
     # ========== بحث في الديون ========== #
-    st.subheader("بحث عن دين")
+    st.subheader("🔍 بحث عن دين")
     search_credit = st.text_input(
-        "ابحث باسم العميل:",
-        placeholder="اكتب اسم العميل للبحث...",
+        "👤 ابحث باسم العميل:",
+        placeholder="✏️ اكتب اسم العميل للبحث...",
         key="credit_search_input"
     )
 
@@ -2497,24 +2497,24 @@ elif menu == t("credits"):
     if search_credit and not df_credits.empty:
         df_credits = df_credits[df_credits['Client'].str.contains(search_credit, case=False, na=False)]
         if df_credits.empty:
-            st.info(f"لا توجد نتائج لـ '{search_credit}'")
+            st.info(f"ℹ️ لا توجد نتائج لـ '{search_credit}'")
         else:
-            st.success(f"✅تم العثور على {len(df_credits)} نتيجة")
+            st.success(f"✅ تم العثور على {len(df_credits)} نتيجة")
 
     st.divider()
-    st.subheader(t("credit_list"))
+    st.subheader("📋 " + t("credit_list"))
 
     if not df_credits.empty:
         st.dataframe(df_credits, use_container_width=True)
         total_credits = df_credits['Montant'].sum() if 'Montant' in df_credits.columns else 0
-        st.metric(t("total_credits"), f"{total_credits:,.2f} DH")
+        st.metric("💰 " + t("total_credits"), f"{total_credits:,.2f} DH")
 
         export_import_buttons("credits", df_credits)
 
         st.divider()
 
         # ========== إدارة الدين ========== #
-        st.subheader("إدارة الدين")
+        st.subheader("📋 إدارة الدين")
 
         col_credit1, col_credit2 = st.columns(2)
         with col_credit1:
@@ -2525,13 +2525,13 @@ elif menu == t("credits"):
                 ).tolist()
 
                 credit_a_reduire = st.selectbox(
-                    t("select_credit"),
+                    "🔍 " + t("select_credit"),
                     credit_options,
                     key="credit_select"
                 )
         with col_credit2:
             montant_operation = st.number_input(
-                "المبلغ",
+                "💰 المبلغ",
                 min_value=0.0,
                 step=0.5,
                 key="credit_operation_amount"
@@ -2542,12 +2542,12 @@ elif menu == t("credits"):
 
         # زر إضافة للدين (يزيد المبلغ)
         with col_add:
-            if st.button(t("add_to_credit"), use_container_width=True, key="add_to_existing_credit_btn"):
+            if st.button("➕ " + t("add_to_credit"), use_container_width=True, key="add_to_existing_credit_btn"):
                 if credit_a_reduire and montant_operation > 0:
                     try:
                         credit_id = int(credit_a_reduire.split("ID: ")[1].replace(")", ""))
                         nouveau = add_to_credit(credit_id, montant_operation)
-                        st.success(f"✅تمت إضافة {montant_operation:.2f} DH | الدين الحالي: {nouveau:.2f} DH")
+                        st.success(f"✅ تمت إضافة {montant_operation:.2f} DH | الدين الحالي: {nouveau:.2f} DH")
                         play_success_sound()
                         st.rerun()
                     except Exception as e:
@@ -2557,21 +2557,21 @@ elif menu == t("credits"):
 
         # زر تسديد (ينقص المبلغ)
         with col_pay:
-            if st.button(t("pay_button"), use_container_width=True, key="pay_existing_credit_btn"):
+            if st.button("💳 " + t("pay_button"), use_container_width=True, key="pay_existing_credit_btn"):
                 if credit_a_reduire and montant_operation > 0:
                     try:
                         credit_id = int(credit_a_reduire.split("ID: ")[1].replace(")", ""))
                         credit_data = supabase.table("credits").select("*").eq("id", credit_id).execute().data[0]
 
                         if montant_operation > float(credit_data['Montant']):
-                            st.error(f"❌المبلغ ({montant_operation:.2f}) > الدين ({credit_data['Montant']:.2f})!")
+                            st.error(f"❌ المبلغ ({montant_operation:.2f}) > الدين ({credit_data['Montant']:.2f})!")
                         else:
                             nouveau = reduce_credit(credit_id, montant_operation)
                             if nouveau == 0:
-                                st.success(f"✅Crédit entièrement remboursé!")
+                                st.success(f"✅ Crédit entièrement remboursé!")
                                 supabase.table("credits").delete().eq("id", credit_id).execute()
                             else:
-                                st.success(f"✅Payé: {montant_operation:.2f} DH | Reste: {nouveau:.2f} DH")
+                                st.success(f"✅ Payé: {montant_operation:.2f} DH | Reste: {nouveau:.2f} DH")
                             play_success_sound()
                             st.rerun()
                     except Exception as e:
@@ -2581,32 +2581,32 @@ elif menu == t("credits"):
 
         # زر حذف الدين نهائياً
         with col_delete:
-            if st.button(t("delete_credit"), use_container_width=True, key="delete_existing_credit_btn"):
+            if st.button("🗑️ " + t("delete_credit"), use_container_width=True, key="delete_existing_credit_btn"):
                 if credit_a_reduire:
                     try:
                         credit_id = int(credit_a_reduire.split("ID: ")[1].replace(")", ""))
                         credit_data = supabase.table("credits").select("*").eq("id", credit_id).execute().data[0]
 
-                        st.warning(f"⚠️هل أنت متأكد من حذف دين **{credit_data['Client']}** بمبلغ **{credit_data['Montant']:.2f} DH** ؟")
+                        st.warning(f"⚠️ هل أنت متأكد من حذف دين **{credit_data['Client']}** بمبلغ **{credit_data['Montant']:.2f} DH** ؟")
 
                         col_confirm_del, col_cancel_del = st.columns(2)
                         with col_confirm_del:
-                            if st.button("✅نعم، احذف", key="confirm_delete_credit_btn"):
+                            if st.button("✅ نعم، احذف", key="confirm_delete_credit_btn"):
                                 supabase.table("credits").delete().eq("id", credit_id).execute()
-                                st.success("✅تم حذف الدين نهائياً")
+                                st.success("✅ تم حذف الدين نهائياً")
                                 play_success_sound()
                                 time.sleep(0.5)
                                 st.rerun()
                         with col_cancel_del:
-                            if st.button("❌إلغاء", key="cancel_delete_credit_btn"):
+                            if st.button("❌ إلغاء", key="cancel_delete_credit_btn"):
                                 st.rerun()
                     except Exception as e:
                         st.error(f"{t('error_generic')}: {str(e)}")
                 else:
-                    st.error("❌اختر ديناً أولاً")
+                    st.error("❌ اختر ديناً أولاً")
 
         st.divider()
-        st.subheader(t("payment_history"))
+        st.subheader("📋 " + t("payment_history"))
         df_paiements = get_df("paiements_credits")
         if not df_paiements.empty:
             st.dataframe(df_paiements, use_container_width=True)
@@ -2617,15 +2617,15 @@ elif menu == t("credits"):
         st.info(t("no_credits"))
 
 elif menu == t("factures"):
-    st.header(t("factures"))
+    st.header("🧾 " + t("factures"))
 
     if st.session_state.last_cart:
-        st.subheader(t("last_sale"))
+        st.subheader("🔄 " + t("last_sale"))
         st.table(pd.DataFrame(st.session_state.last_cart))
         total_last = sum(item['Total'] for item in st.session_state.last_cart)
-        st.metric(t("total"), f"{total_last:.2f} DH")
+        st.metric("💰 " + t("total"), f"{total_last:.2f} DH")
 
-        if st.button(t("print_invoice"), key="facture_print_btn"):
+        if st.button("🖨️ " + t("print_invoice"), key="facture_print_btn"):
             generate_facture_80mm(st.session_state.last_cart, "FACTURE DE VENTE")
             st.success(t("sale_success"))
 
@@ -2634,18 +2634,18 @@ elif menu == t("factures"):
 
     if os.path.exists("facture_80mm.pdf"):
         with open("facture_80mm.pdf", "rb") as f:
-            st.download_button(t("download_sale_invoice"), f, "facture_80mm.pdf")
+            st.download_button("📥 " + t("download_sale_invoice"), f, "facture_80mm.pdf")
 
     if os.path.exists("facture_impression.pdf"):
         with open("facture_impression.pdf", "rb") as f:
-            st.download_button(t("download_print_invoice"), f, "facture_impression.pdf")
+            st.download_button("📥 " + t("download_print_invoice"), f, "facture_impression.pdf")
 
     if os.path.exists("bon_commande.pdf"):
         with open("bon_commande.pdf", "rb") as f:
-            st.download_button(t("download_order"), f, "bon_commande.pdf")
+            st.download_button("📥 " + t("download_order"), f, "bon_commande.pdf")
 
     st.divider()
-    st.subheader(t("all_sales"))
+    st.subheader("📊 " + t("all_sales"))
     df_all_ventes = get_df("ventes")
     if not df_all_ventes.empty:
         st.dataframe(df_all_ventes, use_container_width=True)
@@ -2653,19 +2653,19 @@ elif menu == t("factures"):
         st.info(t("no_data"))
 
 elif menu == t("commandes"):
-    st.header(t("commandes"))
+    st.header("📝 " + t("commandes"))
 
     col1, col2 = st.columns([1, 1])
     with col1:
-        st.subheader(t("new_order"))
-        nom_produit = st.text_input(t("product_name"), key="cmd_nom")
+        st.subheader("➕ " + t("new_order"))
+        nom_produit = st.text_input("📝 " + t("product_name"), key="cmd_nom")
         col_a, col_b = st.columns(2)
         with col_a:
-            qte_commande = st.number_input(t("requested_qty"), min_value=0.0, step=0.1, key="cmd_qte")
+            qte_commande = st.number_input("🔢 " + t("requested_qty"), min_value=0.0, step=0.1, key="cmd_qte")
         with col_b:
-            prix_unitaire = st.number_input(t("unit_price_est"), min_value=0.0, key="cmd_prix")
+            prix_unitaire = st.number_input("💲 " + t("unit_price_est"), min_value=0.0, key="cmd_prix")
 
-        if st.button(t("add_to_order")):
+        if st.button("➕ " + t("add_to_order")):
             if nom_produit and qte_commande > 0:
                 st.session_state.commande_cart.append({
                     "Nom": nom_produit,
@@ -2673,22 +2673,22 @@ elif menu == t("commandes"):
                     "Prix_U": prix_unitaire,
                     "Total": qte_commande * prix_unitaire
                 })
-                st.success(f"{t('add_to_order')}: {nom_produit}")
+                st.success(f"✅ {t('add_to_order')}: {nom_produit}")
                 st.rerun()
             else:
                 st.error(t("fill_all_fields"))
 
     with col2:
-        st.subheader(t("current_order"))
+        st.subheader("📋 " + t("current_order"))
         if st.session_state.commande_cart:
             df_cmd = pd.DataFrame(st.session_state.commande_cart)
             st.table(df_cmd)
             total_commande = sum(item['Total'] for item in st.session_state.commande_cart)
-            st.metric(t("estimated_total"), f"{total_commande:.2f} DH")
+            st.metric("💰 " + t("estimated_total"), f"{total_commande:.2f} DH")
 
             col_btn1, col_btn2, col_btn3 = st.columns(3)
             with col_btn1:
-                if st.button(t("save_order")):
+                if st.button("💾 " + t("save_order")):
                     try:
                         for item in st.session_state.commande_cart:
                             supabase.table("commandes").insert({
@@ -2706,36 +2706,36 @@ elif menu == t("commandes"):
                         st.error(f"{t('error_generic')}: {str(e)}")
 
             with col_btn2:
-                if st.button(t("print_order")):
+                if st.button("🖨️ " + t("print_order")):
                     generate_commande_pdf(st.session_state.commande_cart)
                     st.success(t("sale_success"))
                     if os.path.exists("bon_commande.pdf"):
                         with open("bon_commande.pdf", "rb") as f:
-                            st.download_button(t("download_order"), f, "bon_commande.pdf")
+                            st.download_button("📥 " + t("download_order"), f, "bon_commande.pdf")
 
             with col_btn3:
-                if st.button(t("clear_order")):
+                if st.button("🗑️ " + t("clear_order")):
                     st.session_state.commande_cart = []
                     st.rerun()
         else:
             st.info(t("no_pending_orders"))
 
     st.divider()
-    st.subheader(t("previous_orders"))
+    st.subheader("📋 " + t("previous_orders"))
     df_commandes = get_df("commandes")
     if not df_commandes.empty:
         st.dataframe(df_commandes, use_container_width=True)
         export_import_buttons("commandes", df_commandes)
 
-    st.subheader(t("confirm_reception"))
+    st.subheader("✅ " + t("confirm_reception"))
     if 'id' in df_commandes.columns and 'Statut' in df_commandes.columns:
         commandes_en_attente = df_commandes[df_commandes['Statut'] == 'En attente']
         if not commandes_en_attente.empty:
             cmd_to_confirm = st.selectbox(
-                t("select_order_confirm"),
+                "🔍 " + t("select_order_confirm"),
                 commandes_en_attente.apply(lambda x: f"ID: {x['id']} - {x['Nom']} ({x['Qté']} unités)", axis=1).tolist()
             )
-            if st.button(t("confirm_button")):
+            if st.button("✅ " + t("confirm_button")):
                 if cmd_to_confirm:
                     try:
                         cmd_id = int(cmd_to_confirm.split("ID: ")[1].split(" -")[0])
@@ -2749,36 +2749,36 @@ elif menu == t("commandes"):
 
 # ==================== SERVICES ====================
 elif menu == t("services"):
-    st.header(t("services"))
+    st.header("⚡ " + t("services"))
     st.markdown("---")
 
     # ========== إضافة خدمة جديدة ========== #
-    with st.expander(t("add_service"), expanded=True):
+    with st.expander("➕ " + t("add_service"), expanded=True):
         st.markdown("### ➕ إضافة خدمة جديدة")
         col_add1, col_add2, col_add3 = st.columns([3, 2, 2])
         with col_add1:
             new_service_name = st.text_input(
-                t("service_name_input"),
+                "📝 " + t("service_name_input"),
                 key="new_service_name",
-                placeholder="أدخل اسم الخدمة..."
+                placeholder="✏️ أدخل اسم الخدمة..."
             )
         with col_add2:
             new_service_price = st.number_input(
-                t("service_price_input_label"),
+                "💲 " + t("service_price_input_label"),
                 min_value=0.0,
                 value=0.0,
                 step=1.0,
                 key="new_service_price"
             )
         with col_add3:
-            if st.button(t("save_service"), use_container_width=True, key="save_service_btn"):
+            if st.button("💾 " + t("save_service"), use_container_width=True, key="save_service_btn"):
                 if new_service_name and new_service_price > 0:
                     try:
                         supabase.table("services_electroniques").insert({
                             "Nom": new_service_name,
                             "Prix": float(new_service_price)
                         }).execute()
-                        st.success(f"✅تمت إضافة: {new_service_name} - {new_service_price:.2f} DH")
+                        st.success(f"✅ تمت إضافة: {new_service_name} - {new_service_price:.2f} DH")
                         play_success_sound()
                         time.sleep(0.5)
                         st.rerun()
@@ -2793,7 +2793,7 @@ elif menu == t("services"):
     df_services_db = get_df("services_electroniques")
 
     # عرض الخدمات في شبكة
-    st.subheader(t("service_select"))
+    st.subheader("🔍 " + t("service_select"))
 
     if not df_services_db.empty:
         cols = st.columns(3)
@@ -2854,23 +2854,23 @@ elif menu == t("services"):
                     st.session_state.selected_service_unit = unit
 
         # عرض قائمة الخدمات
-        with st.expander(t("service_list"), expanded=False):
+        with st.expander("📋 " + t("service_list"), expanded=False):
             st.dataframe(df_services_db, use_container_width=True, hide_index=True)
             export_import_buttons("services_electroniques", df_services_db)
 
     else:
-        st.info("لا توجد خدمات. أضف خدمات جديدة من الأعلى.")
+        st.info("ℹ️ لا توجد خدمات. أضف خدمات جديدة من الأعلى.")
 
     st.markdown("---")
 
     # نموذج الخدمة المختارة
     if "selected_service" in st.session_state and st.session_state.selected_service:
-        st.subheader(f"{t('service_selected')} {st.session_state.selected_service}")
+        st.subheader(f"✅ {t('service_selected')} {st.session_state.selected_service}")
 
         col1, col2 = st.columns(2)
         with col1:
             quantity = st.number_input(
-                t("service_quantity"),
+                "🔢 " + t("service_quantity"),
                 min_value=1,
                 value=1,
                 step=1,
@@ -2878,7 +2878,7 @@ elif menu == t("services"):
             )
         with col2:
             prix_unitaire = st.number_input(
-                t("price"),
+                "💲 " + t("price"),
                 min_value=0.0,
                 value=st.session_state.selected_service_price,
                 step=1.0,
@@ -2889,15 +2889,15 @@ elif menu == t("services"):
         total_service = quantity * prix_unitaire
 
         if total_service > 0:
-            st.metric(t("total"), f"{total_service:.2f} DH")
+            st.metric("💰 " + t("total"), f"{total_service:.2f} DH")
 
         # معلومات العميل (اختياري)
-        with st.expander(t("service_client_info"), expanded=False):
-            client_name = st.text_input(t("service_client_name"), key="service_client_name_input")
-            client_tel = st.text_input(t("service_client_tel"), key="service_client_tel_input")
+        with st.expander("👤 " + t("service_client_info"), expanded=False):
+            client_name = st.text_input("👤 " + t("service_client_name"), key="service_client_name_input")
+            client_tel = st.text_input("📞 " + t("service_client_tel"), key="service_client_tel_input")
 
         # زر إتمام الخدمة وطباعة الفاتورة
-        if st.button(t("service_confirm"), type="primary", use_container_width=True, key="service_confirm_btn"):
+        if st.button("✅ " + t("service_confirm"), type="primary", use_container_width=True, key="service_confirm_btn"):
             # تحضير بيانات الفاتورة
             service_cart = [{
                 "Code": st.session_state.selected_service,
@@ -2926,14 +2926,14 @@ elif menu == t("services"):
             play_success_sound()
 
             # رسالة نجاح
-            st.success(f"✅تم إتمام الخدمة: {st.session_state.selected_service} - {total_service:.2f} DH | Facture: {invoice_number}")
+            st.success(f"✅ تم إتمام الخدمة: {st.session_state.selected_service} - {total_service:.2f} DH | Facture: {invoice_number}")
             st.balloons()
 
             # عرض الفاتورة للتحميل
             if os.path.exists("facture_80mm.pdf"):
                 with open("facture_80mm.pdf", "rb") as f:
                     st.download_button(
-                        "تحميل الفاتورة",
+                        "📥 تحميل الفاتورة",
                         f,
                         "facture_80mm.pdf",
                         mime="application/pdf",
@@ -2943,7 +2943,7 @@ elif menu == t("services"):
         st.markdown("---")
 
         # سجل الخدمات السابقة
-        st.subheader(t("service_history"))
+        st.subheader("📋 " + t("service_history"))
         df_services = get_df("ventes")
         if not df_services.empty and not df_services_db.empty:
             services_names = df_services_db['Nom'].tolist()
@@ -2951,7 +2951,7 @@ elif menu == t("services"):
             if not services_df.empty:
                 st.dataframe(services_df.tail(10), use_container_width=True)
                 total_services = services_df['Total'].sum() if 'Total' in services_df.columns else 0
-                st.metric(t("service_total"), f"{total_services:.2f} DH")
+                st.metric("💰 " + t("service_total"), f"{total_services:.2f} DH")
             else:
                 st.info(t("service_no_history"))
         else:
@@ -2959,11 +2959,11 @@ elif menu == t("services"):
 
 # ==================== OUTILS RAPIDES ====================
 elif menu == t("outils"):
-    st.header(t("outils"))
+    st.header("🔧 " + t("outils"))
     st.markdown("---")
 
     # ========== تطبيقات Office Online ==========
-    st.subheader(t("office_label"))
+    st.subheader("📁 " + t("office_label"))
     st.info("📌 فتح التطبيقات في المتصفح (Online)")
 
     col1, col2, col3, col4 = st.columns(4)
@@ -3007,39 +3007,39 @@ elif menu == t("outils"):
     st.markdown("---")
 
     # ========== WhatsApp ==========
-    st.subheader(t("whatsapp_label"))
+    st.subheader("💬 " + t("whatsapp_label"))
 
     col_w1, col_w2 = st.columns(2)
     with col_w1:
         whatsapp_number = st.text_input(
-            t("whatsapp_number"),
+            "📞 " + t("whatsapp_number"),
             value="212781028243",
             key="whatsapp_number_input"
         )
     with col_w2:
         whatsapp_message = st.text_area(
-            t("whatsapp_message"),
+            "✏️ " + t("whatsapp_message"),
             value="السلام عليكم",
             key="whatsapp_message_input"
         )
 
-    if st.button(t("whatsapp_open"), use_container_width=True, type="primary", key="open_whatsapp_btn"):
+    if st.button("💬 " + t("whatsapp_open"), use_container_width=True, type="primary", key="open_whatsapp_btn"):
         whatsapp_url = f"https://web.whatsapp.com/send?phone={whatsapp_number}&text={whatsapp_message}"
         components.html(f"""
         <script>
             window.open('{whatsapp_url}', '_blank');
         </script>
         """)
-        st.success(f"✅تم فتح WhatsApp Web للرقم {whatsapp_number}")
+        st.success(f"✅ تم فتح WhatsApp Web للرقم {whatsapp_number}")
 
     st.markdown("---")
 
     # ========== Google بحث ==========
-    st.subheader(t("google_search"))
+    st.subheader("🔍 " + t("google_search"))
 
     google_query = st.text_input(
-        t("google_search"),
-        placeholder="اكتب كلمة البحث هنا...",
+        "🔍 " + t("google_search"),
+        placeholder="✏️ اكتب كلمة البحث هنا...",
         key="google_query_input"
     )
 
@@ -3050,13 +3050,13 @@ elif menu == t("outils"):
             window.open('{search_url}', '_blank');
         </script>
         """)
-        st.success(f"✅تم البحث عن: {google_query}")
+        st.success(f"✅ تم البحث عن: {google_query}")
 
     # ========== Google مدمج في الصفحة ==========
     st.markdown("---")
-    st.subheader(t("google_embedded"))
+    st.subheader("🌐 " + t("google_embedded"))
 
-    if st.checkbox(t("show_google"), key="show_google_checkbox"):
+    if st.checkbox("🌐 " + t("show_google"), key="show_google_checkbox"):
         google_iframe = """
         <iframe src="https://www.google.com/webhp?igu=1"
                 width="100%"
