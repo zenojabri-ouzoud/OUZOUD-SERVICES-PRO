@@ -11,13 +11,7 @@ import json
 import time
 import plotly.express as px
 import plotly.graph_objects as go
-import base64
-import cv2
-import zxingcpp
-import numpy as np
-from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
-import av
-import queue
+from streamlit_barcode_scanner import barcode_scanner
 
 # --- إعداد Supabase ---
 try:
@@ -29,76 +23,22 @@ except Exception as e:
     st.error(f"❌ Erreur de connexion à Supabase: {e}")
     st.stop()
 
-# ==================== LOGO ====================
-LOGO_BASE64 = """
-iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAAAlwSFlz
-AAAOxAAADsQBlSsOGwAAAJdJREFUWIXtl0EOgjAQRZ8bgBex6UaXHkEPoifxXrpxw8rEhckPpu5I
-TFrKtBQQov+QzUz6adJpMj8vSZK7nY5v7lwKIdwA3LwjwsfUeAFgDcQH4HRd1z2AEYDP2fYG4JmA
-/hFAIYQawB5AnYcpSfK+fdCWZfkwTVNIkqRp/tkX8bZtW1EURQzD8LUE3Hdd1zeARVmWj0oIPxIA
-nUMI3wB+wAy4HIbBYYwqSQBAfG3xH0opvTv/GtwZEkoppY4WgBDCG0Cc9knT9P1dR1Cjla0PvwAy
-AM+O411WAvjUttYFgAFcI4lLX4R/Bx4A6ERcL1v56iUAAAAASUVORK5CYII=
-"""
-
-# ==================== إعدادات WebRTC ====================
-RTC_CONFIGURATION = RTCConfiguration(
-    {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
-)
-
-# ==================== دالة الماسح zxing-cpp ====================
-def zxing_barcode_scanner(session_key):
+# ==================== دالة الماسح للبيع ====================
+def barcode_scanner_vente(session_key):
     """
-    ماسح باركود باستخدام zxing-cpp - أسرع وأدق
+    ماسح باركود باستخدام streamlit-barcode-scanner - camera daiman cha3la
     """
-    st.markdown("### 📷 ماسح المنتجات")
-    
     if f"{session_key}_scanned" not in st.session_state:
         st.session_state[f"{session_key}_scanned"] = ""
     
-    if 'barcode_queue' not in st.session_state:
-        st.session_state.barcode_queue = queue.Queue()
+    scanned_value = barcode_scanner()
     
-    def video_frame_callback(frame):
-        img = frame.to_ndarray(format="bgr24")
-        
-        # قراءة الباركود باستخدام zxing-cpp
-        try:
-            barcodes = zxingcpp.read_barcodes(img)
-            
-            for barcode in barcodes:
-                barcode_data = barcode.text
-                if barcode_data:
-                    st.session_state.barcode_queue.put(barcode_data)
-                
-                # رسم مستطيل حول الباركود
-                position = barcode.position
-                if len(position) >= 4:
-                    pts = np.array(position, np.int32)
-                    cv2.polylines(img, [pts], True, (0, 255, 0), 2)
-                    cv2.putText(img, barcode_data, (position[0][0], position[0][1] - 10), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        except Exception as e:
-            pass
-            
-        return av.VideoFrame.from_ndarray(img, format="bgr24")
-    
-    ctx = webrtc_streamer(
-        key=f"{session_key}_zxing",
-        mode=WebRtcMode.SENDRECV,
-        rtc_configuration=RTC_CONFIGURATION,
-        video_frame_callback=video_frame_callback,
-        media_stream_constraints={"video": {"facingMode": "environment"}, "audio": False},
-        async_processing=True,
-    )
-    
-    if ctx.state.playing:
-        if not st.session_state.barcode_queue.empty():
-            new_code = st.session_state.barcode_queue.get()
-            if new_code != st.session_state[f"{session_key}_scanned"]:
-                st.session_state[f"{session_key}_scanned"] = new_code
-                st.rerun()
+    if scanned_value and scanned_value != st.session_state[f"{session_key}_scanned"]:
+        st.session_state[f"{session_key}_scanned"] = scanned_value
+        st.rerun()
     
     barcode_input = st.text_input(
-        "الباركود الممسوح 🏷️:", 
+        "الباركود",
         value=st.session_state[f"{session_key}_scanned"],
         key=session_key,
         placeholder="📸 امسح الباركود هنا..."
@@ -106,43 +46,196 @@ def zxing_barcode_scanner(session_key):
     
     return barcode_input
 
-# ==================== دالة الماسح للستوك (ma t9isoch) ====================
-def stock_barcode_scanner(target_input_label):
-    """ماسح باركود لصفحة المخزون - نفس الطريقة القديمة"""
+# ==================== دالة الماسح المحسن (للستوك) ====================
+def mobile_barcode_scanner(session_key):
+    """
+    ماسح باركود محسن - يضمن كتابة القيمة في st.text_input
+    """
     scanner_html = f"""
-    <div id="stock_reader" style="width:100%"></div>
+    <div id="barcode-scanner-container" style="width:100%; min-height:350px; border:2px dashed #4CAF50; border-radius:10px; padding:15px; background:#f9f9f9;">
+        <div id="reader" style="width:100%; min-height:300px;"></div>
+        <p style="text-align:center; color:#666; font-size:14px; margin-top:10px;">📱 قرب الباركود من الكاميرا</p>
+        <div id="scan-status" style="text-align:center; font-size:14px; color:#999; margin-top:5px;">⏳ جاري تهيئة الكاميرا...</div>
+    </div>
+    
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
-    let lastStockScan = '';
-    let stockScanTimeout;
-    
-    function onScanSuccess(decodedText, decodedResult) {{
-        if (decodedText !== lastStockScan) {{
-            lastStockScan = decodedText;
-            clearTimeout(stockScanTimeout);
-            stockScanTimeout = setTimeout(() => {{ lastStockScan = ''; }}, 2000);
-            
-            const inputs = window.parent.document.querySelectorAll('input');
-            inputs.forEach(function(input) {{
-                if (input.getAttribute('aria-label') === '{target_input_label}') {{
-                    input.value = decodedText;
-                    input.dispatchEvent(new Event('input', {{bubbles: true}}));
-                    input.dispatchEvent(new Event('change', {{bubbles: true}}));
-                    input.style.background = '#e8f5e9';
-                    setTimeout(() => {{ input.style.background = ''; }}, 500);
-                }}
-            }});
+    (function() {{
+        'use strict';
+        
+        let html5Qrcode = null;
+        let isScanning = false;
+        let scannerStarted = false;
+        let lastScanned = '';
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        function updateStatus(message, isSuccess = false, isError = false) {{
+            const statusEl = document.getElementById('scan-status');
+            if (statusEl) {{
+                statusEl.textContent = message;
+                statusEl.style.color = isError ? '#f44336' : (isSuccess ? '#4CAF50' : '#666');
+            }}
         }}
-    }}
-    
-    let html5QrcodeScanner = new Html5QrcodeScanner(
-        "stock_reader", 
-        {{fps: 10, qrbox: 250, facingMode: "environment"}}
-    );
-    html5QrcodeScanner.render(onScanSuccess);
+        
+        function setInputValue(value) {{
+            let input = document.getElementById('{session_key}');
+            if (!input) {{
+                const inputs = document.getElementsByName('{session_key}');
+                if (inputs.length > 0) input = inputs[0];
+            }}
+            if (!input) {{
+                const inputs = document.querySelectorAll('input[aria-label="{session_key}"]');
+                if (inputs.length > 0) input = inputs[0];
+            }}
+            if (!input) {{
+                const allInputs = document.querySelectorAll('input');
+                for (let el of allInputs) {{
+                    if (el.placeholder && (el.placeholder.includes('باركود') || el.placeholder.includes('barcode') || el.placeholder.includes('Code'))) {{
+                        input = el;
+                        break;
+                    }}
+                }}
+            }}
+            
+            if (input) {{
+                input.value = value;
+                input.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                input.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                input.style.background = '#a5d6a7';
+                input.style.border = '3px solid #4CAF50';
+                input.style.transition = 'all 0.3s';
+                setTimeout(() => {{
+                    input.style.background = '';
+                    input.style.border = '';
+                }}, 1500);
+                return true;
+            }}
+            return false;
+        }}
+        
+        function sendToStreamlit(value) {{
+            window.parent.postMessage({{
+                type: 'streamlit:setComponentValue',
+                key: '{session_key}',
+                value: value
+            }}, '*');
+            setTimeout(() => {{
+                window.parent.postMessage({{
+                    type: 'streamlit:setComponentValue',
+                    key: '{session_key}',
+                    value: value
+                }}, '*');
+            }}, 50);
+            setTimeout(() => {{
+                window.parent.postMessage({{
+                    type: 'streamlit:setComponentValue',
+                    key: '{session_key}',
+                    value: value
+                }}, '*');
+            }}, 200);
+        }}
+        
+        function handleSuccessfulScan(decodedText) {{
+            if (decodedText === lastScanned) return;
+            lastScanned = decodedText;
+            updateStatus('✅ تم المسح: ' + decodedText, true);
+            setInputValue(decodedText);
+            sendToStreamlit(decodedText);
+            
+            if (html5Qrcode) {{
+                html5Qrcode.stop().then(() => {{
+                    isScanning = false;
+                    scannerStarted = false;
+                    updateStatus('📸 جاهز للمسح مرة أخرى', false);
+                    setTimeout(() => {{
+                        lastScanned = '';
+                        startScanner();
+                    }}, 2000);
+                }}).catch(function(err) {{
+                    isScanning = false;
+                    scannerStarted = false;
+                    setTimeout(() => {{
+                        lastScanned = '';
+                        startScanner();
+                    }}, 2000);
+                }});
+            }}
+            
+            window.parent.postMessage({{
+                type: 'streamlit:setComponentValue',
+                key: '{session_key}',
+                value: decodedText
+            }}, '*');
+        }}
+        
+        function startScanner() {{
+            if (isScanning || scannerStarted) return;
+            const container = document.getElementById('barcode-scanner-container');
+            if (!container) return;
+            
+            try {{
+                if (html5Qrcode) {{
+                    html5Qrcode.clear();
+                    html5Qrcode = null;
+                }}
+                
+                const readerElement = document.getElementById('reader');
+                if (!readerElement) return;
+                
+                html5Qrcode = new Html5Qrcode("reader");
+                scannerStarted = true;
+                
+                const config = {{
+                    fps: 15,
+                    qrbox: {{width: 280, height: 280}},
+                    aspectRatio: 1.0,
+                    facingMode: "environment"
+                }};
+                
+                updateStatus('📷 جاري تشغيل الكاميرا...', false);
+                
+                html5Qrcode.start(
+                    {{ facingMode: "environment" }},
+                    config,
+                    function(decodedText, decodedResult) {{
+                        if (decodedText) {{
+                            handleSuccessfulScan(decodedText);
+                        }}
+                    }},
+                    function(errorMessage) {{}}
+                ).then(function() {{
+                    isScanning = true;
+                    updateStatus('📷 الكاميرا شغالة - امسح الباركود', false);
+                }}).catch(function(err) {{
+                    updateStatus('❌ خطأ: ' + err.message, false, true);
+                    scannerStarted = false;
+                    retryCount++;
+                    if (retryCount < maxRetries) {{
+                        setTimeout(startScanner, 2000);
+                    }}
+                }});
+            }} catch(e) {{
+                updateStatus('❌ خطأ: ' + e.message, false, true);
+                scannerStarted = false;
+                retryCount++;
+                if (retryCount < maxRetries) {{
+                    setTimeout(startScanner, 2000);
+                }}
+            }}
+        }}
+        
+        setTimeout(startScanner, 1000);
+        document.addEventListener('visibilitychange', function() {{
+            if (!document.hidden && !isScanning && !scannerStarted) {{
+                retryCount = 0;
+                setTimeout(startScanner, 500);
+            }}
+        }});
+    }})();
     </script>
     """
-    components.html(scanner_html, height=300)
+    components.html(scanner_html, height=420)
 
 # ==================== دالة الفاتورة الموحدة 80mm ====================
 def get_next_invoice_number():
@@ -162,23 +255,6 @@ def generate_facture_80mm(cart_data, titre="FACTURE"):
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=5)
     
-    # ========== LOGO ==========
-    logo_path = "logo_temp.png"
-    with open(logo_path, "wb") as f:
-        f.write(base64.b64decode(LOGO_BASE64))
-    
-    try:
-        pdf.image(logo_path, x=30, y=8, w=10, h=10)
-        pdf.set_y(15)
-    except:
-        pass
-    
-    try:
-        os.remove(logo_path)
-    except:
-        pass
-    
-    # ========== الرأس ==========
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(70, 8, "OUZOUD SERVICES", ln=True, align='C')
     pdf.set_font("Arial", 'B', 10)
@@ -189,14 +265,12 @@ def generate_facture_80mm(cart_data, titre="FACTURE"):
     pdf.cell(70, 4, "maaridprint@gmail.com", ln=True, align='C')
     pdf.cell(70, 4, "-" * 40, ln=True, align='C')
     
-    # ========== التاريخ والوقت ==========
     now = datetime.now(pytz.timezone("Africa/Casablanca"))
     pdf.set_font("Arial", size=8)
     pdf.cell(70, 4, f"Date: {now.strftime('%d/%m/%Y')}", ln=True, align='L')
     pdf.cell(70, 4, f"Heure: {now.strftime('%H:%M:%S')}", ln=True, align='L')
     pdf.cell(70, 4, "-" * 40, ln=True, align='C')
     
-    # ========== جدول المنتجات ==========
     pdf.set_font("Arial", 'B', 8)
     pdf.cell(35, 5, "Produit", 1, 0, 'C')
     pdf.cell(10, 5, "Qte", 1, 0, 'C')
@@ -207,32 +281,22 @@ def generate_facture_80mm(cart_data, titre="FACTURE"):
     pdf.set_font("Arial", size=7)
     tg = 0
     for item in cart_data:
-        nom = str(item.get('Nom', item.get('Code', '')))
+        nom = str(item.get('Nom', item.get('Code', '')))[:18]
         q = float(item.get('Quantité', 0))
         p = float(item.get('Prix', 0))
         tot = q * p
         tg += tot
-        
-        if len(nom) > 20:
-            pdf.set_font("Arial", size=6)
-        if len(nom) > 30:
-            pdf.set_font("Arial", size=5)
-        if len(nom) > 40:
-            pdf.set_font("Arial", size=4)
-            
         pdf.cell(35, 4, nom, 1)
         pdf.cell(10, 4, str(q), 1, 0, 'C')
         pdf.cell(12, 4, f"{p:.2f}", 1, 0, 'C')
         pdf.cell(13, 4, f"{tot:.2f}", 1, 0, 'C')
         pdf.ln(4)
     
-    # ========== المجموع الكلي ==========
     pdf.set_font("Arial", 'B', 10)
     pdf.cell(70, 6, "-" * 40, ln=True, align='C')
     pdf.cell(70, 6, f"TOTAL: {tg:.2f} DH", ln=True, align='R')
     pdf.cell(70, 4, "-" * 40, ln=True, align='C')
     
-    # ========== التذييل ==========
     pdf.set_font("Arial", 'I', 7)
     pdf.cell(70, 4, "Merci pour votre visite!", ln=True, align='C')
     pdf.cell(70, 4, "A bientot!", ln=True, align='C')
@@ -1357,6 +1421,43 @@ def auto_cart_scanner():
     """
     components.html(scanner_html, height=300)
 
+def stock_barcode_scanner(target_input_label):
+    """ماسح باركود لصفحة المخزون - نفس الطريقة القديمة"""
+    scanner_html = f"""
+    <div id="stock_reader" style="width:100%"></div>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+    let lastStockScan = '';
+    let stockScanTimeout;
+    
+    function onScanSuccess(decodedText, decodedResult) {{
+        if (decodedText !== lastStockScan) {{
+            lastStockScan = decodedText;
+            clearTimeout(stockScanTimeout);
+            stockScanTimeout = setTimeout(() => {{ lastStockScan = ''; }}, 2000);
+            
+            const inputs = window.parent.document.querySelectorAll('input');
+            inputs.forEach(function(input) {{
+                if (input.getAttribute('aria-label') === '{target_input_label}') {{
+                    input.value = decodedText;
+                    input.dispatchEvent(new Event('input', {{bubbles: true}}));
+                    input.dispatchEvent(new Event('change', {{bubbles: true}}));
+                    input.style.background = '#e8f5e9';
+                    setTimeout(() => {{ input.style.background = ''; }}, 500);
+                }}
+            }});
+        }}
+    }}
+    
+    let html5QrcodeScanner = new Html5QrcodeScanner(
+        "stock_reader", 
+        {{fps: 10, qrbox: 250, facingMode: "environment"}}
+    );
+    html5QrcodeScanner.render(onScanSuccess);
+    </script>
+    """
+    components.html(scanner_html, height=300)
+
 # ==================== نظام التحكم الصوتي ====================
 def voice_command_component():
     """مكون التحكم الصوتي"""
@@ -1739,11 +1840,11 @@ if menu == t("pos"):
         
         # ====== Normal Sale ======
         if mode == t("normal_sale"):
-            # Scanner automatique (ghir f les ventes) avec zxing-cpp
+            # Scanner automatique (ghir f les ventes) avec streamlit-barcode-scanner
             use_normal_scanner = st.checkbox("📸 تفعيل الماسح التلقائي", key="normal_scanner_toggle")
             if use_normal_scanner:
                 st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً")
-                zxing_barcode_scanner("vente_normale_code")
+                barcode_scanner_vente("vente_normale_code")
             
             col1, col2 = st.columns(2)
             with col1:
@@ -1801,11 +1902,11 @@ if menu == t("pos"):
         elif mode == t("scan_qr"):
             st.subheader(t("scan_qr"))
             
-            # Scanner automatique (ghir f les ventes) avec zxing-cpp
+            # Scanner automatique (ghir f les ventes) avec streamlit-barcode-scanner
             use_qr_scanner = st.checkbox("📸 تفعيل الماسح التلقائي", key="qr_scanner_toggle")
             if use_qr_scanner:
                 st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً")
-                zxing_barcode_scanner("qr_code")
+                barcode_scanner_vente("qr_code")
             
             col1, col2 = st.columns(2)
             with col1:
@@ -1891,11 +1992,11 @@ if menu == t("pos"):
                 with col1:
                     st.subheader(t("add_to_cart"))
                     
-                    # Scanner automatique (ghir f les ventes) avec zxing-cpp
+                    # Scanner automatique (ghir f les ventes) avec streamlit-barcode-scanner
                     use_cart_scanner = st.checkbox("📸 تفعيل الماسح التلقائي", key="cart_scanner_toggle")
                     if use_cart_scanner:
                         st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً")
-                        zxing_barcode_scanner("panier_code")
+                        barcode_scanner_vente("panier_code")
                     
                     code = st.text_input(t("barcode"), key="panier_code")
                     qty = st.number_input(f"{t('quantity')}:", min_value=0.0, step=0.1, key="panier_qty")
@@ -2094,12 +2195,12 @@ elif menu == t("stock"):
         else:
             st.success(f"{t('search_results')} {len(df_stock)} produit(s)")
     
-    # إضافة منتج جديد - MA T9ISNACH (stock_barcode_scanner b9a kima howa)
+    # إضافة منتج جديد - MA T9ISNACH (mobile_barcode_scanner b9a kima howa)
     with st.expander(t("add_product"), expanded=True):
         use_add_scanner = st.checkbox(t("stock_scanner_add"), key="add_scanner_checkbox")
         if use_add_scanner:
             st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-            stock_barcode_scanner("stock_barcode")
+            mobile_barcode_scanner("stock_barcode")
         
         col1, col2, col3, col4 = st.columns(4)
         with col1: 
@@ -2152,7 +2253,7 @@ elif menu == t("stock"):
             use_update_scanner = st.checkbox(t("stock_scanner_update"), key="update_scanner_checkbox")
             if use_update_scanner:
                 st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-                stock_barcode_scanner("stock_update_barcode")
+                mobile_barcode_scanner("stock_update_barcode")
             
             selected_product = st.selectbox(
                 t("select_product"), 
