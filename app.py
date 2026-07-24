@@ -11,7 +11,7 @@ import json
 import time
 import plotly.express as px
 import plotly.graph_objects as go
-from streamlit_qrcode_scanner import qrcode_scanner
+from streamlit_barcode_scanner import barcode_scanner
 
 # --- إعداد Supabase ---
 try:
@@ -46,196 +46,43 @@ def barcode_scanner_vente(session_key):
     
     return barcode_input
 
-# ==================== دالة الماسح المحسن (للستوك) ====================
-def mobile_barcode_scanner(session_key):
-    """
-    ماسح باركود محسن - يضمن كتابة القيمة في st.text_input
-    """
+# ==================== دالة الماسح للستوك ====================
+def stock_barcode_scanner(target_input_label):
+    """ماسح باركود لصفحة المخزون - نفس الطريقة القديمة"""
     scanner_html = f"""
-    <div id="barcode-scanner-container" style="width:100%; min-height:350px; border:2px dashed #4CAF50; border-radius:10px; padding:15px; background:#f9f9f9;">
-        <div id="reader" style="width:100%; min-height:300px;"></div>
-        <p style="text-align:center; color:#666; font-size:14px; margin-top:10px;">📱 قرب الباركود من الكاميرا</p>
-        <div id="scan-status" style="text-align:center; font-size:14px; color:#999; margin-top:5px;">⏳ جاري تهيئة الكاميرا...</div>
-    </div>
-    
+    <div id="stock_reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
-    (function() {{
-        'use strict';
-        
-        let html5Qrcode = null;
-        let isScanning = false;
-        let scannerStarted = false;
-        let lastScanned = '';
-        let retryCount = 0;
-        const maxRetries = 3;
-        
-        function updateStatus(message, isSuccess = false, isError = false) {{
-            const statusEl = document.getElementById('scan-status');
-            if (statusEl) {{
-                statusEl.textContent = message;
-                statusEl.style.color = isError ? '#f44336' : (isSuccess ? '#4CAF50' : '#666');
-            }}
-        }}
-        
-        function setInputValue(value) {{
-            let input = document.getElementById('{session_key}');
-            if (!input) {{
-                const inputs = document.getElementsByName('{session_key}');
-                if (inputs.length > 0) input = inputs[0];
-            }}
-            if (!input) {{
-                const inputs = document.querySelectorAll('input[aria-label="{session_key}"]');
-                if (inputs.length > 0) input = inputs[0];
-            }}
-            if (!input) {{
-                const allInputs = document.querySelectorAll('input');
-                for (let el of allInputs) {{
-                    if (el.placeholder && (el.placeholder.includes('باركود') || el.placeholder.includes('barcode') || el.placeholder.includes('Code'))) {{
-                        input = el;
-                        break;
-                    }}
+    let lastStockScan = '';
+    let stockScanTimeout;
+    
+    function onScanSuccess(decodedText, decodedResult) {{
+        if (decodedText !== lastStockScan) {{
+            lastStockScan = decodedText;
+            clearTimeout(stockScanTimeout);
+            stockScanTimeout = setTimeout(() => {{ lastStockScan = ''; }}, 2000);
+            
+            const inputs = window.parent.document.querySelectorAll('input');
+            inputs.forEach(function(input) {{
+                if (input.getAttribute('aria-label') === '{target_input_label}') {{
+                    input.value = decodedText;
+                    input.dispatchEvent(new Event('input', {{bubbles: true}}));
+                    input.dispatchEvent(new Event('change', {{bubbles: true}}));
+                    input.style.background = '#e8f5e9';
+                    setTimeout(() => {{ input.style.background = ''; }}, 500);
                 }}
-            }}
-            
-            if (input) {{
-                input.value = value;
-                input.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                input.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                input.style.background = '#a5d6a7';
-                input.style.border = '3px solid #4CAF50';
-                input.style.transition = 'all 0.3s';
-                setTimeout(() => {{
-                    input.style.background = '';
-                    input.style.border = '';
-                }}, 1500);
-                return true;
-            }}
-            return false;
+            }});
         }}
-        
-        function sendToStreamlit(value) {{
-            window.parent.postMessage({{
-                type: 'streamlit:setComponentValue',
-                key: '{session_key}',
-                value: value
-            }}, '*');
-            setTimeout(() => {{
-                window.parent.postMessage({{
-                    type: 'streamlit:setComponentValue',
-                    key: '{session_key}',
-                    value: value
-                }}, '*');
-            }}, 50);
-            setTimeout(() => {{
-                window.parent.postMessage({{
-                    type: 'streamlit:setComponentValue',
-                    key: '{session_key}',
-                    value: value
-                }}, '*');
-            }}, 200);
-        }}
-        
-        function handleSuccessfulScan(decodedText) {{
-            if (decodedText === lastScanned) return;
-            lastScanned = decodedText;
-            updateStatus('✅ تم المسح: ' + decodedText, true);
-            setInputValue(decodedText);
-            sendToStreamlit(decodedText);
-            
-            if (html5Qrcode) {{
-                html5Qrcode.stop().then(() => {{
-                    isScanning = false;
-                    scannerStarted = false;
-                    updateStatus('📸 جاهز للمسح مرة أخرى', false);
-                    setTimeout(() => {{
-                        lastScanned = '';
-                        startScanner();
-                    }}, 2000);
-                }}).catch(function(err) {{
-                    isScanning = false;
-                    scannerStarted = false;
-                    setTimeout(() => {{
-                        lastScanned = '';
-                        startScanner();
-                    }}, 2000);
-                }});
-            }}
-            
-            window.parent.postMessage({{
-                type: 'streamlit:setComponentValue',
-                key: '{session_key}',
-                value: decodedText
-            }}, '*');
-        }}
-        
-        function startScanner() {{
-            if (isScanning || scannerStarted) return;
-            const container = document.getElementById('barcode-scanner-container');
-            if (!container) return;
-            
-            try {{
-                if (html5Qrcode) {{
-                    html5Qrcode.clear();
-                    html5Qrcode = null;
-                }}
-                
-                const readerElement = document.getElementById('reader');
-                if (!readerElement) return;
-                
-                html5Qrcode = new Html5Qrcode("reader");
-                scannerStarted = true;
-                
-                const config = {{
-                    fps: 15,
-                    qrbox: {{width: 280, height: 280}},
-                    aspectRatio: 1.0,
-                    facingMode: "environment"
-                }};
-                
-                updateStatus('📷 جاري تشغيل الكاميرا...', false);
-                
-                html5Qrcode.start(
-                    {{ facingMode: "environment" }},
-                    config,
-                    function(decodedText, decodedResult) {{
-                        if (decodedText) {{
-                            handleSuccessfulScan(decodedText);
-                        }}
-                    }},
-                    function(errorMessage) {{}}
-                ).then(function() {{
-                    isScanning = true;
-                    updateStatus('📷 الكاميرا شغالة - امسح الباركود', false);
-                }}).catch(function(err) {{
-                    updateStatus('❌ خطأ: ' + err.message, false, true);
-                    scannerStarted = false;
-                    retryCount++;
-                    if (retryCount < maxRetries) {{
-                        setTimeout(startScanner, 2000);
-                    }}
-                }});
-            }} catch(e) {{
-                updateStatus('❌ خطأ: ' + e.message, false, true);
-                scannerStarted = false;
-                retryCount++;
-                if (retryCount < maxRetries) {{
-                    setTimeout(startScanner, 2000);
-                }}
-            }}
-        }}
-        
-        setTimeout(startScanner, 1000);
-        document.addEventListener('visibilitychange', function() {{
-            if (!document.hidden && !isScanning && !scannerStarted) {{
-                retryCount = 0;
-                setTimeout(startScanner, 500);
-            }}
-        }});
-    }})();
+    }}
+    
+    let html5QrcodeScanner = new Html5QrcodeScanner(
+        "stock_reader", 
+        {{fps: 10, qrbox: 250, facingMode: "environment"}}
+    );
+    html5QrcodeScanner.render(onScanSuccess);
     </script>
     """
-    components.html(scanner_html, height=420)
+    components.html(scanner_html, height=300)
 
 # ==================== دالة الفاتورة الموحدة 80mm ====================
 def get_next_invoice_number():
@@ -324,7 +171,6 @@ if "lang" not in st.session_state:
     st.session_state.lang = "ar"
 
 translations = {
-    # ===== صفحة تسجيل الدخول =====
     "login_title": {
         "ar": "🔐 تسجيل الدخول",
         "fr": "🔐 Connexion",
@@ -345,8 +191,6 @@ translations = {
         "fr": "❌ Mot de passe incorrect!",
         "en": "❌ Wrong password!"
     },
-    
-    # ===== القائمة الرئيسية =====
     "menu_main": {
         "ar": "القائمة الرئيسية",
         "fr": "Menu Principal",
@@ -402,84 +246,20 @@ translations = {
         "fr": "🔗 Outils Rapides",
         "en": "🔗 Quick Tools"
     },
-    
-    # ===== Dashboard =====
-    "sales_today": {
-        "ar": "💰 مبيعات اليوم",
-        "fr": "💰 Ventes du jour",
-        "en": "💰 Today's Sales"
-    },
-    "printing_today": {
-        "ar": "🖨️ طباعة اليوم",
-        "fr": "🖨️ Impressions du jour",
-        "en": "🖨️ Today's Printing"
-    },
-    "products_count": {
-        "ar": "📦 عدد المنتجات",
-        "fr": "📦 Nombre de produits",
-        "en": "📦 Products Count"
-    },
-    "low_stock": {
-        "ar": "⚠️ مخزون منخفض",
-        "fr": "⚠️ Stock bas",
-        "en": "⚠️ Low Stock"
-    },
-    "top_products": {
-        "ar": "🏆 المنتجات الأكثر ربحية",
-        "fr": "🏆 Produits les plus rentables",
-        "en": "🏆 Most Profitable Products"
-    },
-    "compare_periods": {
-        "ar": "📊 مقارنة الفترات",
-        "fr": "📊 Comparer les périodes",
-        "en": "📊 Compare Periods"
-    },
-    "sales_chart": {
-        "ar": "📈 رسم بياني للمبيعات",
-        "fr": "📈 Graphique des ventes",
-        "en": "📈 Sales Chart"
-    },
-    "sales_prediction": {
-        "ar": "🔮 توقعات المبيعات",
-        "fr": "🔮 Prévisions des ventes",
-        "en": "🔮 Sales Prediction"
-    },
-    "recent_sales": {
-        "ar": "🕐 آخر المبيعات",
-        "fr": "🕐 Ventes récentes",
-        "en": "🕐 Recent Sales"
-    },
-    
-    # ===== Point de Vente =====
-    "voice_command": {
-        "ar": "🎤 تحكم صوتي",
-        "fr": "🎤 Commande Vocale",
-        "en": "🎤 Voice Command"
-    },
-    "voice_listening": {
-        "ar": "🎤 جاري الاستماع...",
-        "fr": "🎤 Écoute en cours...",
-        "en": "🎤 Listening..."
-    },
-    "voice_start": {
-        "ar": "🎤 ابدأ الاستماع",
-        "fr": "🎤 Commencer l'écoute",
-        "en": "🎤 Start Listening"
-    },
-    "voice_stop": {
-        "ar": "⏹️ إيقاف الاستماع",
-        "fr": "⏹️ Arrêter l'écoute",
-        "en": "⏹️ Stop Listening"
+    "google_search": {
+        "ar": "🔍 بحث Google",
+        "fr": "🔍 Recherche Google",
+        "en": "🔍 Google Search"
     },
     "activate_scanner": {
         "ar": "📸 تفعيل الماسح الضوئي",
         "fr": "📸 Activer le scanner",
-        "en": "📸 Activate Scanner"
+        "en": "📸 Activate scanner"
     },
     "auto_sale_mode": {
-        "ar": "⚡ البيع التلقائي (سكانير = بيع مباشر)",
-        "fr": "⚡ Vente Auto (Scan = Vente Directe)",
-        "en": "⚡ Auto Sale (Scan = Direct Sale)"
+        "ar": "⚡ البيع التلقائي",
+        "fr": "⚡ Vente Auto",
+        "en": "⚡ Auto Sale"
     },
     "sale_type": {
         "ar": "نوع البيع:",
@@ -500,6 +280,41 @@ translations = {
         "ar": "بيع حر",
         "fr": "Vente Libre",
         "en": "Free Sale"
+    },
+    "cart": {
+        "ar": "سلة المشتريات",
+        "fr": "Panier",
+        "en": "Cart"
+    },
+    "cart_mode_label": {
+        "ar": "🚀 نوع السلة:",
+        "fr": "🚀 Type de panier:",
+        "en": "🚀 Cart type:"
+    },
+    "cart_manual": {
+        "ar": "✋ يدوي",
+        "fr": "✋ Manuel",
+        "en": "✋ Manual"
+    },
+    "cart_auto": {
+        "ar": "⚡ تلقائي",
+        "fr": "⚡ Auto",
+        "en": "⚡ Auto"
+    },
+    "cart_auto_info": {
+        "ar": "⚡ الماسح التلقائي",
+        "fr": "⚡ Scanner auto",
+        "en": "⚡ Auto scanner"
+    },
+    "cart_empty": {
+        "ar": "السلة فارغة",
+        "fr": "Panier vide",
+        "en": "Empty cart"
+    },
+    "cart_products_count": {
+        "ar": "منتجات",
+        "fr": "produits",
+        "en": "products"
     },
     "barcode": {
         "ar": "الباركود",
@@ -536,41 +351,6 @@ translations = {
         "fr": "✅ Ajouter au Panier",
         "en": "✅ Add to Cart"
     },
-    "cart": {
-        "ar": "🛒 سلة المشتريات",
-        "fr": "🛒 Panier",
-        "en": "🛒 Cart"
-    },
-    "cart_mode_label": {
-        "ar": "🚀 نوع السلة:",
-        "fr": "🚀 Type de panier:",
-        "en": "🚀 Cart type:"
-    },
-    "cart_manual": {
-        "ar": "✋ يدوي (إضافة منتج منتج)",
-        "fr": "✋ Manuel (Ajout produit par produit)",
-        "en": "✋ Manual (Add one by one)"
-    },
-    "cart_auto": {
-        "ar": "⚡ تلقائي (سكانير متواصل)",
-        "fr": "⚡ Auto (Scan continu)",
-        "en": "⚡ Auto (Continuous scan)"
-    },
-    "cart_auto_info": {
-        "ar": "⚡ الماسح التلقائي: امسح الباركود = يضاف للسلة تلقائياً",
-        "fr": "⚡ Scanner auto: Scannez = Ajouté au panier",
-        "en": "⚡ Auto scanner: Scan = Added to cart"
-    },
-    "cart_empty": {
-        "ar": "السلة فارغة - امسح الباركود للإضافة",
-        "fr": "Panier vide - Scannez pour ajouter",
-        "en": "Empty cart - Scan to add"
-    },
-    "cart_products_count": {
-        "ar": "منتجات",
-        "fr": "produits",
-        "en": "products"
-    },
     "validate_cart": {
         "ar": "🖨️ تأكيد وتسجيل الكل",
         "fr": "🖨️ Valider et Enregistrer Tout",
@@ -601,57 +381,15 @@ translations = {
         "fr": "⚠️ Produit introuvable",
         "en": "⚠️ Product not found"
     },
-    "or_choose_name": {
-        "ar": "أو اختر بالاسم:",
-        "fr": "Ou choisir par nom:",
-        "en": "Or choose by name:"
+    "add_product": {
+        "ar": "➕ إضافة منتج",
+        "fr": "➕ Ajouter un Produit",
+        "en": "➕ Add Product"
     },
     "product_name": {
         "ar": "اسم المنتج",
         "fr": "Nom du Produit",
         "en": "Product Name"
-    },
-    "scan_success_sound": {
-        "ar": "✅ تم المسح بنجاح! 🔔",
-        "fr": "✅ Scan réussi! 🔔",
-        "en": "✅ Scan successful! 🔔"
-    },
-    "invoice_number": {
-        "ar": "رقم الفاتورة",
-        "fr": "Numéro de facture",
-        "en": "Invoice Number"
-    },
-    "invoice_printed": {
-        "ar": "🧾 تمت طباعة الفاتورة",
-        "fr": "🧾 Facture imprimée",
-        "en": "🧾 Invoice printed"
-    },
-    
-    # ===== Stock =====
-    "search_stock": {
-        "ar": "🔍 بحث في المخزون",
-        "fr": "🔍 Rechercher dans le stock",
-        "en": "🔍 Search Stock"
-    },
-    "search_placeholder": {
-        "ar": "اكتب اسم المنتج أو الباركود للبحث...",
-        "fr": "Tapez le nom du produit ou le code-barres...",
-        "en": "Type product name or barcode..."
-    },
-    "search_results": {
-        "ar": "نتائج البحث:",
-        "fr": "Résultats de recherche:",
-        "en": "Search results:"
-    },
-    "no_results": {
-        "ar": "لا توجد نتائج مطابقة",
-        "fr": "Aucun résultat trouvé",
-        "en": "No matching results"
-    },
-    "add_product": {
-        "ar": "➕ إضافة منتج",
-        "fr": "➕ Ajouter un Produit",
-        "en": "➕ Add Product"
     },
     "add_button": {
         "ar": "➕ إضافة",
@@ -688,6 +426,31 @@ translations = {
         "fr": "Choisir le produit",
         "en": "Select product"
     },
+    "or_choose_name": {
+        "ar": "أو اختر بالاسم:",
+        "fr": "Ou choisir par nom:",
+        "en": "Or choose by name:"
+    },
+    "search_stock": {
+        "ar": "🔍 بحث في المخزون",
+        "fr": "🔍 Rechercher dans le stock",
+        "en": "🔍 Search Stock"
+    },
+    "search_placeholder": {
+        "ar": "اكتب اسم المنتج أو الباركود للبحث...",
+        "fr": "Tapez le nom du produit ou le code-barres...",
+        "en": "Type product name or barcode..."
+    },
+    "search_results": {
+        "ar": "نتائج البحث:",
+        "fr": "Résultats de recherche:",
+        "en": "Search results:"
+    },
+    "no_results": {
+        "ar": "لا توجد نتائج مطابقة",
+        "fr": "Aucun résultat trouvé",
+        "en": "No matching results"
+    },
     "new_quantity": {
         "ar": "الكمية الجديدة",
         "fr": "Nouvelle Quantité",
@@ -703,18 +466,6 @@ translations = {
         "fr": "✏️ Modifier",
         "en": "✏️ Update"
     },
-    "stock_scanner_add": {
-        "ar": "📸 مسح الباركود للإضافة",
-        "fr": "📸 Scanner pour ajouter",
-        "en": "📸 Scan barcode to add"
-    },
-    "stock_scanner_update": {
-        "ar": "📸 مسح الباركود للتحديث",
-        "fr": "📸 Scanner pour modifier",
-        "en": "📸 Scan barcode to update"
-    },
-    
-    # ===== Impression =====
     "price_per_page": {
         "ar": "سعر الصفحة",
         "fr": "Prix/Page",
@@ -735,22 +486,15 @@ translations = {
         "fr": "📊 Historique d'Impression",
         "en": "📊 Print History"
     },
-    "total_printing": {
-        "ar": "🖨️ إجمالي الطباعة",
-        "fr": "🖨️ Total Impressions",
-        "en": "🖨️ Total Printing"
-    },
-    "download_print_invoice": {
-        "ar": "📥 تحميل فاتورة الطباعة",
-        "fr": "📥 Télécharger Facture d'Impression",
-        "en": "📥 Download Print Invoice"
-    },
-    
-    # ===== Caisse =====
     "total_sales": {
         "ar": "💰 إجمالي المبيعات",
         "fr": "💰 Total des Ventes",
         "en": "💰 Total Sales"
+    },
+    "total_printing": {
+        "ar": "🖨️ إجمالي الطباعة",
+        "fr": "🖨️ Total Impressions",
+        "en": "🖨️ Total Printing"
     },
     "total_credits": {
         "ar": "💳 إجمالي الديون",
@@ -763,14 +507,14 @@ translations = {
         "en": "🏦 Grand Total"
     },
     "reset_caisse": {
-        "ar": "🔄 تصفير الخزينة (نهاية اليوم)",
-        "fr": "🔄 Réinitialiser la Caisse (Fin de journée)",
-        "en": "🔄 Reset Cash Register (End of Day)"
+        "ar": "🔄 تصفير الخزينة",
+        "fr": "🔄 Réinitialiser la Caisse",
+        "en": "🔄 Reset Cash Register"
     },
     "reset_warning": {
-        "ar": "⚠️ هذا الزر سيحفظ ملخص اليوم ويصفر العداد. استخدمه فقط في نهاية اليوم!",
-        "fr": "⚠️ Ce bouton enregistrera le résumé du jour et remettra le compteur à zéro. À utiliser uniquement en fin de journée!",
-        "en": "⚠️ This button will save today's summary and reset the counter. Use only at end of day!"
+        "ar": "⚠️ تحذير: سيتم حفظ ملخص اليوم وتصفير العداد",
+        "fr": "⚠️ Attention: Le résumé du jour sera sauvegardé",
+        "en": "⚠️ Warning: Today's summary will be saved"
     },
     "reset_button": {
         "ar": "🔄 تصفير الخزينة",
@@ -778,12 +522,12 @@ translations = {
         "en": "🔄 Reset Cash Register"
     },
     "confirm_reset": {
-        "ar": "❌ هل أنت متأكد من تصفير الخزينة؟",
-        "fr": "❌ Êtes-vous sûr de vouloir réinitialiser la caisse?",
-        "en": "❌ Are you sure you want to reset the cash register?"
+        "ar": "❌ هل أنت متأكد؟",
+        "fr": "❌ Êtes-vous sûr?",
+        "en": "❌ Are you sure?"
     },
     "yes_reset": {
-        "ar": "✅ نعم، صفر الخزينة",
+        "ar": "✅ نعم، صفر",
         "fr": "✅ Oui, réinitialiser",
         "en": "✅ Yes, reset"
     },
@@ -793,21 +537,24 @@ translations = {
         "en": "❌ Cancel"
     },
     "reset_success": {
-        "ar": "✅ تم تصفير الخزينة بنجاح! إجمالي اليوم:",
-        "fr": "✅ Caisse réinitialisée avec succès! Total du jour:",
-        "en": "✅ Cash register reset successfully! Daily total:"
+        "ar": "✅ تم تصفير الخزينة!",
+        "fr": "✅ Caisse réinitialisée!",
+        "en": "✅ Cash register reset!"
     },
     "history": {
         "ar": "📅 سجل الأيام السابقة",
-        "fr": "📅 Historique des Jours Précédents",
-        "en": "📅 Previous Days History"
+        "fr": "📅 Historique",
+        "en": "📅 History"
     },
-    
-    # ===== Credits =====
+    "recent_sales": {
+        "ar": "📋 المبيعات الأخيرة",
+        "fr": "📋 Ventes Récentes",
+        "en": "📋 Recent Sales"
+    },
     "add_credit": {
-        "ar": "➕ إضافة دين جديد",
+        "ar": "➕ إضافة دين",
         "fr": "➕ Ajouter un Crédit",
-        "en": "➕ Add New Credit"
+        "en": "➕ Add Credit"
     },
     "client_name": {
         "ar": "اسم العميل",
@@ -869,8 +616,6 @@ translations = {
         "fr": "🔼 Ajouter au crédit",
         "en": "🔼 Add to Credit"
     },
-    
-    # ===== Factures =====
     "last_sale": {
         "ar": "🛒 آخر عملية بيع",
         "fr": "🛒 Dernière Vente",
@@ -886,6 +631,11 @@ translations = {
         "fr": "📥 Télécharger Facture de Vente",
         "en": "📥 Download Sale Invoice"
     },
+    "download_print_invoice": {
+        "ar": "📥 تحميل فاتورة الطباعة",
+        "fr": "📥 Télécharger Facture d'Impression",
+        "en": "📥 Download Print Invoice"
+    },
     "download_order": {
         "ar": "📥 تحميل الطلبية",
         "fr": "📥 Télécharger la Commande",
@@ -896,8 +646,6 @@ translations = {
         "fr": "📊 Toutes les Ventes",
         "en": "📊 All Sales"
     },
-    
-    # ===== Commandes =====
     "new_order": {
         "ar": "➕ إضافة طلبية",
         "fr": "➕ Nouvelle Commande",
@@ -978,8 +726,101 @@ translations = {
         "fr": "✅ Réception confirmée!",
         "en": "✅ Reception confirmed!"
     },
-    
-    # ===== Services =====
+    "quick_stats": {
+        "ar": "📊 إحصائيات سريعة",
+        "fr": "📊 Statistiques Rapides",
+        "en": "📊 Quick Stats"
+    },
+    "products_count": {
+        "ar": "📦 المنتجات",
+        "fr": "📦 Produits",
+        "en": "📦 Products"
+    },
+    "sales_count": {
+        "ar": "💰 المبيعات",
+        "fr": "💰 Ventes",
+        "en": "💰 Sales"
+    },
+    "orders_count": {
+        "ar": "📋 الطلبيات",
+        "fr": "📋 Commandes",
+        "en": "📋 Orders"
+    },
+    "error_generic": {
+        "ar": "❌ حدث خطأ",
+        "fr": "❌ Une erreur",
+        "en": "❌ Error"
+    },
+    "fill_all_fields": {
+        "ar": "⚠️ الرجاء ملء جميع الحقول",
+        "fr": "⚠️ Veuillez remplir tous les champs",
+        "en": "⚠️ Please fill all fields"
+    },
+    "product_added": {
+        "ar": "✅ تم إضافة المنتج!",
+        "fr": "✅ Produit ajouté!",
+        "en": "✅ Product added!"
+    },
+    "product_updated": {
+        "ar": "✅ تم تحديث المنتج!",
+        "fr": "✅ Produit mis à jour!",
+        "en": "✅ Product updated!"
+    },
+    "export_excel": {
+        "ar": "📥 تصدير Excel",
+        "fr": "📥 Exporter Excel",
+        "en": "📥 Export Excel"
+    },
+    "import_excel": {
+        "ar": "📤 استيراد Excel",
+        "fr": "📤 Importer Excel",
+        "en": "📤 Import Excel"
+    },
+    "import_success": {
+        "ar": "✅ تم الاستيراد!",
+        "fr": "✅ Import réussi!",
+        "en": "✅ Import successful!"
+    },
+    "lang_select": {
+        "ar": "🌐 اللغة",
+        "fr": "🌐 Langue",
+        "en": "🌐 Language"
+    },
+    "no_data": {
+        "ar": "لا توجد بيانات",
+        "fr": "Aucune donnée",
+        "en": "No data"
+    },
+    "invoice_printed": {
+        "ar": "🧾 تمت طباعة الفاتورة",
+        "fr": "🧾 Facture imprimée",
+        "en": "🧾 Invoice printed"
+    },
+    "scan_success_sound": {
+        "ar": "✅ تم المسح!",
+        "fr": "✅ Scan réussi!",
+        "en": "✅ Scan successful!"
+    },
+    "live_sync_label": {
+        "ar": "🔄 مزامنة",
+        "fr": "🔄 Synchro",
+        "en": "🔄 Sync"
+    },
+    "live_sync_active_msg": {
+        "ar": "🔄 المزامنة نشطة",
+        "fr": "🔄 Synchro active",
+        "en": "🔄 Sync active"
+    },
+    "stock_scanner_add": {
+        "ar": "📸 مسح للإضافة",
+        "fr": "📸 Scanner pour ajouter",
+        "en": "📸 Scan to add"
+    },
+    "stock_scanner_update": {
+        "ar": "📸 مسح للتحديث",
+        "fr": "📸 Scanner pour modifier",
+        "en": "📸 Scan to update"
+    },
     "service_select": {
         "ar": "اختر الخدمة",
         "fr": "Choisissez le service",
@@ -1055,8 +896,6 @@ translations = {
         "fr": "📋 Liste des services",
         "en": "📋 Service List"
     },
-    
-    # ===== Outils =====
     "whatsapp_label": {
         "ar": "📞 واتساب",
         "fr": "📞 WhatsApp",
@@ -1092,85 +931,51 @@ translations = {
         "fr": "Afficher Google",
         "en": "Show Google"
     },
-    
-    # ===== Statistiques =====
-    "quick_stats": {
-        "ar": "📊 إحصائيات سريعة",
-        "fr": "📊 Statistiques Rapides",
-        "en": "📊 Quick Stats"
+    "voice_command": {
+        "ar": "🎤 تحكم صوتي",
+        "fr": "🎤 Commande Vocale",
+        "en": "🎤 Voice Command"
     },
-    "products_count": {
-        "ar": "📦 المنتجات",
-        "fr": "📦 Produits",
-        "en": "📦 Products"
+    "voice_listening": {
+        "ar": "🎤 جاري الاستماع...",
+        "fr": "🎤 Écoute en cours...",
+        "en": "🎤 Listening..."
     },
-    "sales_count": {
-        "ar": "💰 المبيعات",
-        "fr": "💰 Ventes",
-        "en": "💰 Sales"
+    "voice_start": {
+        "ar": "🎤 ابدأ الاستماع",
+        "fr": "🎤 Commencer l'écoute",
+        "en": "🎤 Start Listening"
     },
-    "orders_count": {
-        "ar": "📋 الطلبيات",
-        "fr": "📋 Commandes",
-        "en": "📋 Orders"
+    "voice_stop": {
+        "ar": "⏹️ إيقاف",
+        "fr": "⏹️ Arrêter",
+        "en": "⏹️ Stop"
     },
-    
-    # ===== Général =====
-    "no_data": {
-        "ar": "لا توجد بيانات",
-        "fr": "Aucune donnée",
-        "en": "No data"
+    "invoice_number": {
+        "ar": "رقم الفاتورة",
+        "fr": "Numéro de facture",
+        "en": "Invoice Number"
     },
-    "error_generic": {
-        "ar": "❌ حدث خطأ",
-        "fr": "❌ Une erreur",
-        "en": "❌ Error"
+    "top_products": {
+        "ar": "🏆 المنتجات الأكثر ربحية",
+        "fr": "🏆 Produits les plus rentables",
+        "en": "🏆 Most Profitable Products"
     },
-    "fill_all_fields": {
-        "ar": "⚠️ الرجاء ملء جميع الحقول",
-        "fr": "⚠️ Veuillez remplir tous les champs",
-        "en": "⚠️ Please fill all fields"
+    "compare_periods": {
+        "ar": "📊 مقارنة الفترات",
+        "fr": "📊 Comparer les périodes",
+        "en": "📊 Compare Periods"
     },
-    "product_added": {
-        "ar": "✅ تم إضافة المنتج!",
-        "fr": "✅ Produit ajouté!",
-        "en": "✅ Product added!"
+    "sales_chart": {
+        "ar": "📈 رسم بياني للمبيعات",
+        "fr": "📈 Graphique des ventes",
+        "en": "📈 Sales Chart"
     },
-    "product_updated": {
-        "ar": "✅ تم تحديث المنتج!",
-        "fr": "✅ Produit mis à jour!",
-        "en": "✅ Product updated!"
+    "sales_prediction": {
+        "ar": "🔮 توقعات المبيعات",
+        "fr": "🔮 Prévisions des ventes",
+        "en": "🔮 Sales Prediction"
     },
-    "export_excel": {
-        "ar": "📥 تصدير Excel",
-        "fr": "📥 Exporter Excel",
-        "en": "📥 Export Excel"
-    },
-    "import_excel": {
-        "ar": "📤 استيراد Excel",
-        "fr": "📤 Importer Excel",
-        "en": "📤 Import Excel"
-    },
-    "import_success": {
-        "ar": "✅ تم الاستيراد!",
-        "fr": "✅ Import réussi!",
-        "en": "✅ Import successful!"
-    },
-    "lang_select": {
-        "ar": "🌐 اللغة",
-        "fr": "🌐 Langue",
-        "en": "🌐 Language"
-    },
-    "live_sync_label": {
-        "ar": "🔄 مزامنة",
-        "fr": "🔄 Synchro",
-        "en": "🔄 Sync"
-    },
-    "live_sync_active_msg": {
-        "ar": "🔄 المزامنة نشطة",
-        "fr": "🔄 Synchro active",
-        "en": "🔄 Sync active"
-    }
 }
 
 def t(key):
@@ -1198,7 +1003,6 @@ def import_excel_data(uploaded_file, table_name):
         return False
 
 def export_import_buttons(table_name, data_df):
-    """أزرار تصدير واستيراد Excel"""
     col_exp, col_imp = st.columns(2)
     with col_exp:
         if not data_df.empty:
@@ -1238,7 +1042,6 @@ def check_stock_levels():
     return pd.DataFrame()
 
 def get_product_info(code_or_name):
-    """البحث عن منتج بالباركود أو الاسم"""
     if code_or_name:
         stocks = supabase.table("stock").select("*").eq("Code-barres", code_or_name).execute()
         if stocks.data:
@@ -1259,7 +1062,6 @@ def confirm_purchase(cmd_id):
         st.error(f"Erreur confirmation: {str(e)}")
 
 def reset_caisse():
-    """تصفير الخزينة وحفظ ملخص اليوم - ثم مسح جميع بيانات اليوم"""
     date_aujourdhui = datetime.now().strftime('%d/%m/%Y')
     df_ventes = get_df("ventes")
     df_impressions = get_df("impressions")
@@ -1314,7 +1116,6 @@ def reduce_credit(credit_id, montant_reduction):
     return nouveau_montant
 
 def add_to_credit(credit_id, montant_addition):
-    """إضافة مبلغ للدين (زيادة الدين)"""
     credit_actuel = supabase.table("credits").select("*").eq("id", int(credit_id)).execute().data[0]
     nouveau_montant = float(credit_actuel['Montant']) + float(montant_addition)
     supabase.table("credits").update({"Montant": nouveau_montant}).eq("id", int(credit_id)).execute()
@@ -1393,7 +1194,6 @@ def auto_sale_scanner():
     components.html(scanner_html, height=350)
 
 def auto_cart_scanner():
-    """سكانير السلة التلقائية - يضيف المنتج للسلة تلقائياً مع التعرف على المنتج الجديد"""
     scanner_html = """
     <div id="auto_cart_reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -1422,7 +1222,6 @@ def auto_cart_scanner():
     components.html(scanner_html, height=300)
 
 def stock_barcode_scanner(target_input_label):
-    """ماسح باركود لصفحة المخزون - نفس الطريقة القديمة"""
     scanner_html = f"""
     <div id="stock_reader" style="width:100%"></div>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -1460,7 +1259,6 @@ def stock_barcode_scanner(target_input_label):
 
 # ==================== نظام التحكم الصوتي ====================
 def voice_command_component():
-    """مكون التحكم الصوتي"""
     voice_html = """
     <div id="voice-control">
         <button id="start-voice" style="padding:10px 20px; background:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
@@ -1840,7 +1638,6 @@ if menu == t("pos"):
         
         # ====== Normal Sale ======
         if mode == t("normal_sale"):
-            # Scanner automatique (ghir f les ventes) avec streamlit-barcode-scanner
             use_normal_scanner = st.checkbox("📸 تفعيل الماسح التلقائي", key="normal_scanner_toggle")
             if use_normal_scanner:
                 st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً")
@@ -1902,7 +1699,6 @@ if menu == t("pos"):
         elif mode == t("scan_qr"):
             st.subheader(t("scan_qr"))
             
-            # Scanner automatique (ghir f les ventes) avec streamlit-barcode-scanner
             use_qr_scanner = st.checkbox("📸 تفعيل الماسح التلقائي", key="qr_scanner_toggle")
             if use_qr_scanner:
                 st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً")
@@ -1992,7 +1788,6 @@ if menu == t("pos"):
                 with col1:
                     st.subheader(t("add_to_cart"))
                     
-                    # Scanner automatique (ghir f les ventes) avec streamlit-barcode-scanner
                     use_cart_scanner = st.checkbox("📸 تفعيل الماسح التلقائي", key="cart_scanner_toggle")
                     if use_cart_scanner:
                         st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً")
@@ -2195,12 +1990,11 @@ elif menu == t("stock"):
         else:
             st.success(f"{t('search_results')} {len(df_stock)} produit(s)")
     
-    # إضافة منتج جديد - MA T9ISNACH (mobile_barcode_scanner b9a kima howa)
     with st.expander(t("add_product"), expanded=True):
         use_add_scanner = st.checkbox(t("stock_scanner_add"), key="add_scanner_checkbox")
         if use_add_scanner:
             st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-            mobile_barcode_scanner("stock_barcode")
+            stock_barcode_scanner("stock_barcode")
         
         col1, col2, col3, col4 = st.columns(4)
         with col1: 
@@ -2253,7 +2047,7 @@ elif menu == t("stock"):
             use_update_scanner = st.checkbox(t("stock_scanner_update"), key="update_scanner_checkbox")
             if use_update_scanner:
                 st.info("📸 امسح الباركود الآن - سيتم كتابته تلقائياً في خانة الباركود")
-                mobile_barcode_scanner("stock_update_barcode")
+                stock_barcode_scanner("stock_update_barcode")
             
             selected_product = st.selectbox(
                 t("select_product"), 
