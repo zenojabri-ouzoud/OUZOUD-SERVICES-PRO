@@ -2014,23 +2014,64 @@ if menu == t("pos"):
         
         # ====== Scan QR ======
         elif mode == t("scan_qr"):
-            st.subheader(t("scan_qr"))
+            st.subheader("📱 " + t("scan_qr"))
             
-            if st.session_state.scanned_barcode is None:
-                st.warning("⚠️ يرجى مسح الباركود للمتابعة")
-                mobile_barcode_scanner("scanned_barcode")
-                st.stop()
+            # Scanner QR Code
+            scanner_html = """
+            <div id="qr-reader" style="width:100%; max-width:500px; margin:0 auto;"></div>
+            <div id="qr-reader-results" style="text-align:center; margin-top:10px; font-size:18px; color:#4CAF50;"></div>
             
-            barcode = st.session_state.scanned_barcode
-            st.success(f"✅ تم مسح الباركود بنجاح: {barcode}")
+            <script src="https://unpkg.com/html5-qrcode"></script>
+            <script>
+            function onScanSuccess(decodedText, decodedResult) {
+                document.getElementById('qr-reader-results').innerHTML = '✅ تم المسح: ' + decodedText;
+                
+                const inputs = window.parent.document.querySelectorAll('input');
+                inputs.forEach(input => {
+                    if (input.id && input.id.includes('qr_code_input')) {
+                        input.value = decodedText;
+                        input.dispatchEvent(new Event('input', {bubbles: true}));
+                        input.dispatchEvent(new Event('change', {bubbles: true}));
+                    }
+                });
+                
+                if (typeof html5Qrcode !== 'undefined' && html5Qrcode) {
+                    html5Qrcode.stop();
+                }
+            }
+            
+            let html5Qrcode = new Html5Qrcode("qr-reader");
+            html5Qrcode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                onScanSuccess,
+                function(errorMessage) {}
+            ).catch(function(err) {
+                document.getElementById('qr-reader-results').innerHTML = '❌ خطأ: ' + err.message;
+            });
+            </script>
+            """
+            components.html(scanner_html, height=400)
+            
+            st.info("📷 قرب الكاميرا من الباركود QR")
             
             col1, col2 = st.columns(2)
             with col1:
-                code_qr = st.text_input(f"{t('barcode')} (auto)", value=barcode, disabled=True)
+                code_qr = st.text_input(
+                    f"📱 {t('barcode')}",
+                    key="qr_code_input",
+                    placeholder="سيظهر الباركود هنا تلقائياً..."
+                )
             with col2:
-                qty_qr = st.number_input(t("quantity"), min_value=0.0, step=0.1, value=1.0, key="qr_qty")
+                qty_qr = st.number_input(
+                    f"🔢 {t('quantity')}",
+                    min_value=0.0,
+                    step=0.1,
+                    value=1.0,
+                    key="qr_qty"
+                )
             
-            if st.button(t("confirm_sale"), key="qr_sale"):
+            if st.button("✅ " + t("confirm_sale"), key="qr_sale"):
                 if code_qr and qty_qr > 0:
                     product = get_product_info(code_qr)
                     if product:
@@ -2046,28 +2087,27 @@ if menu == t("pos"):
                             facture_path, invoice_number = facture_result
                             
                             supabase.table("ventes").insert({
-                                "Code": code_qr, 
-                                "Quantité": qty_qr, 
-                                "Prix": prix, 
-                                "Total": total, 
+                                "Code": code_qr,
+                                "Quantité": qty_qr,
+                                "Prix": prix,
+                                "Total": total,
                                 "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
                                 "Nom": nom,
                                 "Facture": invoice_number
                             }).execute()
+                            
                             supabase.table("stock").update({"Quantité": q_old - qty_qr}).eq("id", doc_id).execute()
                             play_success_sound()
-                            st.success(f"{t('sale_success')} {nom} - {qty_qr} x {prix} = {total:.2f} DH | Facture: {invoice_number}")
-                            st.session_state.scanned_barcode = None
+                            st.success(f"✅ {t('sale_success')} {nom} - {qty_qr} x {prix} = {total:.2f} DH | 🧾 Facture: {invoice_number}")
                             st.rerun()
                         else:
-                            st.error(f"{t('low_stock_warning')} {q_old}")
+                            st.error(f"⚠️ {t('low_stock_warning')} {q_old}")
                     else:
-                        st.error(t("product_not_found"))
+                        st.error("❌ " + t("product_not_found"))
                 else:
-                    st.error(t("fill_all_fields"))
+                    st.error("⚠️ " + t("fill_all_fields"))
             
             if st.button("🔄 مسح جديد"):
-                st.session_state.scanned_barcode = None
                 st.rerun()
         
         # ====== Free Sale ======
@@ -2707,12 +2747,10 @@ elif menu == t("factures"):
     df_invoices = get_all_invoices()
     
     if not df_invoices.empty:
-        # عرض الفواتير في جدول
         invoices_display = df_invoices[['Facture', 'Nom', 'Quantité', 'Prix', 'Total', 'Date']].copy()
         invoices_display = invoices_display.drop_duplicates(subset=['Facture'])
         st.dataframe(invoices_display, use_container_width=True)
         
-        # اختيار فاتورة لإعادة طباعتها
         st.divider()
         st.subheader("🖨️ " + t("reprint_invoice"))
         
@@ -2762,7 +2800,6 @@ elif menu == t("factures"):
     
     st.divider()
     
-    # ====== آخر عملية بيع ======
     if st.session_state.last_cart:
         st.subheader(t("last_sale"))
         st.table(pd.DataFrame(st.session_state.last_cart))
@@ -3085,7 +3122,7 @@ elif menu == t("services"):
 
 # ==================== Outils ==================== #
 elif menu == t("outils"):
-    st.header(t("outils"))
+    st.header("🔗 " + t("outils"))
     st.markdown("---")
     
     st.subheader(t("office_label"))
