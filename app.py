@@ -2153,15 +2153,12 @@ if menu == t("pos"):
                 with col1:
                     st.subheader(t("add_to_cart"))
                     
-                    if st.session_state.scanned_barcode is None:
-                        st.warning("⚠️ يرجى مسح الباركود للمتابعة")
-                        mobile_barcode_scanner("scanned_barcode")
-                        st.stop()
+                    use_cart_scanner = st.checkbox("📷 تفعيل الماسح التلقائي", key="cart_scanner_toggle")
+                    if use_cart_scanner:
+                        st.info("📷 امسح الباركود الآن - سيتم كتابته تلقائياً")
+                        mobile_barcode_scanner("panier_code")
                     
-                    barcode = st.session_state.scanned_barcode
-                    st.success(f"✅ تم مسح الباركود: {barcode}")
-                    
-                    code = st.text_input(t("barcode"), value=barcode, disabled=True)
+                    code = st.text_input(t("barcode"), key="panier_code")
                     qty = st.number_input(f"{t('quantity')}:", min_value=0.0, step=0.1, key="panier_qty")
                     
                     product = get_product_info(code) if code else None
@@ -2182,19 +2179,14 @@ if menu == t("pos"):
                                     break
                             if not found:
                                 st.session_state.cart.append({
-                                    "Code": code, 
-                                    "Quantité": qty, 
-                                    "Prix": prix_u, 
+                                    "Code": code,
+                                    "Quantité": qty,
+                                    "Prix": prix_u,
                                     "Total": prix_u * qty,
                                     "Nom": nom_produit
                                 })
                             st.success(f"{t('add_to_cart')}: {nom_produit} x {qty}")
-                            st.session_state.scanned_barcode = None
                             st.rerun()
-                    
-                    if st.button("🔄 مسح جديد"):
-                        st.session_state.scanned_barcode = None
-                        st.rerun()
                 
                 with col2:
                     st.subheader(t("cart"))
@@ -2210,12 +2202,13 @@ if menu == t("pos"):
                                     supabase.table("stock").update({
                                         "Quantité": float(product['Quantité']) - item['Quantité']
                                     }).eq("id", product['id']).execute()
-                                
-                                facture_result = generate_facture_80mm(st.session_state.cart, "FACTURE DE VENTE")
-                                facture_path, invoice_number = facture_result
-                                
+                            
+                            facture_result = generate_facture_80mm(st.session_state.cart, "FACTURE DE VENTE")
+                            facture_path, invoice_number = facture_result
+                            
+                            for item in st.session_state.cart:
                                 supabase.table("ventes").insert({
-                                    **item, 
+                                    **item,
                                     "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
                                     "Facture": invoice_number
                                 }).execute()
@@ -2236,7 +2229,7 @@ if menu == t("pos"):
                                             "Quantité": float(product['Quantité']) - item['Quantité']
                                         }).eq("id", product['id']).execute()
                                     supabase.table("ventes").insert({
-                                        **item, 
+                                        **item,
                                         "Date": datetime.now().strftime('%d/%m/%Y %H:%M')
                                     }).execute()
                                 st.session_state.cart = []
@@ -2312,11 +2305,12 @@ if menu == t("pos"):
                             facture_result = generate_facture_80mm(st.session_state.cart, "FACTURE DE VENTE")
                             facture_path, invoice_number = facture_result
                             
-                            supabase.table("ventes").insert({
-                                **item,
-                                "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
-                                "Facture": invoice_number
-                            }).execute()
+                            for item in st.session_state.cart:
+                                supabase.table("ventes").insert({
+                                    **item,
+                                    "Date": datetime.now().strftime('%d/%m/%Y %H:%M'),
+                                    "Facture": invoice_number
+                                }).execute()
                         
                         st.session_state.last_cart = st.session_state.cart.copy()
                         st.session_state.cart = []
