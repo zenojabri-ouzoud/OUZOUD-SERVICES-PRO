@@ -77,14 +77,22 @@ def reprint_invoice(invoice_number):
         return generate_facture_80mm(cart_data, "FACTURE DUPLICATA")
     return None, None
 
-# ==================== دالة الماسح العامة ==================== #
+# ==================== دالة الماسح العامة مع كلتا الكاميرتين ==================== #
 def mobile_barcode_scanner(session_key, button_text="📷 مسح"):
     scanner_html = f"""
     <div id="scanner-container" style="width:100%; max-width:500px; margin:0 auto; border:2px dashed #4CAF50; border-radius:10px; padding:15px; background:#f9f9f9;">
         <div id="reader" style="width:100%; min-height:250px;"></div>
         <div id="scan-status" style="text-align:center; margin-top:10px; font-size:14px; color:#666;"></div>
-        <button onclick="startScanner()" style="display:block; width:100%; margin-top:10px; padding:10px; background:#4CAF50; color:white; border:none; border-radius:5px; font-size:16px; cursor:pointer;">
-            {button_text}
+        <div style="display:flex; gap:10px; margin-top:10px;">
+            <button onclick="startScanner('environment')" style="flex:1; padding:10px; background:#4CAF50; color:white; border:none; border-radius:5px; font-size:14px; cursor:pointer;">
+                📷 الكاميرا الخلفية
+            </button>
+            <button onclick="startScanner('user')" style="flex:1; padding:10px; background:#2196F3; color:white; border:none; border-radius:5px; font-size:14px; cursor:pointer;">
+                🤳 الكاميرا الأمامية
+            </button>
+        </div>
+        <button onclick="stopScanner()" style="display:block; width:100%; margin-top:5px; padding:8px; background:#f44336; color:white; border:none; border-radius:5px; font-size:14px; cursor:pointer;">
+            ⏹️ إيقاف الماسح
         </button>
     </div>
     
@@ -93,6 +101,7 @@ def mobile_barcode_scanner(session_key, button_text="📷 مسح"):
     let html5Qrcode = null;
     let isScanning = false;
     let lastScanned = '';
+    let currentFacingMode = 'environment';
     
     function updateStatus(message, isError = false) {{
         const status = document.getElementById('scan-status');
@@ -144,24 +153,34 @@ def mobile_barcode_scanner(session_key, button_text="📷 مسح"):
         setInputValue(decodedText);
         sendToStreamlit(decodedText);
         
+        setTimeout(() => {{
+            lastScanned = '';
+        }}, 2000);
+    }}
+    
+    function stopScanner() {{
         if (html5Qrcode) {{
             html5Qrcode.stop().then(() => {{
                 isScanning = false;
-                setTimeout(() => {{
-                    lastScanned = '';
-                    startScanner();
-                }}, 2000);
+                updateStatus('⏹️ تم إيقاف الماسح');
             }}).catch(() => {{
-                setTimeout(() => {{
-                    lastScanned = '';
-                    startScanner();
-                }}, 2000);
+                isScanning = false;
+                updateStatus('⏹️ تم إيقاف الماسح');
             }});
         }}
     }}
     
-    function startScanner() {{
-        if (isScanning) return;
+    function startScanner(facingMode) {{
+        if (isScanning) {{
+            stopScanner();
+            setTimeout(() => {{
+                startScanner(facingMode);
+            }}, 500);
+            return;
+        }}
+        
+        currentFacingMode = facingMode;
+        const modeName = facingMode === 'environment' ? 'الخلفية' : 'الأمامية';
         
         try {{
             if (html5Qrcode) {{
@@ -171,37 +190,51 @@ def mobile_barcode_scanner(session_key, button_text="📷 مسح"):
             
             html5Qrcode = new Html5Qrcode("reader");
             isScanning = true;
-            updateStatus('⏳ جاري تشغيل الكاميرا...');
+            updateStatus('⏳ جاري تشغيل الكاميرا ' + modeName + '...');
             
             html5Qrcode.start(
-                {{ facingMode: "environment" }},
-                {{ fps: 10, qrbox: {{width: 250, height: 250}} }},
+                {{ facingMode: facingMode }},
+                {{ fps: 15, qrbox: {{width: 250, height: 250}} }},
                 onScanSuccess,
                 function(errorMessage) {{}}
             ).then(function() {{
-                updateStatus('📷 الكاميرا شغالة - امسح الباركود');
+                updateStatus('📷 الكاميرا ' + modeName + ' شغالة - امسح الباركود');
             }}).catch(function(err) {{
                 updateStatus('❌ خطأ: ' + err.message, true);
                 isScanning = false;
-                setTimeout(startScanner, 3000);
+                // محاولة استخدام الكاميرا الأخرى إذا فشلت
+                if (facingMode === 'environment') {{
+                    setTimeout(() => startScanner('user'), 2000);
+                }}
             }});
         }} catch(e) {{
             updateStatus('❌ خطأ: ' + e.message, true);
             isScanning = false;
-            setTimeout(startScanner, 3000);
         }}
     }}
     
-    setTimeout(startScanner, 500);
+    // بدء الماسح بالكاميرا الخلفية تلقائياً
+    setTimeout(() => startScanner('environment'), 500);
     </script>
     """
-    components.html(scanner_html, height=400)
+    components.html(scanner_html, height=500)
 
 # ==================== دالة الماسح التلقائي للبيع ==================== #
 def auto_sale_scanner():
     scanner_html = """
     <div id="reader" style="width:100%; max-width:500px; margin:0 auto;"></div>
     <div id="scan-status" style="text-align:center; margin-top:10px; font-size:14px; color:#666;"></div>
+    <div style="display:flex; gap:10px; margin-top:10px; max-width:500px; margin:0 auto;">
+        <button onclick="startScanner('environment')" style="flex:1; padding:10px; background:#4CAF50; color:white; border:none; border-radius:5px; font-size:14px; cursor:pointer;">
+            📷 خلفية
+        </button>
+        <button onclick="startScanner('user')" style="flex:1; padding:10px; background:#2196F3; color:white; border:none; border-radius:5px; font-size:14px; cursor:pointer;">
+            🤳 أمامية
+        </button>
+        <button onclick="stopScanner()" style="flex:1; padding:10px; background:#f44336; color:white; border:none; border-radius:5px; font-size:14px; cursor:pointer;">
+            ⏹️ إيقاف
+        </button>
+    </div>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
@@ -209,12 +242,25 @@ def auto_sale_scanner():
     let scanTimeout;
     let isProcessing = false;
     let html5Qrcode = null;
+    let isScanning = false;
     
     function updateStatus(message, isError = false) {
         const status = document.getElementById('scan-status');
         if (status) {
             status.textContent = message;
             status.style.color = isError ? '#f44336' : '#4CAF50';
+        }
+    }
+    
+    function stopScanner() {
+        if (html5Qrcode) {
+            html5Qrcode.stop().then(() => {
+                isScanning = false;
+                updateStatus('⏹️ تم إيقاف الماسح');
+            }).catch(() => {
+                isScanning = false;
+                updateStatus('⏹️ تم إيقاف الماسح');
+            });
         }
     }
     
@@ -236,53 +282,67 @@ def auto_sale_scanner():
             }
         });
         
-        if (html5Qrcode) {
-            html5Qrcode.stop().then(() => {
-                setTimeout(() => {
-                    isProcessing = false;
-                    updateStatus('📷 جاهز للمسح التالي');
-                    startScanner();
-                }, 3000);
-            }).catch(() => {
-                setTimeout(() => {
-                    isProcessing = false;
-                    updateStatus('📷 جاهز للمسح التالي');
-                    startScanner();
-                }, 3000);
-            });
-        }
+        setTimeout(() => {
+            isProcessing = false;
+            updateStatus('📷 جاهز للمسح التالي');
+        }, 3000);
     }
     
-    function startScanner() {
+    function startScanner(facingMode) {
+        if (isScanning) {
+            stopScanner();
+            setTimeout(() => { startScanner(facingMode); }, 500);
+            return;
+        }
+        
+        const modeName = facingMode === 'environment' ? 'الخلفية' : 'الأمامية';
+        
         if (html5Qrcode) {
             html5Qrcode.clear();
             html5Qrcode = null;
         }
         
         html5Qrcode = new Html5Qrcode("reader");
+        isScanning = true;
+        updateStatus('📷 جاري تشغيل الكاميرا ' + modeName + '...');
+        
         html5Qrcode.start(
-            { facingMode: "environment" },
+            { facingMode: facingMode },
             { fps: 10, qrbox: { width: 250, height: 250 } },
             onScanSuccess,
             function(errorMessage) {}
         ).then(function() {
-            updateStatus('📷 الكاميرا شغالة - امسح الباركود');
+            updateStatus('📷 الكاميرا ' + modeName + ' شغالة - امسح الباركود');
         }).catch(function(err) {
             updateStatus('❌ خطأ: ' + err.message, true);
-            setTimeout(startScanner, 3000);
+            isScanning = false;
+            if (facingMode === 'environment') {
+                setTimeout(() => startScanner('user'), 2000);
+            }
         });
     }
     
-    setTimeout(startScanner, 500);
+    setTimeout(() => startScanner('environment'), 500);
     </script>
     """
-    components.html(scanner_html, height=400)
+    components.html(scanner_html, height=500)
 
 # ==================== دالة الماسح للسلة التلقائية ==================== #
 def auto_cart_scanner():
     scanner_html = """
     <div id="reader" style="width:100%; max-width:500px; margin:0 auto;"></div>
     <div id="scan-status" style="text-align:center; margin-top:10px; font-size:14px; color:#666;"></div>
+    <div style="display:flex; gap:10px; margin-top:10px; max-width:500px; margin:0 auto;">
+        <button onclick="startScanner('environment')" style="flex:1; padding:10px; background:#4CAF50; color:white; border:none; border-radius:5px; font-size:14px; cursor:pointer;">
+            📷 خلفية
+        </button>
+        <button onclick="startScanner('user')" style="flex:1; padding:10px; background:#2196F3; color:white; border:none; border-radius:5px; font-size:14px; cursor:pointer;">
+            🤳 أمامية
+        </button>
+        <button onclick="stopScanner()" style="flex:1; padding:10px; background:#f44336; color:white; border:none; border-radius:5px; font-size:14px; cursor:pointer;">
+            ⏹️ إيقاف
+        </button>
+    </div>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
@@ -290,12 +350,25 @@ def auto_cart_scanner():
     let scanTimeout;
     let isProcessing = false;
     let html5Qrcode = null;
+    let isScanning = false;
     
     function updateStatus(message, isError = false) {
         const status = document.getElementById('scan-status');
         if (status) {
             status.textContent = message;
             status.style.color = isError ? '#f44336' : '#4CAF50';
+        }
+    }
+    
+    function stopScanner() {
+        if (html5Qrcode) {
+            html5Qrcode.stop().then(() => {
+                isScanning = false;
+                updateStatus('⏹️ تم إيقاف الماسح');
+            }).catch(() => {
+                isScanning = false;
+                updateStatus('⏹️ تم إيقاف الماسح');
+            });
         }
     }
     
@@ -317,65 +390,92 @@ def auto_cart_scanner():
             }
         });
         
-        if (html5Qrcode) {
-            html5Qrcode.stop().then(() => {
-                setTimeout(() => {
-                    isProcessing = false;
-                    updateStatus('📷 جاهز للمسح التالي');
-                    startScanner();
-                }, 2000);
-            }).catch(() => {
-                setTimeout(() => {
-                    isProcessing = false;
-                    updateStatus('📷 جاهز للمسح التالي');
-                    startScanner();
-                }, 2000);
-            });
-        }
+        setTimeout(() => {
+            isProcessing = false;
+            updateStatus('📷 جاهز للمسح التالي');
+        }, 2000);
     }
     
-    function startScanner() {
+    function startScanner(facingMode) {
+        if (isScanning) {
+            stopScanner();
+            setTimeout(() => { startScanner(facingMode); }, 500);
+            return;
+        }
+        
+        const modeName = facingMode === 'environment' ? 'الخلفية' : 'الأمامية';
+        
         if (html5Qrcode) {
             html5Qrcode.clear();
             html5Qrcode = null;
         }
         
         html5Qrcode = new Html5Qrcode("reader");
+        isScanning = true;
+        updateStatus('📷 جاري تشغيل الكاميرا ' + modeName + '...');
+        
         html5Qrcode.start(
-            { facingMode: "environment" },
+            { facingMode: facingMode },
             { fps: 10, qrbox: { width: 250, height: 250 } },
             onScanSuccess,
             function(errorMessage) {}
         ).then(function() {
-            updateStatus('📷 الكاميرا شغالة - امسح الباركود للإضافة للسلة');
+            updateStatus('📷 الكاميرا ' + modeName + ' شغالة - امسح الباركود للإضافة للسلة');
         }).catch(function(err) {
             updateStatus('❌ خطأ: ' + err.message, true);
-            setTimeout(startScanner, 3000);
+            isScanning = false;
+            if (facingMode === 'environment') {
+                setTimeout(() => startScanner('user'), 2000);
+            }
         });
     }
     
-    setTimeout(startScanner, 500);
+    setTimeout(() => startScanner('environment'), 500);
     </script>
     """
-    components.html(scanner_html, height=400)
+    components.html(scanner_html, height=500)
 
 # ==================== دالة الماسح للمخزون ==================== #
 def stock_barcode_scanner(target_input_label):
     scanner_html = f"""
     <div id="reader" style="width:100%; max-width:500px; margin:0 auto;"></div>
     <div id="scan-status" style="text-align:center; margin-top:10px; font-size:14px; color:#666;"></div>
+    <div style="display:flex; gap:10px; margin-top:10px; max-width:500px; margin:0 auto;">
+        <button onclick="startScanner('environment')" style="flex:1; padding:10px; background:#4CAF50; color:white; border:none; border-radius:5px; font-size:14px; cursor:pointer;">
+            📷 خلفية
+        </button>
+        <button onclick="startScanner('user')" style="flex:1; padding:10px; background:#2196F3; color:white; border:none; border-radius:5px; font-size:14px; cursor:pointer;">
+            🤳 أمامية
+        </button>
+        <button onclick="stopScanner()" style="flex:1; padding:10px; background:#f44336; color:white; border:none; border-radius:5px; font-size:14px; cursor:pointer;">
+            ⏹️ إيقاف
+        </button>
+    </div>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
     let lastScan = '';
     let scanTimeout;
     let html5Qrcode = null;
+    let isScanning = false;
     
     function updateStatus(message, isError = false) {{
         const status = document.getElementById('scan-status');
         if (status) {{
             status.textContent = message;
             status.style.color = isError ? '#f44336' : '#4CAF50';
+        }}
+    }}
+    
+    function stopScanner() {{
+        if (html5Qrcode) {{
+            html5Qrcode.stop().then(() => {{
+                isScanning = false;
+                updateStatus('⏹️ تم إيقاف الماسح');
+            }}).catch(() => {{
+                isScanning = false;
+                updateStatus('⏹️ تم إيقاف الماسح');
+            }});
         }}
     }}
     
@@ -397,46 +497,46 @@ def stock_barcode_scanner(target_input_label):
                 setTimeout(() => {{ input.style.background = ''; }}, 500);
             }}
         }});
-        
-        if (html5Qrcode) {{
-            html5Qrcode.stop().then(() => {{
-                setTimeout(() => {{
-                    lastScan = '';
-                    startScanner();
-                }}, 2000);
-            }}).catch(() => {{
-                setTimeout(() => {{
-                    lastScan = '';
-                    startScanner();
-                }}, 2000);
-            }});
-        }}
     }}
     
-    function startScanner() {{
+    function startScanner(facingMode) {{
+        if (isScanning) {{
+            stopScanner();
+            setTimeout(() => {{ startScanner(facingMode); }}, 500);
+            return;
+        }}
+        
+        const modeName = facingMode === 'environment' ? 'الخلفية' : 'الأمامية';
+        
         if (html5Qrcode) {{
             html5Qrcode.clear();
             html5Qrcode = null;
         }}
         
         html5Qrcode = new Html5Qrcode("reader");
+        isScanning = true;
+        updateStatus('📷 جاري تشغيل الكاميرا ' + modeName + '...');
+        
         html5Qrcode.start(
-            {{ facingMode: "environment" }},
+            {{ facingMode: facingMode }},
             {{ fps: 10, qrbox: {{width: 250, height: 250}} }},
             onScanSuccess,
             function(errorMessage) {{}}
         ).then(function() {{
-            updateStatus('📷 الكاميرا شغالة - امسح الباركود');
+            updateStatus('📷 الكاميرا ' + modeName + ' شغالة - امسح الباركود');
         }}).catch(function(err) {{
             updateStatus('❌ خطأ: ' + err.message, true);
-            setTimeout(startScanner, 3000);
+            isScanning = false;
+            if (facingMode === 'environment') {{
+                setTimeout(() => startScanner('user'), 2000);
+            }}
         }});
     }}
     
-    setTimeout(startScanner, 500);
+    setTimeout(() => startScanner('environment'), 500);
     </script>
     """
-    components.html(scanner_html, height=400)
+    components.html(scanner_html, height=500)
 
 # ==================== دالة الفاتورة الموحدة ==================== #
 def get_next_invoice_number():
@@ -515,7 +615,6 @@ def generate_facture_a4(cart_data, titre="FACTURE"):
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=10)
     
-    # الرأس
     pdf.set_font("Arial", 'B', 20)
     pdf.cell(0, 10, "OUZOUD SERVICES", ln=True, align='C')
     pdf.set_font("Arial", 'B', 16)
@@ -526,14 +625,12 @@ def generate_facture_a4(cart_data, titre="FACTURE"):
     pdf.cell(0, 6, "maaridprint@gmail.com", ln=True, align='C')
     pdf.cell(0, 6, "-" * 60, ln=True, align='C')
     
-    # التاريخ والوقت
     now = datetime.now(pytz.timezone("Africa/Casablanca"))
     pdf.set_font("Arial", size=10)
     pdf.cell(0, 6, f"Date: {now.strftime('%d/%m/%Y')}", ln=True, align='L')
     pdf.cell(0, 6, f"Heure: {now.strftime('%H:%M:%S')}", ln=True, align='L')
     pdf.cell(0, 6, "-" * 60, ln=True, align='C')
     
-    # جدول المنتجات
     pdf.set_font("Arial", 'B', 10)
     pdf.cell(80, 8, "Produit", 1, 0, 'C')
     pdf.cell(30, 8, "Qte", 1, 0, 'C')
@@ -555,14 +652,12 @@ def generate_facture_a4(cart_data, titre="FACTURE"):
         pdf.cell(40, 7, f"{tot:.2f} DH", 1, 0, 'C')
         pdf.ln(7)
     
-    # المجموع الكلي
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 8, "-" * 60, ln=True, align='C')
     pdf.cell(150, 8, "TOTAL:", 0, 0, 'R')
     pdf.cell(40, 8, f"{tg:.2f} DH", 0, 1, 'R')
     pdf.cell(0, 8, "-" * 60, ln=True, align='C')
     
-    # التذييل
     pdf.set_font("Arial", 'I', 10)
     pdf.cell(0, 8, "Merci pour votre visite!", ln=True, align='C')
     pdf.cell(0, 8, "A bientot!", ln=True, align='C')
@@ -1774,7 +1869,6 @@ if not st.session_state.authenticated:
         with col1:
             st.subheader(t("login_title"))
             
-            # اختيار نوع الدخول
             login_type = st.radio(
                 "نوع الدخول:",
                 ["🔑 كلمة المرور الأساسية", "👤 حساب مسجل"],
@@ -1782,7 +1876,6 @@ if not st.session_state.authenticated:
             )
             
             if login_type == "🔑 كلمة المرور الأساسية":
-                # دخول بكلمة المرور الأساسية
                 username = st.text_input("👤 اسم المستخدم (اختياري)")
                 password = st.text_input("🔑 كلمة المرور الأساسية", type="password", placeholder="123456789")
                 
@@ -1795,7 +1888,6 @@ if not st.session_state.authenticated:
                         st.error("❌ كلمة المرور خاطئة! الكلمة الصحيحة: 123456789")
             
             else:
-                # دخول بحساب مسجل
                 username = st.text_input(t("username_label"))
                 password = st.text_input(t("password_label"), type="password")
                 
@@ -2090,7 +2182,6 @@ if menu == t("pos"):
                                     key="download_auto_invoice"
                                 )
                         
-                        # فاتورة A4
                         facture_a4_path, invoice_a4_number = generate_facture_a4(
                             [{"Nom": nom_produit, "Quantité": 1, "Prix": float(product['Prix']), "Total": total}],
                             "FACTURE DE VENTE"
@@ -2130,7 +2221,6 @@ if menu == t("pos"):
         
         # ====== Normal Sale ======
         if mode == t("normal_sale"):
-            # Scanner automatique
             use_normal_scanner = st.checkbox("📷 تفعيل الماسح التلقائي", key="normal_scanner_toggle")
             if use_normal_scanner:
                 st.info("📷 امسح الباركود الآن - سيتم كتابته تلقائياً")
@@ -2165,11 +2255,9 @@ if menu == t("pos"):
                         if q_old >= qty:
                             total = prix * qty
                             
-                            # فاتورة 80mm
                             facture_result = generate_facture_80mm([{"Nom": nom, "Quantité": qty, "Prix": prix, "Total": total}], "FACTURE DE VENTE")
                             facture_path, invoice_number = facture_result
                             
-                            # فاتورة A4
                             facture_a4_path, invoice_a4_number = generate_facture_a4([{"Nom": nom, "Quantité": qty, "Prix": prix, "Total": total}], "FACTURE DE VENTE")
                             
                             supabase.table("ventes").insert({
@@ -2204,15 +2292,26 @@ if menu == t("pos"):
         elif mode == t("scan_qr"):
             st.subheader("📱 " + t("scan_qr"))
             
-            # Scanner QR Code - بيع مباشر
             scanner_html = """
             <div id="qr-reader" style="width:100%; max-width:500px; margin:0 auto;"></div>
             <div id="qr-reader-results" style="text-align:center; margin-top:10px; font-size:18px; color:#4CAF50;"></div>
+            <div style="display:flex; gap:10px; margin-top:10px; max-width:500px; margin:0 auto;">
+                <button onclick="startScanner('environment')" style="flex:1; padding:10px; background:#4CAF50; color:white; border:none; border-radius:5px; font-size:14px; cursor:pointer;">
+                    📷 خلفية
+                </button>
+                <button onclick="startScanner('user')" style="flex:1; padding:10px; background:#2196F3; color:white; border:none; border-radius:5px; font-size:14px; cursor:pointer;">
+                    🤳 أمامية
+                </button>
+                <button onclick="stopScanner()" style="flex:1; padding:10px; background:#f44336; color:white; border:none; border-radius:5px; font-size:14px; cursor:pointer;">
+                    ⏹️ إيقاف
+                </button>
+            </div>
             
             <script src="https://unpkg.com/html5-qrcode"></script>
             <script>
             let html5Qrcode = null;
             let isProcessing = false;
+            let isScanning = false;
             
             function onScanSuccess(decodedText, decodedResult) {
                 if (isProcessing) return;
@@ -2229,10 +2328,6 @@ if menu == t("pos"):
                     }
                 });
                 
-                if (html5Qrcode) {
-                    html5Qrcode.stop();
-                }
-                
                 setTimeout(() => {
                     const buttons = window.parent.document.querySelectorAll('button');
                     buttons.forEach(btn => {
@@ -2240,31 +2335,56 @@ if menu == t("pos"):
                             btn.click();
                         }
                     });
+                    isProcessing = false;
                 }, 500);
             }
             
-            function startScanner() {
+            function stopScanner() {
+                if (html5Qrcode) {
+                    html5Qrcode.stop().then(() => {
+                        isScanning = false;
+                    }).catch(() => {
+                        isScanning = false;
+                    });
+                }
+            }
+            
+            function startScanner(facingMode) {
+                if (isScanning) {
+                    stopScanner();
+                    setTimeout(() => { startScanner(facingMode); }, 500);
+                    return;
+                }
+                
+                const modeName = facingMode === 'environment' ? 'الخلفية' : 'الأمامية';
+                
                 if (html5Qrcode) {
                     html5Qrcode.clear();
                     html5Qrcode = null;
                 }
                 
                 html5Qrcode = new Html5Qrcode("qr-reader");
+                isScanning = true;
+                document.getElementById('qr-reader-results').innerHTML = '📷 جاري تشغيل الكاميرا ' + modeName + '...';
+                
                 html5Qrcode.start(
-                    { facingMode: "environment" },
+                    { facingMode: facingMode },
                     { fps: 10, qrbox: { width: 250, height: 250 } },
                     onScanSuccess,
                     function(errorMessage) {}
                 ).catch(function(err) {
                     document.getElementById('qr-reader-results').innerHTML = '❌ خطأ: ' + err.message;
-                    setTimeout(startScanner, 3000);
+                    isScanning = false;
+                    if (facingMode === 'environment') {
+                        setTimeout(() => startScanner('user'), 2000);
+                    }
                 });
             }
             
-            setTimeout(startScanner, 1000);
+            setTimeout(() => startScanner('environment'), 500);
             </script>
             """
-            components.html(scanner_html, height=400)
+            components.html(scanner_html, height=550)
             
             st.info("📷 قرب الكاميرا من الباركود - البيع يتم تلقائياً")
             
@@ -2299,7 +2419,6 @@ if menu == t("pos"):
                             facture_result = generate_facture_80mm([{"Nom": nom, "Quantité": qty_qr, "Prix": prix, "Total": total}], "FACTURE DE VENTE")
                             facture_path, invoice_number = facture_result
                             
-                            # فاتورة A4
                             facture_a4_path, invoice_a4_number = generate_facture_a4([{"Nom": nom, "Quantité": qty_qr, "Prix": prix, "Total": total}], "FACTURE DE VENTE")
                             
                             supabase.table("ventes").insert({
@@ -2351,7 +2470,6 @@ if menu == t("pos"):
                     facture_result = generate_facture_80mm([{"Nom": name, "Quantité": qty_libre, "Prix": float(price), "Total": total_libre}], "FACTURE DE VENTE")
                     facture_path, invoice_number = facture_result
                     
-                    # فاتورة A4
                     facture_a4_path, invoice_a4_number = generate_facture_a4([{"Nom": name, "Quantité": qty_libre, "Prix": float(price), "Total": total_libre}], "FACTURE DE VENTE")
                     
                     supabase.table("ventes").insert({
@@ -2440,7 +2558,6 @@ if menu == t("pos"):
                             facture_result = generate_facture_80mm(st.session_state.cart, "FACTURE DE VENTE")
                             facture_path, invoice_number = facture_result
                             
-                            # فاتورة A4
                             facture_a4_path, invoice_a4_number = generate_facture_a4(st.session_state.cart, "FACTURE DE VENTE")
                             
                             for item in st.session_state.cart:
@@ -2548,7 +2665,6 @@ if menu == t("pos"):
                         facture_result = generate_facture_80mm(st.session_state.cart, "FACTURE DE VENTE")
                         facture_path, invoice_number = facture_result
                         
-                        # فاتورة A4
                         facture_a4_path, invoice_a4_number = generate_facture_a4(st.session_state.cart, "FACTURE DE VENTE")
                         
                         for item in st.session_state.cart:
@@ -2610,7 +2726,6 @@ elif menu == t("stock"):
         else:
             st.success(f"{t('search_results')} {len(df_stock)} produit(s)")
     
-    # ====== Add Product ======
     with st.expander(t("add_product"), expanded=True):
         use_add_scanner = st.checkbox(t("stock_scanner_add"), key="add_scanner_checkbox")
         if use_add_scanner:
@@ -2663,7 +2778,6 @@ elif menu == t("stock"):
     else:
         st.success(t("stock_ok"))
     
-    # ====== Update Product ======
     if not df_stock.empty:
         with st.expander(t("update_product")):
             use_update_scanner = st.checkbox(t("stock_scanner_update"), key="update_scanner_checkbox")
@@ -2988,7 +3102,6 @@ elif menu == t("credits"):
 elif menu == t("factures"):
     st.header("📄 " + t("factures"))
     
-    # ====== سجل الفواتير ======
     st.subheader("📋 " + t("invoices_list"))
     df_invoices = get_all_invoices()
     
@@ -3327,7 +3440,6 @@ elif menu == t("services"):
             facture_result = generate_facture_80mm(service_cart, "FACTURE SERVICE")
             facture_path, invoice_number = facture_result
             
-            # فاتورة A4
             facture_a4_path, invoice_a4_number = generate_facture_a4(service_cart, "FACTURE SERVICE")
             
             supabase.table("ventes").insert({
@@ -3483,7 +3595,6 @@ elif menu == t("outils"):
         """
         components.html(google_iframe, height=650)
 
-# إخفاء footer Streamlit
 hide_streamlit_style = """
     <style>
     #MainMenu {visibility: hidden;}
