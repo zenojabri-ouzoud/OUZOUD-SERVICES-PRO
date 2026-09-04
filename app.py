@@ -601,6 +601,115 @@ def play_success_sound():
     """
     components.html(sound_html, height=0)
 
+# ==================== نظام التحكم الصوتي ==================== #
+def voice_command_component():
+    voice_html = """
+    <div id="voice-control">
+        <button id="start-voice" style="padding:10px 20px; background:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
+            🎤 ابدأ الاستماع
+        </button>
+        <button id="stop-voice" style="padding:10px 20px; background:#f44336; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px; display:none;">
+            ⏹️ إيقاف
+        </button>
+        <p id="voice-status" style="margin-top:10px; color:#666;"></p>
+        <p id="voice-result" style="font-size:18px; font-weight:bold; color:#2196F3;"></p>
+    </div>
+    
+    <script>
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ar-MA';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    
+    let isListening = false;
+    
+    document.getElementById('start-voice').addEventListener('click', function() {
+        recognition.start();
+        isListening = true;
+        document.getElementById('start-voice').style.display = 'none';
+        document.getElementById('stop-voice').style.display = 'inline-block';
+        document.getElementById('voice-status').innerText = '🎤 جاري الاستماع...';
+    });
+    
+    document.getElementById('stop-voice').addEventListener('click', function() {
+        recognition.stop();
+        isListening = false;
+        document.getElementById('start-voice').style.display = 'inline-block';
+        document.getElementById('stop-voice').style.display = 'none';
+        document.getElementById('voice-status').innerText = '';
+    });
+    
+    recognition.onresult = function(event) {
+        const last = event.results.length - 1;
+        const command = event.results[last][0].transcript.trim();
+        document.getElementById('voice-result').innerText = '🗣️ ' + command;
+        
+        if (command.includes('ضيف') || command.includes('أضف')) {
+            const inputs = window.parent.document.querySelectorAll('input');
+            inputs.forEach(input => {
+                if (input.getAttribute('aria-label') && input.getAttribute('aria-label').includes('باركود')) {
+                    const words = command.split(' ');
+                    const qtyIndex = words.findIndex(w => w === 'كمية' || w === 'الكمية');
+                    if (qtyIndex >= 0 && words[qtyIndex + 1]) {
+                        const qtyInput = window.parent.document.querySelector('input[aria-label*="كمية"]');
+                        if (qtyInput) {
+                            qtyInput.value = words[qtyIndex + 1];
+                            qtyInput.dispatchEvent(new Event('input', {bubbles: true}));
+                        }
+                    }
+                }
+            });
+        } else if (command.includes('طبع') || command.includes('اطبع') || command.includes('فاتورة')) {
+            const buttons = window.parent.document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                if (btn.innerText.includes('فاتورة') || btn.innerText.includes('Facture') || btn.innerText.includes('طباعة')) {
+                    btn.click();
+                }
+            });
+        } else if (command.includes('تأكيد') || command.includes('بيع')) {
+            const buttons = window.parent.document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                if (btn.innerText.includes('تأكيد') || btn.innerText.includes('تسجيل')) {
+                    btn.click();
+                }
+            });
+        } else if (command.includes('سير')) {
+            const pageMap = {
+                'لوحة التحكم': '📊 لوحة التحكم',
+                'نقطة البيع': '🛒 نقطة البيع',
+                'المخزون': '📦 إدارة المخزون',
+                'الطباعة': '🖨️ الطباعة',
+                'الخزينة': '💰 الخزينة',
+                'الديون': '💳 الديون',
+                'الفواتير': '📄 الفواتير',
+                'الطلبيات': '📋 طلبيات الموردين',
+                'الخدمات': '🔧 الخدمات الإلكترونية',
+                'الأدوات': '🔗 أدوات سريعة'
+            };
+            for (const [key, value] of Object.entries(pageMap)) {
+                if (command.includes(key)) {
+                    const selects = window.parent.document.querySelectorAll('select');
+                    selects.forEach(select => {
+                        if (select.id && select.id.includes('menu_main')) {
+                            select.value = value;
+                            select.dispatchEvent(new Event('change', {bubbles: true}));
+                        }
+                    });
+                    document.getElementById('voice-result').innerText = '🗣️ ' + command + ' → ' + value;
+                    break;
+                }
+            }
+        }
+    };
+    
+    recognition.onerror = function(event) {
+        document.getElementById('voice-status').innerText = '❌ خطأ: ' + event.error;
+    };
+    </script>
+    """
+    components.html(voice_html, height=150)
+
 # ==================== نظام الترجمة ==================== #
 if "lang" not in st.session_state:
     st.session_state.lang = "ar"
